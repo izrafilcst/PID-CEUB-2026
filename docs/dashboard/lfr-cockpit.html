@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LFR ◈ COCKPIT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        'hud': '#030508',
+        'hud-card': '#070B10',
+        'hud-cyan': '#00E8FF',
+        'hud-amber': '#FFB700',
+        'hud-green': '#00FF6E',
+        'hud-red': '#FF3055',
+        'hud-text': '#B8D4E8',
+        'hud-dim': '#3A5567',
+      },
+      fontFamily: {
+        orbitron: ['Orbitron', 'monospace'],
+        mono: ['Share Tech Mono', 'monospace'],
+        raj: ['Rajdhani', 'sans-serif'],
+      }
+    }
+  }
+}
+</script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #030508;
+    background-image:
+      linear-gradient(rgba(0,232,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,232,255,0.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+    font-family: 'Rajdhani', sans-serif;
+    color: #B8D4E8;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.06) 2px,
+      rgba(0,0,0,0.06) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* HUD card with corner brackets */
+  .hud-card {
+    background: rgba(7,11,16,0.92);
+    border: 1px solid rgba(0,232,255,0.1);
+    position: relative;
+  }
+  .hud-card::before,
+  .hud-card::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+  }
+  .hud-card::before {
+    top: -1px; left: -1px;
+    border-top: 2px solid #00E8FF;
+    border-left: 2px solid #00E8FF;
+  }
+  .hud-card::after {
+    bottom: -1px; right: -1px;
+    border-bottom: 2px solid #00E8FF;
+    border-right: 2px solid #00E8FF;
+  }
+
+  /* Neon glow pulse on live data */
+  @keyframes glow-pulse {
+    0%, 100% { text-shadow: 0 0 4px currentColor, 0 0 12px currentColor; }
+    50%       { text-shadow: 0 0 2px currentColor, 0 0 6px currentColor; }
+  }
+  .live-glow { animation: glow-pulse 2s ease-in-out infinite; }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.2; }
+  }
+  .blink { animation: blink 1s step-end infinite; }
+
+  /* BLE status indicator */
+  @keyframes orbit {
+    from { transform: rotate(0deg) translateX(5px); }
+    to   { transform: rotate(360deg) translateX(5px); }
+  }
+
+  /* Custom slider */
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 3px;
+    background: rgba(0,232,255,0.15);
+    outline: none;
+    border-radius: 0;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    background: #00E8FF;
+    border: none;
+    cursor: pointer;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    box-shadow: 0 0 8px #00E8FF;
+  }
+  input[type=range].amber::-webkit-slider-thumb { background: #FFB700; box-shadow: 0 0 8px #FFB700; }
+  input[type=range].amber { background: rgba(255,183,0,0.15); }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 3px;
+    border-radius: 0;
+  }
+
+  /* Sensor LED segment */
+  .sensor-seg {
+    flex: 1;
+    height: 20px;
+    border: 1px solid rgba(0,232,255,0.2);
+    transition: background 80ms ease, box-shadow 80ms ease;
+    position: relative;
+  }
+
+  /* Control buttons */
+  .btn-hud {
+    background: transparent;
+    border: 1px solid rgba(0,232,255,0.3);
+    color: #00E8FF;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 8px 16px;
+    cursor: pointer;
+    position: relative;
+    transition: all 150ms ease;
+    clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+  }
+  .btn-hud:hover {
+    background: rgba(0,232,255,0.08);
+    border-color: #00E8FF;
+    box-shadow: 0 0 12px rgba(0,232,255,0.25), inset 0 0 12px rgba(0,232,255,0.05);
+    color: #fff;
+  }
+  .btn-hud.active {
+    background: rgba(0,232,255,0.15);
+    border-color: #00E8FF;
+    box-shadow: 0 0 20px rgba(0,232,255,0.4);
+    color: #fff;
+  }
+  .btn-stop  { border-color: rgba(255,48,85,0.4); color: #FF3055; clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%); }
+  .btn-stop:hover { background: rgba(255,48,85,0.1); border-color: #FF3055; box-shadow: 0 0 12px rgba(255,48,85,0.3); color: #fff; }
+  .btn-amber { border-color: rgba(255,183,0,0.4); color: #FFB700; clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%); }
+  .btn-amber:hover { background: rgba(255,183,0,0.1); border-color: #FFB700; box-shadow: 0 0 12px rgba(255,183,0,0.3); color: #fff; }
+
+  /* Section label */
+  .section-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: rgba(0,232,255,0.4);
+    border-bottom: 1px solid rgba(0,232,255,0.08);
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+  }
+
+  /* Metric value */
+  .metric-value {
+    font-family: 'Orbitron', monospace;
+    color: #00E8FF;
+    text-shadow: 0 0 8px rgba(0,232,255,0.5);
+    line-height: 1;
+  }
+
+  /* Sim mode badge */
+  .sim-badge {
+    background: rgba(255,183,0,0.12);
+    border: 1px solid rgba(255,183,0,0.4);
+    color: #FFB700;
+    font-size: 9px;
+    letter-spacing: 2px;
+    padding: 3px 8px;
+    clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+  }
+
+  /* Toggle switch */
+  .toggle-track {
+    width: 36px; height: 18px;
+    background: rgba(0,232,255,0.08);
+    border: 1px solid rgba(0,232,255,0.25);
+    border-radius: 0;
+    position: relative;
+    cursor: pointer;
+    transition: all 200ms;
+  }
+  .toggle-track.on { background: rgba(0,232,255,0.2); border-color: #00E8FF; box-shadow: 0 0 8px rgba(0,232,255,0.3); }
+  .toggle-thumb {
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 12px; height: 12px;
+    background: rgba(0,232,255,0.4);
+    transition: all 200ms;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  }
+  .toggle-track.on .toggle-thumb { left: 20px; background: #00E8FF; }
+
+  /* Recharts custom tooltip */
+  .recharts-tooltip-wrapper { outline: none; }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+const {
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, ReferenceLine
+} = Recharts;
+
+// ═══ BLE UUIDS (matches BLETuner.h) ═════════════════════════════════════════
+const BLE_SERVICE        = '12345678-1234-1234-1234-123456789abc';
+const BLE_CHAR_KP        = '12345678-1234-1234-1234-123456789001';
+const BLE_CHAR_KI        = '12345678-1234-1234-1234-123456789002';
+const BLE_CHAR_KD        = '12345678-1234-1234-1234-123456789003';
+const BLE_CHAR_SPEED     = '12345678-1234-1234-1234-123456789004';
+const BLE_CHAR_TELEMETRY = '12345678-1234-1234-1234-123456789005';
+
+const CHART_WINDOW = 150; // points @ ~30fps = 5s
+
+// ═══ SIMULATION ══════════════════════════════════════════════════════════════
+function genSimFrame(t, pid, speed) {
+  const track = Math.sin(t * 0.8) * 2800 + Math.sin(t * 2.1) * 600;
+  const robot = track * 0.92 + Math.sin(t * 5) * 80;
+  const pos   = robot;
+  const err   = track - robot;
+  const corr  = err * pid.kp - Math.cos(t * 0.8) * pid.kd * 200;
+  const base  = speed.base;
+  const vL    = Math.min(255, Math.max(-255, base + corr * 0.08));
+  const vR    = Math.min(255, Math.max(-255, base - corr * 0.08));
+  const dt    = 1400 + Math.random() * 400;
+
+  const sensors = Array.from({ length: 8 }, (_, i) => {
+    const sPos = (i - 3.5) * 10;
+    const dist = pos / 350 * 10 - sPos;
+    return Math.max(0, Math.min(100, 100 * Math.exp(-(dist * dist) / 80)));
+  });
+
+  return { ts: Date.now(), pos, err, corr, vL, vR, dt, sensors };
+}
+
+// ═══ SENSOR BAR ═══════════════════════════════════════════════════════════════
+function SensorBar({ sensors }) {
+  return (
+    <div className="flex gap-1 w-full" style={{ height: 20 }}>
+      {sensors.map((v, i) => {
+        const bright = v / 100;
+        const bg = `rgba(0,232,255,${0.06 + bright * 0.7})`;
+        const glow = bright > 0.5 ? `0 0 ${8 * bright}px rgba(0,232,255,${bright})` : 'none';
+        return (
+          <div key={i} className="sensor-seg" style={{ background: bg, boxShadow: glow }} />
+        );
+      })}
+    </div>
+  );
+}
+
+// ═══ CHART TOOLTIP ════════════════════════════════════════════════════════════
+function HudTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{
+      background: 'rgba(3,5,8,0.95)',
+      border: '1px solid rgba(0,232,255,0.2)',
+      padding: '8px 12px',
+      fontFamily: 'Share Tech Mono, monospace',
+      fontSize: 11,
+    }}>
+      {payload.map(p => (
+        <div key={p.dataKey} style={{ color: p.color }}>
+          {p.name}: {typeof p.value === 'number' ? p.value.toFixed(1) : p.value}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ═══ PID SLIDER ═══════════════════════════════════════════════════════════════
+function PidSlider({ label, value, min, max, step, onChange, color = 'cyan' }) {
+  const pct = ((value - min) / (max - min) * 100).toFixed(0);
+  return (
+    <div className="mb-4">
+      <div className="flex justify-between items-baseline mb-1">
+        <span className="font-mono text-hud-dim" style={{ fontSize: 11, letterSpacing: 2 }}>{label}</span>
+        <span className="metric-value" style={{ fontSize: 18, color: color === 'amber' ? '#FFB700' : '#00E8FF',
+          textShadow: `0 0 6px ${color === 'amber' ? '#FFB700' : '#00E8FF'}` }}>
+          {value.toFixed(2)}
+        </span>
+      </div>
+      <div style={{ position: 'relative' }}>
+        <input
+          type="range" min={min} max={max} step={step} value={value}
+          onChange={e => onChange(parseFloat(e.target.value))}
+          className={color === 'amber' ? 'amber' : ''}
+          style={{ width: '100%' }}
+        />
+        <div style={{
+          position: 'absolute', top: 6, left: `${pct}%`,
+          width: 1, height: 8, background: color === 'amber' ? '#FFB700' : '#00E8FF',
+          opacity: 0.4, transform: 'translateX(-50%)', pointerEvents: 'none'
+        }} />
+      </div>
+    </div>
+  );
+}
+
+// ═══ METRIC CARD ══════════════════════════════════════════════════════════════
+function MetricCard({ label, value, unit, color = '#00E8FF', size = 'lg', warn = false }) {
+  return (
+    <div className="hud-card p-3" style={{ minWidth: 0 }}>
+      <div className="section-label mb-1" style={{ marginBottom: 4 }}>{label}</div>
+      <div className="flex items-baseline gap-1">
+        <span className="metric-value live-glow" style={{
+          fontSize: size === 'lg' ? 28 : 22,
+          color: warn ? '#FF3055' : color,
+          textShadow: `0 0 10px ${warn ? 'rgba(255,48,85,0.6)' : `rgba(0,232,255,0.5)`}`
+        }}>
+          {value}
+        </span>
+        {unit && <span className="font-mono text-hud-dim" style={{ fontSize: 10 }}>{unit}</span>}
+      </div>
+    </div>
+  );
+}
+
+// ═══ APP ROOT ════════════════════════════════════════════════════════════════
+function App() {
+  const [simMode, setSimMode]       = useState(true);
+  const [bleStatus, setBleStatus]   = useState('disconnected'); // disconnected | connecting | connected
+  const [running, setRunning]       = useState(false);
+  const [chartData, setChartData]   = useState([]);
+  const [sensors, setSensors]       = useState(Array(8).fill(0));
+  const [metrics, setMetrics]       = useState({ loopUs: 0, speed: 0, bestLap: '--', errAbs: 0 });
+  const [logLines, setLogLines]     = useState([]);
+
+  const [pid, setPid] = useState({ kp: 3.0, ki: 0.0, kd: 12.0 });
+  const [speed, setSpeed] = useState({ base: 160, min: 60, max: 230, threshold: 0.6 });
+
+  const bleRef      = useRef({});
+  const simTimerRef = useRef(null);
+  const tRef        = useRef(0);
+  const bestLapRef  = useRef(null);
+
+  // ── BLE connect ────────────────────────────────────────────────────────────
+  const connectBLE = useCallback(async () => {
+    if (!navigator.bluetooth) { alert('Web Bluetooth não suportado neste navegador.'); return; }
+    setBleStatus('connecting');
+    try {
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [{ services: [BLE_SERVICE] }]
+      });
+      const server  = await device.gatt.connect();
+      const service = await server.getPrimaryService(BLE_SERVICE);
+
+      bleRef.current.charKp    = await service.getCharacteristic(BLE_CHAR_KP);
+      bleRef.current.charKi    = await service.getCharacteristic(BLE_CHAR_KI);
+      bleRef.current.charKd    = await service.getCharacteristic(BLE_CHAR_KD);
+      bleRef.current.charSpeed = await service.getCharacteristic(BLE_CHAR_SPEED);
+      const charTelem          = await service.getCharacteristic(BLE_CHAR_TELEMETRY);
+
+      await charTelem.startNotifications();
+      charTelem.addEventListener('characteristicvaluechanged', (e) => {
+        const csv = new TextDecoder().decode(e.target.value);
+        parseTelemetry(csv);
+      });
+
+      device.addEventListener('gattserverdisconnected', () => setBleStatus('disconnected'));
+      setBleStatus('connected');
+    } catch (err) {
+      setBleStatus('disconnected');
+      console.warn('BLE:', err.message);
+    }
+  }, []);
+
+  // ── Parse CSV from Logger: ts,pos,err,p,i,d,corr,vl,vr,dt ──────────────
+  const parseTelemetry = useCallback((csv) => {
+    const parts = csv.trim().split(',').map(Number);
+    if (parts.length < 10) return;
+    const [ts, pos, err, , , , corr, vL, vR, dt] = parts;
+    pushPoint({ ts, pos, err: Math.abs(err), corr, vL, vR, dt });
+  }, []);
+
+  const pushPoint = useCallback((frame) => {
+    setChartData(prev => {
+      const next = [...prev, {
+        t: (frame.ts % 100000) / 1000,
+        pos:  parseFloat(frame.pos.toFixed(1)),
+        corr: parseFloat(frame.corr.toFixed(1)),
+        vL:   parseFloat(frame.vL.toFixed(0)),
+        vR:   parseFloat(frame.vR.toFixed(0)),
+      }];
+      return next.length > CHART_WINDOW ? next.slice(-CHART_WINDOW) : next;
+    });
+    setMetrics(m => ({
+      loopUs:  frame.dt.toFixed(0),
+      speed:   Math.round(Math.abs(frame.vL + frame.vR) / 2),
+      bestLap: m.bestLap,
+      errAbs:  Math.abs(frame.pos / 3500).toFixed(3),
+    }));
+    if (frame.sensors) setSensors(frame.sensors);
+    setLogLines(prev => {
+      const line = `${frame.ts},${frame.pos?.toFixed(1)},${frame.vL?.toFixed(0)},${frame.vR?.toFixed(0)},${frame.dt?.toFixed(0)}`;
+      const next = [...prev, line];
+      return next.length > 500 ? next.slice(-500) : next;
+    });
+  }, []);
+
+  // ── Simulation loop ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!simMode || !running) {
+      clearInterval(simTimerRef.current);
+      return;
+    }
+    simTimerRef.current = setInterval(() => {
+      tRef.current += 0.033;
+      const frame = genSimFrame(tRef.current, pid, speed);
+      setSensors(frame.sensors);
+      pushPoint(frame);
+    }, 33);
+    return () => clearInterval(simTimerRef.current);
+  }, [simMode, running, pid, speed, pushPoint]);
+
+  // ── BLE write helpers ─────────────────────────────────────────────────────
+  const writePID = useCallback(async (newPid) => {
+    setPid(newPid);
+    if (bleStatus !== 'connected') return;
+    const enc = new TextEncoder();
+    try {
+      await bleRef.current.charKp?.writeValue(enc.encode(newPid.kp.toString()));
+      await bleRef.current.charKi?.writeValue(enc.encode(newPid.ki.toString()));
+      await bleRef.current.charKd?.writeValue(enc.encode(newPid.kd.toString()));
+    } catch (e) { console.warn('BLE write PID:', e); }
+  }, [bleStatus]);
+
+  const writeSpeed = useCallback(async (newSpeed) => {
+    setSpeed(newSpeed);
+    if (bleStatus !== 'connected') return;
+    const csv = `${newSpeed.base},${newSpeed.min},${newSpeed.max},${newSpeed.threshold}`;
+    try {
+      await bleRef.current.charSpeed?.writeValue(new TextEncoder().encode(csv));
+    } catch (e) { console.warn('BLE write Speed:', e); }
+  }, [bleStatus]);
+
+  const dumpLog = useCallback(() => {
+    const header = 'ts,pos,vL,vR,dt\n';
+    const blob = new Blob([header + logLines.join('\n')], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a'); a.href = url; a.download = `lfr_log_${Date.now()}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }, [logLines]);
+
+  // ── BLE status colors ─────────────────────────────────────────────────────
+  const bleColor = { disconnected: '#FF3055', connecting: '#FFB700', connected: '#00FF6E' }[bleStatus];
+  const bleLabel = { disconnected: 'OFFLINE', connecting: 'LINKING...', connected: 'LIVE' }[bleStatus];
+
+  return (
+    <div style={{ minHeight: '100vh', padding: '16px 20px', maxWidth: 1400, margin: '0 auto' }}>
+
+      {/* ── HEADER ─────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-4">
+          <h1 style={{
+            fontFamily: 'Orbitron, monospace',
+            fontSize: 20, fontWeight: 900, letterSpacing: 4,
+            color: '#00E8FF',
+            textShadow: '0 0 20px rgba(0,232,255,0.5), 0 0 40px rgba(0,232,255,0.2)',
+          }}>
+            LFR◈COCKPIT
+          </h1>
+          <span className="font-mono" style={{ fontSize: 9, color: 'rgba(0,232,255,0.35)', letterSpacing: 2 }}>
+            v3.1 / ESP32
+          </span>
+        </div>
+
+        <div className="flex items-center gap-4">
+          {/* Sensor bar in header */}
+          <div style={{ width: 200 }}>
+            <div className="section-label mb-1" style={{ fontSize: 8 }}>SENSOR ARRAY</div>
+            <SensorBar sensors={sensors} />
+          </div>
+
+          {/* SIM toggle */}
+          <div className="flex items-center gap-2">
+            <span className="font-mono" style={{ fontSize: 9, color: 'rgba(0,232,255,0.4)', letterSpacing: 2 }}>SIM</span>
+            <div className={`toggle-track ${simMode ? 'on' : ''}`} onClick={() => setSimMode(s => !s)}>
+              <div className="toggle-thumb" />
+            </div>
+          </div>
+
+          {/* BLE button */}
+          <button className="btn-hud flex items-center gap-2" onClick={connectBLE}
+            style={{ borderColor: `${bleColor}44`, color: bleColor }}>
+            <span style={{
+              width: 6, height: 6, borderRadius: 0,
+              background: bleColor,
+              boxShadow: `0 0 6px ${bleColor}`,
+              display: 'inline-block',
+              clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
+              ...(bleStatus === 'connecting' ? { animation: 'blink 0.5s step-end infinite' } : {})
+            }} />
+            {bleLabel}
+          </button>
+        </div>
+      </div>
+
+      {/* ── TELEMETRY CHART ─────────────────────────────────────────────── */}
+      <div className="hud-card p-4 mb-4" style={{ height: 260 }}>
+        <div className="section-label">TELEMETRIA / ROLLING 5s</div>
+        <div style={{ height: 200 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="2 6" stroke="rgba(0,232,255,0.04)" />
+              <XAxis dataKey="t" hide />
+              <YAxis domain={[-3500, 3500]} tick={{ fontFamily: 'Share Tech Mono', fontSize: 9, fill: '#3A5567' }}
+                tickLine={false} axisLine={false} width={50} />
+              <Tooltip content={<HudTooltip />} />
+              <ReferenceLine y={0} stroke="rgba(0,232,255,0.12)" strokeDasharray="4 4" />
+              <Line type="monotone" dataKey="pos"  stroke="#00E8FF" strokeWidth={1.5} dot={false}
+                name="POS" isAnimationActive={false}
+                style={{ filter: 'drop-shadow(0 0 3px #00E8FF)' }} />
+              <Line type="monotone" dataKey="corr" stroke="#FFB700" strokeWidth={1.5} dot={false}
+                name="CORR" isAnimationActive={false}
+                style={{ filter: 'drop-shadow(0 0 3px #FFB700)' }} />
+              <Line type="monotone" dataKey="vL"   stroke="#00FF6E" strokeWidth={1}   dot={false}
+                name="vL" isAnimationActive={false}
+                style={{ filter: 'drop-shadow(0 0 2px #00FF6E)' }} />
+              <Line type="monotone" dataKey="vR"   stroke="#FF3055" strokeWidth={1}   dot={false}
+                name="vR" isAnimationActive={false}
+                style={{ filter: 'drop-shadow(0 0 2px #FF3055)' }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        {/* Legend */}
+        <div className="flex gap-5 mt-1">
+          {[['POS','#00E8FF'],['CORR','#FFB700'],['vL','#00FF6E'],['vR','#FF3055']].map(([n,c]) => (
+            <div key={n} className="flex items-center gap-1">
+              <div style={{ width: 16, height: 2, background: c, boxShadow: `0 0 4px ${c}` }} />
+              <span className="font-mono" style={{ fontSize: 9, color: c, opacity: 0.8 }}>{n}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── CONTROLS + METRICS ROW ─────────────────────────────────────── */}
+      <div className="grid gap-4 mb-4" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+
+        {/* PID Sliders */}
+        <div className="hud-card p-4">
+          <div className="section-label">PID CONTROLLER</div>
+          <PidSlider label="Kp" value={pid.kp} min={0} max={10} step={0.1}
+            onChange={v => writePID({ ...pid, kp: v })} />
+          <PidSlider label="Ki" value={pid.ki} min={0} max={1}  step={0.005}
+            onChange={v => writePID({ ...pid, ki: v })} color="amber" />
+          <PidSlider label="Kd" value={pid.kd} min={0} max={30} step={0.5}
+            onChange={v => writePID({ ...pid, kd: v })} />
+        </div>
+
+        {/* Speed Sliders */}
+        <div className="hud-card p-4">
+          <div className="section-label">PERFIL DE VELOCIDADE</div>
+          <PidSlider label="BASE" value={speed.base} min={60} max={230} step={5}
+            onChange={v => writeSpeed({ ...speed, base: v })} />
+          <PidSlider label="MIN"  value={speed.min}  min={30} max={120} step={5}
+            onChange={v => writeSpeed({ ...speed, min: v })} color="amber" />
+          <PidSlider label="MAX"  value={speed.max}  min={150} max={255} step={5}
+            onChange={v => writeSpeed({ ...speed, max: v })} />
+          <PidSlider label="THRS" value={speed.threshold} min={0.1} max={1.0} step={0.05}
+            onChange={v => writeSpeed({ ...speed, threshold: v })} color="amber" />
+        </div>
+
+        {/* Metrics */}
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3" style={{ flex: 1 }}>
+            <MetricCard label="LOOP" value={metrics.loopUs} unit="µs"
+              warn={parseInt(metrics.loopUs) > 2000} />
+            <MetricCard label="ERRO ABS" value={metrics.errAbs} unit=""
+              color={parseFloat(metrics.errAbs) > 0.8 ? '#FF3055' : '#00E8FF'}
+              warn={parseFloat(metrics.errAbs) > 0.8} />
+            <MetricCard label="PWM MÉDIO" value={metrics.speed} unit="" />
+            <MetricCard label="MELHOR VOLTA" value={metrics.bestLap} unit="s" size="md" />
+          </div>
+          {simMode && (
+            <div className="sim-badge text-center font-mono" style={{ fontSize: 9, letterSpacing: 3 }}>
+              ◈ MODO SIMULAÇÃO ATIVO
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── CONTROL BUTTONS ──────────────────────────────────────────────── */}
+      <div className="flex gap-3 flex-wrap">
+        <button className={`btn-hud ${running ? 'active' : ''}`}
+          onClick={() => setRunning(true)}>
+          ▶ START
+        </button>
+        <button className="btn-hud btn-stop"
+          onClick={() => setRunning(false)}>
+          ■ STOP
+        </button>
+        <button className="btn-hud btn-amber"
+          onClick={() => { setChartData([]); setSensors(Array(8).fill(0)); }}>
+          ◎ CALIBRAR
+        </button>
+        <button className="btn-hud btn-amber"
+          onClick={() => writePID({ kp: 3.0, ki: 0.0, kd: 12.0 })}>
+          ↺ RESET PID
+        </button>
+        <button className="btn-hud" onClick={dumpLog}
+          style={{ marginLeft: 'auto' }}>
+          ⬇ DUMP LOG ({logLines.length})
+        </button>
+      </div>
+
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
