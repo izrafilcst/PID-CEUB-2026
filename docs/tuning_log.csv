@@ -1,0 +1,2 @@
+data,kp,ki,kd,base_speed,max_speed,min_speed,threshold,melhor_volta_s,observacoes
+2026-05-14,3.0,0.0,12.0,160,230,60,0.60,,baseline — parametros iniciais config.h
