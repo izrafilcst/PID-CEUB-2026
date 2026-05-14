@@ -4,14 +4,8 @@
 
 Calibration::Calibration(int sensorCount)
     : _count(sensorCount), _lastPosition(0.0f), _lineLost(false) {
-    _min = new int[_count];
-    _max = new int[_count];
+    assert(sensorCount > 0 && sensorCount <= MAX_SENSORS);
     reset();
-}
-
-Calibration::~Calibration() {
-    delete[] _min;
-    delete[] _max;
 }
 
 void Calibration::reset() {

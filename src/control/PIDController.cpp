@@ -12,9 +12,9 @@ float PIDController::compute(float setpoint, float measurement) {
 float PIDController::compute(float setpoint, float measurement, float dt) {
     float error = setpoint - measurement;
 
-    // Integral com anti-windup por clamping
-    _integral += error * dt;
+    // Integral com anti-windup por clamping; não acumula quando Ki=0
     if (_ki != 0.0f) {
+        _integral += error * dt;
         _integral = _clamp(_integral, _outMin / _ki, _outMax / _ki);
     }
 
@@ -32,6 +32,7 @@ void PIDController::reset() {
 }
 
 void PIDController::setTunings(float kp, float ki, float kd) {
+    if (ki == 0.0f && _ki != 0.0f) _integral = 0.0f;  // clear stale integral
     _kp = kp; _ki = ki; _kd = kd;
 }
 
@@ -39,6 +40,6 @@ void PIDController::setOutputLimits(float min, float max) {
     _outMin = min; _outMax = max;
 }
 
-float PIDController::_clamp(float value, float min, float max) {
-    return std::max(min, std::min(max, value));
+float PIDController::_clamp(float value, float lo, float hi) const {
+    return std::max(lo, std::min(hi, value));
 }

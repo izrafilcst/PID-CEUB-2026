@@ -23,7 +23,7 @@ void setUp() {
     cal   = new Calibration(8);
     pid   = new PIDController(2.0f, 0.0f, 0.0f, -255.0f, 255.0f);
     speed = new SpeedProfile(60, 160, 230, 0.6f);
-    drive = new DifferentialDrive(160, 60, 255);
+    drive = new DifferentialDrive(255);
     lf    = new LineFollower(*cal, *pid, *speed, *drive);
     calibrateFlat();
 }
@@ -37,7 +37,7 @@ void test_straight_line_equal_high_speeds() {
     int raw[8] = {0, 0, 0, 700, 700, 0, 0, 0};
     int leftPwm, rightPwm;
     lf->update(raw, leftPwm, rightPwm);
-    TEST_ASSERT_EQUAL(leftPwm, rightPwm);
+    TEST_ASSERT_EQUAL(rightPwm, leftPwm);
     TEST_ASSERT_TRUE(leftPwm > 150);
 }
 

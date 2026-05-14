@@ -3,6 +3,7 @@
 
 #ifndef NATIVE_BUILD
 #include <NimBLEDevice.h>
+#include <freertos/FreeRTOS.h>
 #endif
 
 struct PIDParams {
@@ -47,6 +48,7 @@ private:
     bool _newSpeed = false;
 
 #ifndef NATIVE_BUILD
+    portMUX_TYPE _mux = portMUX_INITIALIZER_UNLOCKED;
     NimBLECharacteristic* _charKp         = nullptr;
     NimBLECharacteristic* _charKi         = nullptr;
     NimBLECharacteristic* _charKd         = nullptr;

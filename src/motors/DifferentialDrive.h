@@ -2,7 +2,7 @@
 
 class DifferentialDrive {
 public:
-    DifferentialDrive(int baseSpeed, int minSpeed, int maxPwm);
+    explicit DifferentialDrive(int maxPwm);
 
     // Converte correção PID e velocidade base em PWM L/R
     // correction: saída do PID (positivo = virar direita)
@@ -10,11 +10,9 @@ public:
     // leftPwm/rightPwm: saída [-maxPwm, +maxPwm]
     void compute(float correction, int baseSpeed, int& leftPwm, int& rightPwm) const;
 
-    void setParams(int baseSpeed, int minSpeed, int maxPwm);
+    void setMaxPwm(int maxPwm);
 
 private:
-    int _baseSpeed;
-    int _minSpeed;
     int _maxPwm;
 
     int _clamp(int value, int min, int max) const;

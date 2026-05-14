@@ -1,4 +1,5 @@
 #include "motors/MotorDriver.h"
+#include <algorithm>
 
 #ifndef NATIVE_BUILD
 #include <Arduino.h>
@@ -44,10 +45,10 @@ void MotorDriver::_applyMotor(const Config& cfg, int pwm) {
 }
 
 void MotorDriver::setSpeed(MotorId motor, int pwm) {
-    // clamp
-    if (pwm >  1023) pwm =  1023;
-    if (pwm < -1023) pwm = -1023;
-    _applyMotor(motor == MotorId::A ? _cfgA : _cfgB, pwm);
+    const Config& cfg = (motor == MotorId::A) ? _cfgA : _cfgB;
+    const int maxDuty = (1 << cfg.pwmResolution) - 1;
+    pwm = std::max(-maxDuty, std::min(maxDuty, pwm));
+    _applyMotor(cfg, pwm);
 }
 
 void MotorDriver::brake(MotorId motor) {

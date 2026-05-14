@@ -1,8 +1,8 @@
 #include "motors/DifferentialDrive.h"
 #include <algorithm>
 
-DifferentialDrive::DifferentialDrive(int baseSpeed, int minSpeed, int maxPwm)
-    : _baseSpeed(baseSpeed), _minSpeed(minSpeed), _maxPwm(maxPwm) {}
+DifferentialDrive::DifferentialDrive(int maxPwm)
+    : _maxPwm(maxPwm) {}
 
 void DifferentialDrive::compute(float correction, int baseSpeed, int& leftPwm, int& rightPwm) const {
     int corr = static_cast<int>(correction);
@@ -10,10 +10,8 @@ void DifferentialDrive::compute(float correction, int baseSpeed, int& leftPwm, i
     rightPwm = _clamp(baseSpeed - corr, -_maxPwm, _maxPwm);
 }
 
-void DifferentialDrive::setParams(int baseSpeed, int minSpeed, int maxPwm) {
-    _baseSpeed = baseSpeed;
-    _minSpeed  = minSpeed;
-    _maxPwm    = maxPwm;
+void DifferentialDrive::setMaxPwm(int maxPwm) {
+    _maxPwm = maxPwm;
 }
 
 int DifferentialDrive::_clamp(int value, int min, int max) const {

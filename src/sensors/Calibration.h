@@ -1,10 +1,13 @@
 #pragma once
+#include <cassert>
 #include <climits>
 
 class Calibration {
 public:
+    static constexpr int MAX_SENSORS = 8;
+    static constexpr float POSITION_SCALE = 1000.0f;
+
     explicit Calibration(int sensorCount);
-    ~Calibration();
 
     void update(const int* rawValues);
     void normalize(const int* rawValues, int* normalizedOut) const;
@@ -15,12 +18,15 @@ public:
     int getMax(int idx) const;
     bool isLineLost() const { return _lineLost; }
 
-    static constexpr float POSITION_SCALE = 1000.0f;
-
 private:
+    Calibration(const Calibration&) = delete;
+    Calibration& operator=(const Calibration&) = delete;
+    Calibration(Calibration&&) = delete;
+    Calibration& operator=(Calibration&&) = delete;
+
     int _count;
-    int* _min;
-    int* _max;
+    int _min[MAX_SENSORS];
+    int _max[MAX_SENSORS];
     mutable float _lastPosition;
     mutable bool _lineLost;
 

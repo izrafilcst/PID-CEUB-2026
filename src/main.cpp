@@ -5,6 +5,7 @@
 
 #include <Arduino.h>
 #include <SPI.h>
+#include <atomic>
 
 #include "config.h"
 #include "sensors/Calibration.h"
@@ -59,8 +60,9 @@ static MotorDriver::Config cfgB = {
 };
 static MotorDriver motors(cfgA, cfgB, PIN_MOTOR_STBY);
 
-// ═══ Estado global (volátil apenas o que cruza cores) ══════════════════════
-static volatile RobotState robotState = RobotState::IDLE;
+// ═══ Estado global (atômico para SMP Xtensa, mutex para lineFollower) ═══════
+static std::atomic<RobotState> robotState{RobotState::IDLE};
+static portMUX_TYPE lineFollowerMux = portMUX_INITIALIZER_UNLOCKED;
 static uint32_t calStart              = 0;
 static constexpr uint32_t CAL_DURATION_MS = 5000;
 
@@ -91,13 +93,17 @@ static void taskComm(void* /*pvParameters*/) {
         // Aplica novos parâmetros PID recebidos via BLE
         if (ble.hasNewPID()) {
             PIDParams p = ble.getPID();
+            taskENTER_CRITICAL(&lineFollowerMux);
             lineFollower.setPID(p.kp, p.ki, p.kd);
+            taskEXIT_CRITICAL(&lineFollowerMux);
         }
 
         // Aplica novos parâmetros de velocidade recebidos via BLE
         if (ble.hasNewSpeed()) {
             SpeedParams s = ble.getSpeed();
+            taskENTER_CRITICAL(&lineFollowerMux);
             lineFollower.setSpeed(s.minSpeed, s.baseSpeed, s.maxSpeed, s.threshold);
+            taskEXIT_CRITICAL(&lineFollowerMux);
         }
 
         // Drena buffer de telemetria e encaminha via BLE
@@ -129,19 +135,19 @@ void setup() {
         1   // core 1
     );
 
-    robotState = RobotState::IDLE;
+    robotState.store(RobotState::IDLE, std::memory_order_release);
     digitalWrite(PIN_LED_STATUS, HIGH);
     beep(100);
 }
 
 // ═══ Loop — Core 0 (controle tempo-real) ════════════════════════════════════
 void loop() {
-    switch (robotState) {
+    switch (robotState.load(std::memory_order_acquire)) {
 
         // ── IDLE: aguarda botão para iniciar calibração ──────────────────────
         case RobotState::IDLE:
             if (btnPressed()) {
-                robotState = RobotState::CALIBRATING;
+                robotState.store(RobotState::CALIBRATING, std::memory_order_release);
                 calStart   = millis();
                 calibration.reset();
                 sensors.begin();    // reinit SPI/chip select
@@ -161,7 +167,7 @@ void loop() {
             digitalWrite(PIN_LED_STATUS, (millis() / 200) % 2);
 
             if (millis() - calStart >= CAL_DURATION_MS) {
-                robotState = RobotState::READY;
+                robotState.store(RobotState::READY, std::memory_order_release);
                 digitalWrite(PIN_LED_STATUS, LOW);
                 beep(200);
             }
@@ -175,7 +181,7 @@ void loop() {
                 pid.reset();
                 lineFollower.reset();
                 logger.setEnabled(true);
-                robotState = RobotState::RUNNING;
+                robotState.store(RobotState::RUNNING, std::memory_order_release);
                 beep(50);
             }
             break;
@@ -193,7 +199,9 @@ void loop() {
             int   rightPwm = 0;
             float normErr  = 0.0f;
 
+            taskENTER_CRITICAL(&lineFollowerMux);
             lineFollower.update(raw, leftPwm, rightPwm, &normErr);
+            taskEXIT_CRITICAL(&lineFollowerMux);
 
             // Aplica PWM nos motores
             motors.setSpeed(MotorId::A, leftPwm);
@@ -225,14 +233,14 @@ void loop() {
             if (btnPressed()) {
                 motors.stop();
                 logger.setEnabled(false);
-                robotState = RobotState::READY;
+                robotState.store(RobotState::READY, std::memory_order_release);
                 beep(300);
             }
 
             // Watchdog: se loop > 4 ms, algo travou — vai para ERROR
             if (dtUs > 4000) {
                 motors.stop();
-                robotState = RobotState::ERROR;
+                robotState.store(RobotState::ERROR, std::memory_order_release);
             }
             break;
         }
@@ -243,7 +251,7 @@ void loop() {
             logger.setEnabled(false);
             digitalWrite(PIN_LED_STATUS, (millis() / 200) % 2);
             if (btnPressed()) {
-                robotState = RobotState::IDLE;
+                robotState.store(RobotState::IDLE, std::memory_order_release);
                 beep(100);
             }
             break;

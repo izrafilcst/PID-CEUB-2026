@@ -15,7 +15,7 @@ void test_pid_proportional_scales_linearly() {
     float out1 = pid.compute(10.0f, 0.0f);
     PIDController pid2(2.0f, 0.0f, 0.0f, -1000.0f, 1000.0f);
     float out2 = pid2.compute(20.0f, 0.0f);
-    TEST_ASSERT_FLOAT_WITHIN(0.001f, out2, out1 * 2.0f);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, out1 * 2.0f, out2);
 }
 
 void test_pid_derivative_on_measurement_not_error() {

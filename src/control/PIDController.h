@@ -21,5 +21,5 @@ private:
     float _integral;
     float _prevMeasurement;
 
-    float _clamp(float value, float min, float max);
+    float _clamp(float value, float lo, float hi) const;
 };
