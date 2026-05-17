@@ -19,44 +19,64 @@ struct SpeedParams {
     float threshold  = 0.6f;
 };
 
+/**
+ * BLE tuner + telemetria usando protocolo JSON de 2 características.
+ *
+ * Protocolo (espelha BLE GATT do ESP32):
+ *   0xABCD — Telemetry (Notify, ESP32→App):
+ *     {"t":"info","name":…,"fw":…,"mode":…}
+ *     {"t":"tel","pos":…,"corr":…,"vL":…,"vR":…,"dt":…,"s":[…],"bat":…,"lap":…,"laps":[…]}
+ *   0xABCE — Command (Write, App→ESP32):
+ *     {"t":"pid","kp":…,"ki":…,"kd":…}
+ *     {"t":"spd","base":…,"min":…,"max":…,"thrs":…}
+ *     {"t":"start"} / {"t":"stop"} / {"t":"reset"}
+ */
 class BLETuner {
 public:
     BLETuner();
 
-    void begin(const char* deviceName = "LFR-Tuner");
-    void update();                  // chamar do loop Core 1
+    void begin(const char* deviceName = "LFR-RACER-01");
+    void update();
 
-    bool hasNewPID() const;
+    // Recepção de comandos — consumir no loop Core 1
+    bool hasNewPID()   const;
     bool hasNewSpeed() const;
-    PIDParams   getPID();           // consome flag
-    SpeedParams getSpeed();         // consome flag
+    PIDParams   getPID();    // consome flag
+    SpeedParams getSpeed();  // consome flag
+    bool consumeStart();
+    bool consumeStop();
+    bool consumeReset();
+    bool consumeNewConnection();  // true uma vez quando cliente conecta
 
-    void notifyStatus(const char* csv);   // envia telemetria ao cliente
+    // Envio de telemetria — chamar no loop Core 1
+    void notifyInfo(const char* name, const char* fw, const char* mode);
+    void notifyTelemetry(float pos, float corr, int vL, int vR, uint32_t dtUs,
+                         const float* sensors, int nSensors, float batPct,
+                         float bestLapSec, bool hasLap,
+                         const float* laps, int nLaps);
 
-    // UUIDs do serviço BLE
-    static constexpr const char* SERVICE_UUID        = "12345678-1234-1234-1234-123456789abc";
-    static constexpr const char* CHAR_KP_UUID        = "12345678-1234-1234-1234-123456789001";
-    static constexpr const char* CHAR_KI_UUID        = "12345678-1234-1234-1234-123456789002";
-    static constexpr const char* CHAR_KD_UUID        = "12345678-1234-1234-1234-123456789003";
-    static constexpr const char* CHAR_SPEED_UUID     = "12345678-1234-1234-1234-123456789004";
-    static constexpr const char* CHAR_TELEMETRY_UUID = "12345678-1234-1234-1234-123456789005";
+    // UUIDs do serviço BLE (16-bit em formato 128-bit)
+    static constexpr const char* SERVICE_UUID = "0000abcc-0000-1000-8000-00805f9b34fb";
+    static constexpr const char* CHAR_TEL_UUID = "0000abcd-0000-1000-8000-00805f9b34fb";
+    static constexpr const char* CHAR_CMD_UUID = "0000abce-0000-1000-8000-00805f9b34fb";
 
 private:
     PIDParams   _pid;
     SpeedParams _speed;
     bool _newPID   = false;
     bool _newSpeed = false;
+    bool _cmdStart = false;
+    bool _cmdStop  = false;
+    bool _cmdReset = false;
+    bool _newConn  = false;
 
 #ifndef NATIVE_BUILD
     portMUX_TYPE _mux = portMUX_INITIALIZER_UNLOCKED;
-    NimBLECharacteristic* _charKp         = nullptr;
-    NimBLECharacteristic* _charKi         = nullptr;
-    NimBLECharacteristic* _charKd         = nullptr;
-    NimBLECharacteristic* _charSpeed      = nullptr;
-    NimBLECharacteristic* _charTelemetry  = nullptr;
+    NimBLECharacteristic* _charTel = nullptr;
+    NimBLECharacteristic* _charCmd = nullptr;
     bool _clientConnected = false;
 
-    void _onWrite(NimBLECharacteristic* pChar);
+    void _onWrite(const std::string& val);
     static BLETuner* _instance;
 
     class WriteCallback : public NimBLECharacteristicCallbacks {

@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<title>LFR ◈ COCKPIT</title>
+<style>
+/* ═══ DESIGN TOKENS ════════════════════════════════ */
+[data-theme="dark"] {
+  --bg:#030508; --bg-g:rgba(0,232,255,0.022);
+  --card:rgba(7,11,16,0.96); --cb:rgba(0,232,255,0.12); --cc:#00E8FF;
+  --a1:#00E8FF; --a1r:0,232,255;
+  --a2:#FFB700; --a2r:255,183,0;
+  --ok:#00FF6E; --okr:0,255,110;
+  --er:#FF3055; --err:255,48,85;
+  --tx:#B8D4E8; --txd:#4A6578; --txm:rgba(184,212,232,0.28);
+  --lc:rgba(0,232,255,0.42); --lb:rgba(0,232,255,0.08);
+  --nb:rgba(3,5,8,0.97); --ne:rgba(0,232,255,0.12);
+  --st:rgba(0,232,255,0.15); --st2:rgba(255,183,0,0.15);
+  --scan:rgba(0,0,0,0.055);
+}
+[data-theme="light"] {
+  --bg:#EEF2F7; --bg-g:rgba(0,48,135,0.033);
+  --card:rgba(255,255,255,0.97); --cb:rgba(0,48,135,0.12); --cc:#003087;
+  --a1:#003087; --a1r:0,48,135;
+  --a2:#E8440A; --a2r:232,68,10;
+  --ok:#006B2B; --okr:0,107,43;
+  --er:#C8001E; --err:200,0,30;
+  --tx:#0D1A2E; --txd:#4A5E78; --txm:rgba(13,26,46,0.28);
+  --lc:rgba(0,48,135,0.5); --lb:rgba(0,48,135,0.09);
+  --nb:rgba(238,242,247,0.98); --ne:rgba(0,48,135,0.14);
+  --st:rgba(0,48,135,0.14); --st2:rgba(232,68,10,0.14);
+  --scan:transparent;
+}
+.hc[data-theme="dark"]  { --bg:#000;--card:#000;--cb:#00E8FF;--tx:#fff;--txd:#bbb;--lc:#00E8FF;--a1:#00FFFF;--a1r:0,255,255;--ok:#00FF00;--okr:0,255,0;--er:#FF0000;--err:255,0,0; }
+.hc[data-theme="light"] { --bg:#fff;--card:#fff;--cb:#000066;--tx:#000;--txd:#333;--lc:#0000CC;--a1:#0000CC;--a1r:0,0,204;--a2:#CC3300;--a2r:204,51,0;--ok:#006600;--okr:0,102,0;--er:#CC0000;--err:204,0,0; }
+.rm *,.rm *::before,.rm *::after { animation-duration:.01ms!important;transition-duration:.01ms!important;animation-iteration-count:1!important; }
+.lt { font-size:112%; }
+.lt .mval  { font-size:20px!important; }
+.lt .sv    { font-size:22px!important; }
+
+/* ═══ BASE ═════════════════════════════════════════ */
+*,*::before,*::after { box-sizing:border-box;margin:0;padding:0; }
+html { -webkit-tap-highlight-color:transparent;overscroll-behavior:contain; }
+body {
+  font-family:'Courier New',Courier,monospace;font-size:13px;
+  color:var(--tx);background:var(--bg);
+  background-image:linear-gradient(var(--bg-g) 1px,transparent 1px),linear-gradient(90deg,var(--bg-g) 1px,transparent 1px);
+  background-size:40px 40px;min-height:100dvh;
+  transition:background .3s,color .3s;
+}
+body::after {
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9000;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,var(--scan) 2px,var(--scan) 4px);
+}
+
+/* ═══ TOPBAR ════════════════════════════════════════ */
+.topbar {
+  position:fixed;top:0;left:0;right:0;height:60px;
+  display:flex;align-items:center;gap:10px;padding:0 14px;
+  background:var(--nb);border-bottom:1px solid var(--ne);
+  z-index:200;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  transition:background .3s,border-color .3s;
+}
+.logo { font-weight:900;font-size:15px;letter-spacing:3px;color:var(--a1);text-shadow:0 0 14px rgba(var(--a1r),.5);white-space:nowrap;flex-shrink:0;transition:color .3s,text-shadow .3s; }
+.dev-block { display:flex;flex-direction:column;justify-content:center;min-width:0;flex:1; }
+.dev-name  { font-size:10px;font-weight:bold;letter-spacing:1.5px;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .3s; }
+.dev-status {
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:8px;letter-spacing:2px;color:var(--a2);
+  background:rgba(var(--a2r),.1);border:1px solid rgba(var(--a2r),.35);
+  padding:1px 6px;margin-top:2px;
+  clip-path:polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%);
+  transition:color .3s;
+}
+.sdot { width:5px;height:5px;border-radius:50%;background:var(--a2); }
+@keyframes mock-pulse { 0%,100%{opacity:.9} 50%{opacity:.42} }
+.mock-badge {
+  background:rgba(var(--a2r),.1);border:1px solid rgba(var(--a2r),.4);
+  color:var(--a2);font-size:8px;letter-spacing:2px;
+  padding:3px 8px;white-space:nowrap;flex-shrink:0;
+  clip-path:polygon(4px 0%,100% 0%,calc(100% - 4px) 100%,0% 100%);
+  animation:mock-pulse 2s ease-in-out infinite;transition:color .3s;
+}
+.bat-hdr { display:flex;align-items:center;gap:4px;flex-shrink:0; }
+.bat-pct-hdr { font-size:10px;font-weight:bold;letter-spacing:1px;transition:color .3s; }
+.icon-btn {
+  display:flex;align-items:center;justify-content:center;
+  width:44px;height:44px;min-width:44px;
+  background:transparent;border:none;color:var(--txd);
+  cursor:pointer;border-radius:4px;
+  transition:color .15s,background .15s;flex-shrink:0;
+}
+.icon-btn:hover,.icon-btn:focus-visible { color:var(--a1);background:rgba(var(--a1r),.08);outline:none; }
+.icon-btn svg { width:20px;height:20px; }
+#iconMoon { display:none; }
+
+/* ═══ SENSOR STRIP ══════════════════════════════════ */
+.sensorstrip {
+  position:fixed;top:60px;left:0;right:0;height:26px;
+  display:flex;align-items:center;padding:0 14px;
+  background:var(--nb);border-bottom:1px solid var(--ne);
+  z-index:190;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transition:background .3s,border-color .3s;
+}
+#sBar { display:flex;gap:3px;width:100%;height:16px; }
+.seg  { flex:1;border:1px solid rgba(var(--a1r),.2);transition:background 80ms,box-shadow 80ms; }
+
+/* ═══ METRICS STRIP ═════════════════════════════════ */
+.mstrip {
+  position:fixed;top:86px;left:0;right:0;
+  display:grid;grid-template-columns:repeat(4,1fr);
+  background:var(--nb);border-bottom:1px solid var(--ne);
+  z-index:180;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transition:background .3s,border-color .3s;
+}
+.mc { padding:5px 10px;border-right:1px solid var(--ne);display:flex;flex-direction:column;gap:1px;transition:border-color .3s; }
+.mc:last-child { border-right:none; }
+.mlabel { font-size:7px;letter-spacing:2.5px;text-transform:uppercase;color:var(--lc);transition:color .3s; }
+.mval   { font-size:16px;font-weight:bold;color:var(--a1);text-shadow:0 0 6px rgba(var(--a1r),.4);line-height:1;transition:color .3s,text-shadow .3s; }
+.mval.warn { color:var(--er);text-shadow:0 0 6px rgba(var(--err),.4); }
+.mval.ok   { color:var(--ok);text-shadow:0 0 6px rgba(var(--okr),.4); }
+.mu { font-size:8px;color:var(--txd);margin-left:1px; }
+
+/* ═══ TABS ══════════════════════════════════════════ */
+.tabs {
+  position:sticky;top:126px;z-index:170;
+  display:flex;overflow-x:auto;scrollbar-width:none;
+  background:var(--nb);border-bottom:1px solid var(--ne);
+  transition:background .3s,border-color .3s;
+}
+.tabs::-webkit-scrollbar { display:none; }
+.tab {
+  flex:1;min-width:72px;height:44px;background:transparent;border:none;
+  border-bottom:2px solid transparent;color:var(--txd);
+  font-family:inherit;font-size:9px;letter-spacing:2px;text-transform:uppercase;
+  cursor:pointer;white-space:nowrap;padding:0 8px;
+  transition:color .15s,border-color .15s;
+}
+.tab:hover { color:var(--tx); }
+.tab.active { color:var(--a1);border-bottom-color:var(--a1);text-shadow:0 0 8px rgba(var(--a1r),.5); }
+.tab:focus-visible { outline:2px solid var(--a1);outline-offset:-2px; }
+
+/* ═══ CONTENT ═══════════════════════════════════════ */
+.content { padding-top:174px;padding-bottom:80px;min-height:100dvh; }
+
+/* ═══ PANELS ════════════════════════════════════════ */
+.panel { display:none;padding:12px 14px; }
+@keyframes slideFromRight { from{opacity:0;transform:translateX(36px)} to{opacity:1;transform:translateX(0)} }
+@keyframes slideFromLeft  { from{opacity:0;transform:translateX(-36px)} to{opacity:1;transform:translateX(0)} }
+.panel.active { display:block; }
+.panel.anim-r { animation:slideFromRight .30s cubic-bezier(0.25,0.46,0.45,0.94) both; }
+.panel.anim-l { animation:slideFromLeft  .30s cubic-bezier(0.25,0.46,0.45,0.94) both; }
+
+/* ═══ CARD ══════════════════════════════════════════ */
+.card { background:var(--card);border:1px solid var(--cb);position:relative;padding:14px;margin-bottom:12px;transition:background .3s,border-color .3s,box-shadow .3s; }
+[data-theme="light"] .card { box-shadow:0 2px 8px rgba(0,0,0,.055),0 1px 2px rgba(0,0,0,.035); }
+.card:last-child { margin-bottom:0; }
+.card::before { content:'';position:absolute;top:-1px;left:-1px;width:10px;height:10px;border-top:2px solid var(--cc);border-left:2px solid var(--cc);transition:border-color .3s; }
+.card::after  { content:'';position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-bottom:2px solid var(--cc);border-right:2px solid var(--cc);transition:border-color .3s; }
+.clabel { font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--lc);border-bottom:1px solid var(--lb);padding-bottom:6px;margin-bottom:12px;transition:color .3s,border-color .3s; }
+
+/* ═══ CHART ═════════════════════════════════════════ */
+.chart-head { display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px; }
+.legend     { display:flex;gap:14px;flex-wrap:wrap; }
+.leg        { display:flex;align-items:center;gap:4px; }
+.leg-line   { width:14px;height:2px; }
+.leg-name   { font-size:9px;letter-spacing:1px;opacity:.8; }
+.chart-area { position:relative; }
+#chart { display:block;width:100%; }
+.chart-empty { position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;letter-spacing:3px;color:var(--txm);pointer-events:none; }
+
+/* ═══ SLIDERS ═══════════════════════════════════════ */
+.slider-group { margin-bottom:16px; }
+.slider-group:last-of-type { margin-bottom:0; }
+.sh { display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px; }
+.sk { font-size:11px;letter-spacing:2px;color:var(--txd); }
+.sv { font-size:20px;font-weight:bold;color:var(--a1);text-shadow:0 0 6px rgba(var(--a1r),.5);transition:color .3s,text-shadow .3s; }
+.sv.a2 { color:var(--a2);text-shadow:0 0 6px rgba(var(--a2r),.5); }
+input[type=range] { -webkit-appearance:none;width:100%;height:4px;background:var(--st);outline:none;cursor:pointer;transition:background .3s; }
+input[type=range].a2 { background:var(--st2); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none;width:16px;height:16px;background:var(--a1);border:none;cursor:pointer;clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);box-shadow:0 0 8px rgba(var(--a1r),.8);transition:background .3s,box-shadow .3s; }
+input[type=range].a2::-webkit-slider-thumb { background:var(--a2);box-shadow:0 0 8px rgba(var(--a2r),.8); }
+input[type=range]:focus-visible { outline:2px solid var(--a1);outline-offset:4px; }
+
+/* ═══ DEVICE INFO ═══════════════════════════════════ */
+.dev-row { display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--lb);font-size:12px;transition:border-color .3s; }
+.dev-row:last-of-type { border-bottom:none; }
+.dk  { font-size:9px;letter-spacing:2px;color:var(--txd); }
+.dv  { color:var(--tx);font-weight:bold;letter-spacing:1px; }
+.dv.a2  { color:var(--a2); }
+.dv.dim { color:var(--txd); }
+
+/* ═══ BATTERY LARGE ════════════════════════════════ */
+.bat-large { display:flex;align-items:center;gap:16px;padding:12px 0 4px; }
+.bat-icon-lg { color:var(--tx);transition:color .3s;flex-shrink:0; }
+.bat-shell    { fill:none;stroke:currentColor;stroke-width:2; }
+.bat-tip      { fill:currentColor; }
+.bat-fill-rect { transition:width .5s,fill .5s; }
+.bat-pct { font-size:30px;font-weight:bold;line-height:1;color:var(--ok);text-shadow:0 0 10px rgba(var(--okr),.4);transition:color .3s,text-shadow .3s; }
+.bat-pct.warn   { color:var(--a2);text-shadow:0 0 10px rgba(var(--a2r),.4); }
+.bat-pct.danger { color:var(--er);text-shadow:0 0 10px rgba(var(--err),.4); }
+.bat-lbl { font-size:9px;letter-spacing:2px;color:var(--txd);margin-top:3px; }
+
+/* ═══ LAP LIST ══════════════════════════════════════ */
+.lap-list { list-style:none; }
+.lap-item { display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--lb);transition:border-color .3s; }
+.lap-item:last-child { border-bottom:none; }
+.lap-rank { font-size:9px;letter-spacing:2px;color:var(--txd); }
+.lap-time { font-weight:bold;color:var(--a1);letter-spacing:1px;transition:color .3s; }
+.lap-time.best { color:var(--ok);text-shadow:0 0 6px rgba(var(--okr),.4); }
+.lap-empty { padding:12px 0;color:var(--txd);font-size:11px;letter-spacing:1px; }
+
+/* ═══ THEME BUTTONS ════════════════════════════════ */
+.theme-row { display:flex;gap:8px; }
+.theme-btn { flex:1;height:44px;background:transparent;border:1px solid var(--cb);color:var(--txd);font-family:inherit;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);transition:all .15s; }
+.theme-btn:hover { color:var(--tx);border-color:var(--a1); }
+.theme-btn.active { background:rgba(var(--a1r),.15);border-color:var(--a1);color:var(--a1); }
+.theme-btn:focus-visible { outline:2px solid var(--a1);outline-offset:2px; }
+
+/* ═══ A11Y ══════════════════════════════════════════ */
+.a11y-row { display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--lb);min-height:52px;transition:border-color .3s; }
+.a11y-row:last-child { border-bottom:none; }
+.a11y-lbl  { font-size:13px;letter-spacing:.5px;color:var(--tx);transition:color .3s; }
+.a11y-desc { font-size:10px;color:var(--txd);margin-top:2px;transition:color .3s; }
+.toggle { width:46px;height:26px;flex-shrink:0;background:rgba(var(--a1r),.07);border:1px solid rgba(var(--a1r),.25);position:relative;cursor:pointer;transition:background .2s,border-color .2s,box-shadow .2s; }
+.toggle.on { background:rgba(var(--a1r),.2);border-color:var(--a1);box-shadow:0 0 8px rgba(var(--a1r),.3); }
+.thumb { position:absolute;top:4px;left:4px;width:16px;height:16px;background:rgba(var(--a1r),.4);clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);transition:left .2s,background .2s; }
+.toggle.on .thumb { left:24px;background:var(--a1); }
+.toggle:focus-visible { outline:2px solid var(--a1);outline-offset:2px; }
+
+/* ═══ BUTTONS ═══════════════════════════════════════ */
+.btn { background:transparent;border:1px solid rgba(var(--a1r),.3);color:var(--a1);font-family:inherit;font-size:11px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;padding:0 14px;height:44px;cursor:pointer;clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);transition:all .15s;white-space:nowrap; }
+.btn:hover,.btn:focus-visible { background:rgba(var(--a1r),.1);border-color:var(--a1);box-shadow:0 0 12px rgba(var(--a1r),.25);color:#fff;outline:none; }
+.btn:active { transform:scale(.97); }
+.btn.a2 { border-color:rgba(var(--a2r),.35);color:var(--a2); }
+.btn.a2:hover { background:rgba(var(--a2r),.1);border-color:var(--a2);box-shadow:0 0 12px rgba(var(--a2r),.3); }
+.btn.w100 { width:100%; }
+.mt3 { margin-top:14px; }
+
+/* ═══ BOTTOM BAR ════════════════════════════════════ */
+.botbar { position:fixed;bottom:0;left:0;right:0;height:68px;display:flex;align-items:center;gap:8px;padding:0 14px;background:var(--nb);border-top:1px solid var(--ne);z-index:200;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding-bottom:env(safe-area-inset-bottom);transition:background .3s,border-color .3s; }
+.btn-big { flex:1;height:44px;background:transparent;border:1px solid rgba(var(--a1r),.3);color:var(--a1);font-family:inherit;font-size:12px;font-weight:bold;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);transition:all .15s; }
+.btn-big:hover,.btn-big:focus-visible { background:rgba(var(--a1r),.1);border-color:var(--a1);box-shadow:0 0 12px rgba(var(--a1r),.3);color:#fff;outline:none; }
+.btn-big:active { transform:scale(.97); }
+.btn-big.on  { background:rgba(var(--a1r),.15);border-color:var(--a1);box-shadow:0 0 18px rgba(var(--a1r),.35);color:#fff; }
+.btn-big.red { border-color:rgba(var(--err),.35);color:var(--er); }
+.btn-big.red:hover { background:rgba(var(--err),.1);border-color:var(--er);box-shadow:0 0 12px rgba(var(--err),.3); }
+.btn-big.a2  { border-color:rgba(var(--a2r),.35);color:var(--a2); }
+.btn-big.a2:hover { background:rgba(var(--a2r),.1);border-color:var(--a2);box-shadow:0 0 12px rgba(var(--a2r),.3); }
+
+/* ═══ GLOW ANIMATION ════════════════════════════════ */
+@keyframes glow-pulse { 0%,100%{opacity:1} 50%{opacity:.58} }
+.glow { animation:glow-pulse 2s ease-in-out infinite; }
+
+/* ═══ CARD HOVER POLISH ═════════════════════════════ */
+.card:hover { box-shadow:0 0 0 1px rgba(var(--a1r),.22),0 0 26px rgba(var(--a1r),.07); }
+.card:hover::before,.card:hover::after { border-color:rgba(var(--a1r),.65); }
+[data-theme="light"] .card:hover { box-shadow:0 4px 16px rgba(0,0,0,.10),0 0 0 1px rgba(var(--a1r),.18);border-color:rgba(var(--a1r),.28); }
+
+/* ═══ LIVE DOT ══════════════════════════════════════ */
+@keyframes live-blink { 0%,45%{opacity:1;transform:scale(1)} 50%{opacity:.25;transform:scale(.75)} 100%{opacity:1;transform:scale(1)} }
+.live-dot {
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--ok);flex-shrink:0;
+  animation:live-blink 1.4s ease-in-out infinite;
+  box-shadow:0 0 8px rgba(var(--okr),.9);
+  transition:background .3s,box-shadow .3s;
+}
+.live-dot.paused { background:var(--er);box-shadow:0 0 7px rgba(var(--err),.7);animation:none;opacity:.7; }
+
+/* ═══ DESKTOP (768px+) ══════════════════════════════ */
+@media (min-width:768px) {
+  html,body { height:100dvh;overflow:hidden; }
+  .topbar      { height:64px; }
+  .sensorstrip { top:64px; }
+  .mstrip      { top:90px; }
+  .tabs        { display:none; }
+  .content { position:fixed;top:126px;left:0;right:0;bottom:0;padding:0;overflow:hidden;min-height:0; }
+
+  /*
+   * Chart left spans BOTH rows (full height).
+   * Sidebar top-right + botbar bottom-right — no scroll anywhere.
+   */
+  .deskwrap {
+    height:100%;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    grid-template-rows:1fr 56px;
+    grid-template-areas:"chart sidebar" "chart botbar";
+    max-width:1600px;margin:0 auto;width:100%;
+  }
+
+  /* ── Left: Chart spans both grid rows ── */
+  .desk-chart {
+    grid-area:chart;
+    display:flex;flex-direction:column;
+    padding:14px 8px 14px 16px;
+    border-right:2px solid var(--ne);
+    overflow:hidden;transition:border-color .3s;
+  }
+  .desk-chart>.panel {
+    flex:1;display:flex!important;flex-direction:column;
+    animation:none!important;padding:0;
+  }
+  .desk-chart .card { flex:1;display:flex;flex-direction:column;margin-bottom:0; }
+  .desk-chart .chart-head { flex-shrink:0; }
+  .desk-chart .chart-area { flex:1;min-height:0; }
+  .desk-chart #chart { width:100%;height:100%; }
+
+  /* ── Right top: Sidebar — 3 rows, no scroll ── */
+  .desk-grid {
+    grid-area:sidebar;
+    display:grid;
+    grid-template-rows:auto auto 1fr;
+    overflow:hidden;padding:0;gap:0;
+  }
+  .desk-grid>.panel {
+    display:block!important;animation:none!important;
+    padding:0;overflow:hidden;
+  }
+  .desk-grid>#tab-sys {
+    overflow-y:auto;
+    scrollbar-width:thin;scrollbar-color:var(--lc) transparent;
+  }
+
+  /* Cards: flush, compact, no corner brackets */
+  .desk-grid .card {
+    margin-bottom:0;padding:10px 14px;
+    border-left:none;border-right:none;border-bottom:none;
+    border-top:1px solid var(--ne);border-radius:0;
+  }
+  .desk-grid .card:first-child { border-top:none; }
+  .desk-grid .card::before,.desk-grid .card::after { display:none; }
+  .desk-grid .card:hover { box-shadow:none; }
+
+  /* ── Compact inline slider layout (legível no desktop) ── */
+  .desk-grid .clabel { font-size:10px;letter-spacing:2.5px;padding-bottom:6px;margin-bottom:10px; }
+  .desk-grid .slider-group {
+    display:grid;
+    grid-template-columns:38px 1fr 58px;
+    align-items:center;
+    column-gap:8px;
+    margin-bottom:10px;
+  }
+  .desk-grid .slider-group:last-of-type { margin-bottom:0; }
+  .desk-grid .sh { display:contents; }
+  .desk-grid .sh .sk { grid-column:1;grid-row:1;font-size:10px;letter-spacing:1.5px;align-self:center; }
+  .desk-grid .sh .sv { grid-column:3;grid-row:1;font-size:17px;text-align:right;align-self:center; }
+  .desk-grid .slider-group input[type=range] { grid-column:2;grid-row:1;height:4px; }
+  .desk-grid .slider-group input[type=range]::-webkit-slider-thumb { width:14px;height:14px; }
+
+  /* ── Hide PID reset btn (always-visible sidebar makes it redundant) ── */
+  .desk-grid .btn { display:none; }
+
+  /* ── Sys: show only Device + Laps, hide Theme / A11y / Data ── */
+  #tab-sys .card:nth-child(n+3) { display:none!important; }
+  .desk-grid .dev-row { padding:5px 0;font-size:13px; }
+  .desk-grid .dk { font-size:9px; }
+  .desk-grid .bat-large { padding:8px 0 2px;gap:12px; }
+  .desk-grid .bat-pct { font-size:24px; }
+  .desk-grid .bat-lbl { font-size:9px; }
+  .desk-grid .lap-item { padding:6px 0; }
+  .desk-grid .lap-rank { font-size:10px; }
+  .desk-grid .lap-time { font-size:13px; }
+  #lapList .lap-item:nth-child(n+4) { display:none; }
+
+  /* ── Right bottom: Botbar (right column only) ── */
+  .botbar {
+    grid-area:botbar;position:static;
+    height:56px;padding:0 14px;
+    display:flex;align-items:center;gap:8px;
+    background:var(--nb);border-top:1px solid var(--ne);
+    backdrop-filter:none;-webkit-backdrop-filter:none;
+    transition:background .3s,border-color .3s;
+  }
+  .btn-big { flex:1;height:40px;font-size:11px;padding:0; }
+}
+@media (prefers-reduced-motion:reduce) { *{animation-duration:.01ms!important;transition-duration:.01ms!important;} }
+:focus-visible { outline:2px solid var(--a1);outline-offset:2px; }
+button,input,[role="switch"] { cursor:pointer; }
+</style>
+<script src="motion.js"></script>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="logo">LFR◈COCKPIT</div>
+  <div class="dev-block">
+    <div class="dev-name">LFR-RACER-01</div>
+    <div class="dev-status"><span class="sdot"></span>MODO SIM</div>
+  </div>
+  <div class="mock-badge">◈ MOCKUP</div>
+  <div class="bat-hdr" aria-label="Nível de bateria">
+    <svg width="26" height="13" viewBox="0 0 26 13" fill="none" aria-hidden="true">
+      <rect x=".75" y=".75" width="21.5" height="11.5" rx="2.25" stroke="currentColor" stroke-width="1.5"/>
+      <rect x="22.5" y="3.5" width="3" height="6" rx="1" fill="currentColor"/>
+      <rect id="batFill" x="2" y="2" width="0" height="9" rx="1" fill="currentColor"/>
+    </svg>
+    <span id="batPct" class="bat-pct-hdr">72%</span>
+  </div>
+  <button class="icon-btn" id="btnThemeToggle" aria-label="Mudar para tema claro">
+    <!-- sol (dark mode) -->
+    <svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    <!-- lua (light mode) -->
+    <svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+
+<!-- SENSOR STRIP -->
+<div class="sensorstrip" aria-label="Array de sensores infravermelhos">
+  <div id="sBar" role="img" aria-label="8 sensores de linha"></div>
+</div>
+
+<!-- METRICS STRIP -->
+<div class="mstrip" aria-label="Métricas em tempo real">
+  <div class="mc"><div class="mlabel">LOOP</div><div><span id="mLoop" class="mval glow">0</span><span class="mu">µs</span></div></div>
+  <div class="mc"><div class="mlabel">ERRO</div><div><span id="mErr" class="mval glow">0.000</span></div></div>
+  <div class="mc"><div class="mlabel">PWM</div><div><span id="mPwm" class="mval glow">0</span></div></div>
+  <div class="mc"><div class="mlabel">VOLTA</div><div><span id="mLap" class="mval ok glow">--</span><span class="mu">s</span></div></div>
+</div>
+
+<!-- TABS (mobile) -->
+<nav class="tabs" role="tablist" aria-label="Seções do cockpit">
+  <button class="tab active" data-tab="chart" role="tab" aria-selected="true"  aria-controls="tab-chart">GRÁFICO</button>
+  <button class="tab"        data-tab="pid"   role="tab" aria-selected="false" aria-controls="tab-pid">PID</button>
+  <button class="tab"        data-tab="speed" role="tab" aria-selected="false" aria-controls="tab-speed">VELOCIDADE</button>
+  <button class="tab"        data-tab="sys"   role="tab" aria-selected="false" aria-controls="tab-sys">SISTEMA</button>
+</nav>
+
+<!-- CONTENT -->
+<main class="content"><div class="deskwrap">
+
+  <div class="desk-chart">
+    <section class="panel active" id="tab-chart" role="tabpanel">
+      <div class="card">
+        <div class="chart-head">
+          <div style="display:flex;align-items:center;gap:7px">
+            <div class="clabel" style="margin-bottom:0;border:none;padding:0">TELEMETRIA / ROLLING 5s</div>
+            <div class="live-dot" id="liveDot" aria-label="Simulação ativa"></div>
+          </div>
+          <div class="legend">
+            <div class="leg"><div class="leg-line" id="lpos" style="background:#00E8FF;box-shadow:0 0 4px #00E8FF"></div><span class="leg-name" id="lposn" style="color:#00E8FF">POS</span></div>
+            <div class="leg"><div class="leg-line" id="lcorr" style="background:#FFB700;box-shadow:0 0 4px #FFB700"></div><span class="leg-name" id="lcorrn" style="color:#FFB700">CORR</span></div>
+            <div class="leg"><div class="leg-line" id="lvl" style="background:#00FF6E;box-shadow:0 0 4px #00FF6E"></div><span class="leg-name" id="lvln" style="color:#00FF6E">vL</span></div>
+            <div class="leg"><div class="leg-line" id="lvr" style="background:#FF3055;box-shadow:0 0 4px #FF3055"></div><span class="leg-name" id="lvrn" style="color:#FF3055">vR</span></div>
+          </div>
+        </div>
+        <div class="chart-area" style="margin-top:10px">
+          <canvas id="chart" height="190" aria-label="Gráfico de telemetria em tempo real"></canvas>
+          <div class="chart-empty" id="chartEmpty">AGUARDANDO DADOS...</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="desk-grid">
+
+    <section class="panel" id="tab-pid" role="tabpanel">
+      <div class="card">
+        <div class="clabel">PID CONTROLLER</div>
+        <div class="slider-group">
+          <div class="sh"><span class="sk">Kp</span><span class="sv" id="vKp">3.00</span></div>
+          <input type="range" id="Kp" min="0" max="10" step="0.1" value="3" aria-label="Ganho proporcional Kp">
+        </div>
+        <div class="slider-group">
+          <div class="sh"><span class="sk">Ki</span><span class="sv a2" id="vKi">0.00</span></div>
+          <input type="range" class="a2" id="Ki" min="0" max="1" step="0.005" value="0" aria-label="Ganho integral Ki">
+        </div>
+        <div class="slider-group">
+          <div class="sh"><span class="sk">Kd</span><span class="sv" id="vKd">12.00</span></div>
+          <input type="range" id="Kd" min="0" max="30" step="0.5" value="12" aria-label="Ganho derivativo Kd">
+        </div>
+        <button class="btn a2 w100 mt3" id="btnResetPid">↺ RESET PID</button>
+      </div>
+    </section>
+
+    <section class="panel" id="tab-speed" role="tabpanel">
+      <div class="card">
+        <div class="clabel">PERFIL DE VELOCIDADE</div>
+        <div class="slider-group">
+          <div class="sh"><span class="sk">BASE</span><span class="sv" id="vBase">160</span></div>
+          <input type="range" id="sBase" min="60" max="230" step="5" value="160" aria-label="Velocidade base PWM">
+        </div>
+        <div class="slider-group">
+          <div class="sh"><span class="sk">MÍN</span><span class="sv a2" id="vMin">60</span></div>
+          <input type="range" class="a2" id="sMin" min="30" max="120" step="5" value="60" aria-label="Velocidade mínima em curva">
+        </div>
+        <div class="slider-group">
+          <div class="sh"><span class="sk">MÁX</span><span class="sv" id="vMax">230</span></div>
+          <input type="range" id="sMax" min="150" max="255" step="5" value="230" aria-label="Velocidade máxima">
+        </div>
+        <div class="slider-group">
+          <div class="sh"><span class="sk">THRS</span><span class="sv a2" id="vThrs">0.60</span></div>
+          <input type="range" class="a2" id="sThrs" min="0.1" max="1" step="0.05" value="0.6" aria-label="Limiar de erro">
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="tab-sys" role="tabpanel">
+
+      <div class="card">
+        <div class="clabel">DISPOSITIVO</div>
+        <div class="dev-row"><span class="dk">NOME</span><span class="dv">LFR-RACER-01</span></div>
+        <div class="dev-row"><span class="dk">FIRMWARE</span><span class="dv" id="devFirmware">v3.1.0</span></div>
+        <div class="dev-row"><span class="dk">STATUS</span><span class="dv a2" id="devMode">SIMULADO</span></div>
+        <div class="dev-row"><span class="dk">BLE</span><span class="dv dim">--</span></div>
+        <div class="bat-large" aria-label="Nível de bateria detalhado">
+          <svg class="bat-icon-lg" width="64" height="30" viewBox="0 0 64 30" fill="none" aria-hidden="true">
+            <rect class="bat-shell" x="1" y="1" width="56" height="28" rx="4"/>
+            <rect class="bat-tip"   x="57" y="9" width="7" height="12" rx="2"/>
+            <rect id="batFillLg" class="bat-fill-rect" x="3" y="3" width="0" height="24" rx="2" fill="currentColor"/>
+          </svg>
+          <div>
+            <div id="batPctLg" class="bat-pct">72%</div>
+            <div id="batLbl"   class="bat-lbl">CARGA OK</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="clabel">TEMPOS DE VOLTA</div>
+        <ol class="lap-list" id="lapList">
+          <li class="lap-empty">Nenhuma volta registrada</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <div class="clabel">TEMA</div>
+        <div class="theme-row">
+          <button id="btnDark"  class="theme-btn active" aria-pressed="true">ESCURO</button>
+          <button id="btnLight" class="theme-btn"        aria-pressed="false">CLARO</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="clabel">ACESSIBILIDADE</div>
+        <div class="a11y-row">
+          <div><div class="a11y-lbl">Alto Contraste</div><div class="a11y-desc">Aumenta contraste de cores</div></div>
+          <button class="toggle" id="togHC" role="switch" aria-checked="false" aria-label="Ativar alto contraste"><div class="thumb"></div></button>
+        </div>
+        <div class="a11y-row">
+          <div><div class="a11y-lbl">Movimento Reduzido</div><div class="a11y-desc">Desativa animações e brilhos</div></div>
+          <button class="toggle" id="togRM" role="switch" aria-checked="false" aria-label="Ativar movimento reduzido"><div class="thumb"></div></button>
+        </div>
+        <div class="a11y-row">
+          <div><div class="a11y-lbl">Texto Grande</div><div class="a11y-desc">Aumenta tamanho das fontes</div></div>
+          <button class="toggle" id="togLT" role="switch" aria-checked="false" aria-label="Ativar texto grande"><div class="thumb"></div></button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="clabel">DADOS</div>
+        <button class="btn w100" id="btnDump" style="height:44px">⬇ EXPORTAR LOG (0)</button>
+      </div>
+
+    </section>
+
+  </div><!-- /desk-grid -->
+
+  <div class="botbar" role="toolbar" aria-label="Controles principais">
+    <button class="btn-big on" id="btnStart" aria-label="Iniciar simulação">▶ START</button>
+    <button class="btn-big red" id="btnStop"  aria-label="Parar simulação">■ STOP</button>
+    <button class="btn-big a2"  id="btnReset" aria-label="Limpar dados">◎ RESET</button>
+  </div>
+
+</div></main>
+
+<script>
+'use strict';
+// ── State ───────────────────────────────────────────
+const S = {
+  running:true, t:0, lastRaf:0, batFrames:0,
+  pid:{kp:3.0,ki:0.0,kd:12.0},
+  spd:{base:160,min:60,max:230,thrs:0.6},
+  battery:72.0, bestLap:null, lapTimes:[],
+  logLines:[], pts:{pos:[],corr:[],vL:[],vR:[]},
+  wsMode:false, // true quando dados vêm do simulador Python (ou ESP32 real)
+};
+const WIN=150;
+const segs=[];
+const tabOrder=['chart','pid','speed','sys'];
+
+// ── Sim ─────────────────────────────────────────────
+function genFrame(){
+  const {kp,kd}=S.pid, t=S.t;
+  const track=Math.sin(t*.8)*2800+Math.sin(t*2.1)*600;
+  const robot=track*.92+Math.sin(t*5)*80;
+  const pos=robot, err=track-robot;
+  const corr=err*kp-Math.cos(t*.8)*kd*200;
+  const base=S.spd.base;
+  const vL=Math.min(255,Math.max(-255,base+corr*.08));
+  const vR=Math.min(255,Math.max(-255,base-corr*.08));
+  const dt=1400+Math.random()*400;
+  const sensors=Array.from({length:8},(_,i)=>{
+    const d=pos/350*10-(i-3.5)*10;
+    return Math.max(0,Math.min(100,100*Math.exp(-(d*d)/80)));
+  });
+  return {pos,corr,vL,vR,dt,sensors};
+}
+
+// ── RAF ─────────────────────────────────────────────
+function loop(ts){
+  requestAnimationFrame(loop);
+  // Quando em modo WS os dados chegam pelo WebSocket; só roda o sim JS como fallback
+  if(!S.wsMode && S.running && ts-S.lastRaf>=33){
+    S.lastRaf=ts; S.t+=.033;
+    const f=genFrame();
+    pushPt(f); updateSensors(f.sensors); updateMetrics(f); logFrame(f); tickBattery();
+  }
+  drawChart();
+}
+function pushPt(f){
+  [['pos',f.pos],['corr',f.corr],['vL',f.vL],['vR',f.vR]].forEach(([k,v])=>{
+    S.pts[k].push(+v.toFixed(1));
+    if(S.pts[k].length>WIN) S.pts[k].shift();
+  });
+  document.getElementById('chartEmpty').style.display='none';
+}
+
+// ── Metrics ─────────────────────────────────────────
+function updateMetrics(f){
+  const lu=f.dt.toFixed(0), ea=(Math.abs(f.pos)/3500).toFixed(3);
+  const elL=document.getElementById('mLoop'), elE=document.getElementById('mErr');
+  elL.textContent=lu; elL.className='mval glow'+(+lu>2000?' warn':'');
+  elE.textContent=ea; elE.className='mval glow'+(+ea>.8?' warn':'');
+  document.getElementById('mPwm').textContent=Math.round(Math.abs(f.vL+f.vR)/2);
+  if(S.bestLap!==null){const el=document.getElementById('mLap');el.textContent=S.bestLap.toFixed(2);el.className='mval ok glow';}
+}
+
+// ── Sensors ─────────────────────────────────────────
+function updateSensors(sensors){
+  const light=document.documentElement.dataset.theme==='light';
+  const r=light?'0,48,135':'0,232,255';
+  segs.forEach((seg,i)=>{
+    const v=sensors[i]/100;
+    seg.style.background=`rgba(${r},${(0.06+v*.65).toFixed(2)})`;
+    seg.style.boxShadow=v>.5?`0 0 ${Math.round(6*v)}px rgba(${r},${v.toFixed(2)})`:'none';
+  });
+}
+
+// ── Chart ────────────────────────────────────────────
+function getColors(){
+  const light=document.documentElement.dataset.theme==='light';
+  const hc=document.documentElement.classList.contains('hc');
+  if(hc&&light) return{pos:'#0000CC',corr:'#CC3300',vL:'#006600',vR:'#CC0000',grid:'rgba(0,0,0,.07)',zero:'rgba(0,0,0,.22)',tick:'#333'};
+  if(hc)        return{pos:'#00FFFF',corr:'#FFFF00',vL:'#00FF00',vR:'#FF4040',grid:'rgba(255,255,255,.09)',zero:'rgba(255,255,255,.28)',tick:'#AAA'};
+  if(light)     return{pos:'#003087',corr:'#E8440A',vL:'#006B2B',vR:'#C8001E',grid:'rgba(0,48,135,.05)',zero:'rgba(0,48,135,.16)',tick:'#7A90A8'};
+  return              {pos:'#00E8FF',corr:'#FFB700',vL:'#00FF6E',vR:'#FF3055',grid:'rgba(0,232,255,.04)',zero:'rgba(0,232,255,.12)',tick:'#3A5567'};
+}
+function updateLegend(){
+  const C=getColors();
+  [['lpos',C.pos],['lcorr',C.corr],['lvl',C.vL],['lvr',C.vR]].forEach(([id,col])=>{
+    const ln=document.getElementById(id); if(ln){ln.style.background=col;ln.style.boxShadow=`0 0 4px ${col}`;}
+    const nm=document.getElementById(id+'n'); if(nm) nm.style.color=col;
+  });
+}
+function drawChart(){
+  const canvas=document.getElementById('chart');
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d'), W=canvas.width, H=canvas.height;
+  if(!W||!H) return;
+  const C=getColors();
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle=C.grid; ctx.lineWidth=1;
+  for(let y=0;y<=H;y+=Math.round(H/4)){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  ctx.setLineDash([4,4]); ctx.strokeStyle=C.zero;
+  ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle=C.tick; ctx.font='9px Courier New'; ctx.textAlign='left';
+  [[3500,0],[0,H/2],[-3500,H]].forEach(([v,y])=>ctx.fillText(v===0?'0':(v>0?'+'+v:v),2,Math.min(H-2,y+3)));
+  const n=S.pts.pos.length; if(n<2) return;
+  function line(data,color,w){
+    ctx.strokeStyle=color;ctx.lineWidth=w;ctx.shadowColor=color;ctx.shadowBlur=3;
+    ctx.beginPath();
+    data.forEach((v,i)=>{const x=(i/(WIN-1))*W,y=H/2-(v/3500)*(H/2*.88);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    ctx.stroke();ctx.shadowBlur=0;
+  }
+  line(S.pts.pos, C.pos, 1.5);
+  line(S.pts.corr,C.corr,1.5);
+  line(S.pts.vL,  C.vL,  1.0);
+  line(S.pts.vR,  C.vR,  1.0);
+}
+function resizeCanvas(){
+  const c=document.getElementById('chart');if(!c)return;
+  c.width=c.parentElement.offsetWidth;
+  if(window.innerWidth>=768){
+    const h=c.parentElement.offsetHeight;
+    c.height=h>80?h:300;
+  } else {
+    c.height=185;
+  }
+}
+
+// ── Battery ──────────────────────────────────────────
+function renderBattery(p){
+  const pct=Math.round(p)+'%';
+  const bf=document.getElementById('batFill');
+  if(bf) bf.setAttribute('width',(p/100*18.5).toFixed(1));
+  const bp=document.getElementById('batPct');
+  if(bp){bp.textContent=pct;bp.style.color=p<20?'var(--er)':p<50?'var(--a2)':'var(--ok)';}
+  const bfl=document.getElementById('batFillLg');
+  const bpl=document.getElementById('batPctLg');
+  const bll=document.getElementById('batLbl');
+  if(bfl){bfl.setAttribute('width',(p/100*52).toFixed(1));bfl.style.fill=p<20?'var(--er)':p<50?'var(--a2)':'var(--ok)';}
+  if(bpl){bpl.textContent=pct;bpl.className='bat-pct'+(p<20?' danger':p<50?' warn':'');}
+  if(bll) bll.textContent=p<20?'CRÍTICO':p<50?'ATENÇÃO':'CARGA OK';
+}
+function tickBattery(){
+  S.batFrames++;
+  if(S.batFrames%30!==0) return;
+  S.battery=Math.max(0,Math.min(100,S.battery+(S.running?-0.09:0.03)));
+  renderBattery(S.battery);
+}
+
+// ── Log ──────────────────────────────────────────────
+function logFrame(f){
+  S.logLines.push(`${Date.now()},${f.pos.toFixed(1)},${f.vL.toFixed(0)},${f.vR.toFixed(0)},${f.dt.toFixed(0)}`);
+  if(S.logLines.length>2000) S.logLines.shift();
+  document.getElementById('btnDump').textContent=`⬇ EXPORTAR LOG (${S.logLines.length})`;
+}
+
+// ── Laps ─────────────────────────────────────────────
+function scheduleLap(){
+  setTimeout(()=>{
+    const t=parseFloat((7.8+Math.random()*1.8).toFixed(2));
+    S.lapTimes.unshift(t);
+    if(S.lapTimes.length>5) S.lapTimes.pop();
+    S.bestLap=Math.min(...S.lapTimes);
+    renderLaps();
+    scheduleLap();
+  },8000+Math.random()*4000);
+}
+function renderLaps(){
+  const ol=document.getElementById('lapList');
+  if(!ol) return;
+  // clear children safely
+  while(ol.firstChild) ol.removeChild(ol.firstChild);
+  if(!S.lapTimes.length){
+    const li=document.createElement('li');
+    li.className='lap-empty';
+    li.textContent='Nenhuma volta registrada';
+    ol.appendChild(li); return;
+  }
+  S.lapTimes.forEach((t,i)=>{
+    const li  =document.createElement('li');   li.className='lap-item';
+    const rank=document.createElement('span'); rank.className='lap-rank'; rank.textContent=`#${i+1}`;
+    const time=document.createElement('span'); time.className='lap-time'+(t===S.bestLap?' best':''); time.textContent=`${t.toFixed(2)}s`;
+    li.appendChild(rank); li.appendChild(time); ol.appendChild(li);
+  });
+}
+
+// ── Tabs ─────────────────────────────────────────────
+function activateTab(id,dir){
+  document.querySelectorAll('.tab').forEach(b=>{
+    const on=b.dataset.tab===id;
+    b.classList.toggle('active',on);
+    b.setAttribute('aria-selected',on);
+  });
+  document.querySelectorAll('.panel').forEach(p=>{
+    const on=p.id===`tab-${id}`;
+    p.classList.remove('anim-r','anim-l');
+    p.classList.toggle('active',on);
+    if(on&&dir&&window.innerWidth<768){
+      const cls=dir==='r'?'anim-r':'anim-l';
+      p.classList.add(cls);
+      p.addEventListener('animationend',()=>p.classList.remove(cls),{once:true});
+    }
+  });
+}
+
+// ── Theme ─────────────────────────────────────────────
+function setTheme(theme){
+  document.documentElement.dataset.theme=theme;
+  const dark=theme==='dark';
+  const bd=document.getElementById('btnDark'), bl=document.getElementById('btnLight');
+  bd.classList.toggle('active',dark);  bd.setAttribute('aria-pressed',dark);
+  bl.classList.toggle('active',!dark); bl.setAttribute('aria-pressed',!dark);
+  document.getElementById('iconSun').style.display  = dark?'':'none';
+  document.getElementById('iconMoon').style.display = dark?'none':'block';
+  document.getElementById('btnThemeToggle').setAttribute('aria-label', dark?'Mudar para tema claro':'Mudar para tema escuro');
+  updateLegend(); saveSettings();
+}
+
+// ── A11y ──────────────────────────────────────────────
+function bindToggle(id,cls){
+  const btn=document.getElementById(id);
+  if(!btn) return;
+  btn.addEventListener('click',()=>{
+    const on=document.documentElement.classList.toggle(cls);
+    btn.classList.toggle('on',on);
+    btn.setAttribute('aria-checked',on);
+    saveSettings();
+  });
+}
+
+// ── Persist ──────────────────────────────────────────
+function saveSettings(){
+  const r=document.documentElement;
+  localStorage.setItem('lfr-theme',r.dataset.theme||'dark');
+  ['hc','rm','lt'].forEach(c=>localStorage.setItem('lfr-'+c,r.classList.contains(c)));
+}
+function loadSettings(){
+  const r=document.documentElement;
+  const th=localStorage.getItem('lfr-theme');
+  r.dataset.theme=th||(window.matchMedia('(prefers-color-scheme:light)').matches?'light':'dark');
+  ['hc','rm','lt'].forEach(c=>{
+    const saved=localStorage.getItem('lfr-'+c);
+    const sysRM=c==='rm'&&window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+    const on=saved==='true'||(!saved&&sysRM);
+    if(on) r.classList.add(c);
+    const id={hc:'togHC',rm:'togRM',lt:'togLT'}[c];
+    const btn=document.getElementById(id);
+    if(btn){btn.classList.toggle('on',on);btn.setAttribute('aria-checked',on);}
+  });
+  const dark=r.dataset.theme==='dark';
+  const bd=document.getElementById('btnDark'),bl=document.getElementById('btnLight');
+  if(bd){bd.classList.toggle('active',dark);bd.setAttribute('aria-pressed',dark);}
+  if(bl){bl.classList.toggle('active',!dark);bl.setAttribute('aria-pressed',!dark);}
+  document.getElementById('iconSun').style.display  = dark?'':'none';
+  document.getElementById('iconMoon').style.display = dark?'none':'block';
+  document.getElementById('btnThemeToggle').setAttribute('aria-label', dark?'Mudar para tema claro':'Mudar para tema escuro');
+  updateLegend();
+}
+
+// ── WebSocket (simulador Python / ESP32 via BLE bridge) ──────────────────
+const WS_URL='ws://localhost:8766';
+let ws=null, wsTimer=null;
+
+function wsSetStatus(text,color){
+  const el=document.querySelector('.dev-status');
+  if(!el) return;
+  while(el.firstChild) el.removeChild(el.firstChild);
+  const dot=document.createElement('span'); dot.className='sdot';
+  if(color) dot.style.background=color;
+  el.appendChild(dot);
+  el.appendChild(document.createTextNode(text));
+}
+
+function wsConnect(){
+  if(ws&&ws.readyState<=1) return;
+  ws=new WebSocket(WS_URL);
+
+  ws.onopen=()=>{
+    clearTimeout(wsTimer);
+    S.wsMode=true;
+    wsSetStatus('CONECTADO','var(--ok)');
+    const mb=document.querySelector('.mock-badge');
+    if(mb) mb.style.opacity='0.3';
+    console.log('[WS] conectado ao simulador LFR');
+  };
+
+  ws.onmessage=ev=>{
+    let d; try{ d=JSON.parse(ev.data); }catch{ return; }
+
+    if(d.t==='info'){
+      // Frame de identificação — mirrors BLE Device Information Service
+      const dn=document.querySelector('.dev-name');
+      if(dn) dn.textContent=d.name||'LFR';
+      const ds=document.getElementById('devFirmware');
+      if(ds) ds.textContent=d.fw||'--';
+      const dm=document.getElementById('devMode');
+      if(dm){ dm.textContent=d.mode||'SIM'; dm.className='dv a2'; }
+      wsSetStatus(d.mode||'SIM','var(--a2)');
+
+    }else if(d.t==='tel'){
+      // Frame de telemetria — mirrors BLE Telemetry Characteristic (Notify)
+      const f={pos:d.pos,corr:d.corr,vL:d.vL,vR:d.vR,dt:d.dt};
+      pushPt(f);
+      updateSensors(d.s);
+      updateMetrics(f);
+      logFrame(f);
+      if(d.bat!=null) renderBattery(d.bat);
+      if(d.lap!=null){ S.bestLap=d.lap; }
+      if(d.laps&&d.laps.length){ S.lapTimes=d.laps; renderLaps(); }
+    }
+  };
+
+  ws.onclose=()=>{
+    S.wsMode=false;
+    wsSetStatus('MODO SIM','var(--a2)');
+    const mb=document.querySelector('.mock-badge');
+    if(mb) mb.style.opacity='';
+    console.log('[WS] desconectado — usando sim JS');
+    wsTimer=setTimeout(wsConnect,3000); // tenta reconectar
+  };
+
+  ws.onerror=()=>ws.close();
+}
+
+function wsSend(data){
+  // Mirrors BLE Command Characteristic (Write)
+  if(ws&&ws.readyState===1) ws.send(JSON.stringify(data));
+}
+
+// ── Swipe ─────────────────────────────────────────────
+let swX=0,swEl=null;
+const SWIPE_IGNORE='input,select,textarea,button,.toggle,[role="switch"]';
+document.addEventListener('touchstart',e=>{
+  swEl=e.target; swX=e.touches[0].clientX;
+},{passive:true});
+document.addEventListener('touchmove',e=>{
+  if(!swX||window.innerWidth>=768) return;
+  if(swEl?.closest(SWIPE_IGNORE)) return; // don't hijack interactive elements
+  const dx=e.touches[0].clientX-swX;
+  if(Math.abs(dx)<8) return; // dead zone
+  const ap=document.querySelector('.panel.active');
+  if(ap) ap.style.transform=`translateX(${Math.max(-52,Math.min(52,dx*.22))}px)`;
+},{passive:true});
+document.addEventListener('touchend',e=>{
+  const ap=document.querySelector('.panel.active');
+  if(ap) ap.style.transform='';
+  const dx=e.changedTouches[0].clientX-swX;
+  const el=swEl;
+  swX=0; swEl=null;
+  if(el?.closest(SWIPE_IGNORE)) return;
+  if(Math.abs(dx)<55) return;
+  const cur=document.querySelector('.tab.active')?.dataset.tab;
+  const i=tabOrder.indexOf(cur);
+  if(dx<0&&i<tabOrder.length-1) activateTab(tabOrder[i+1],'r');
+  if(dx>0&&i>0)                  activateTab(tabOrder[i-1],'l');
+},{passive:true});
+
+// ── Init ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>{
+  // Build sensor bar
+  const sBar=document.getElementById('sBar');
+  for(let i=0;i<8;i++){const d=document.createElement('div');d.className='seg';sBar.appendChild(d);segs.push(d);}
+
+  loadSettings();
+  // Double rAF ensures flex layout is computed before measuring canvas height
+  requestAnimationFrame(()=>requestAnimationFrame(resizeCanvas));
+  window.addEventListener('resize',resizeCanvas);
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>activateTab(b.dataset.tab)));
+
+  // Theme
+  document.getElementById('btnThemeToggle').addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
+  document.getElementById('btnDark').addEventListener('click',()=>setTheme('dark'));
+  document.getElementById('btnLight').addEventListener('click',()=>setTheme('light'));
+
+  // A11y
+  bindToggle('togHC','hc'); bindToggle('togRM','rm'); bindToggle('togLT','lt');
+
+  // PID sliders — envia comando via WS (mirrors BLE Command Char write)
+  [['Kp','kp','vKp',2],['Ki','ki','vKi',2],['Kd','kd','vKd',2]].forEach(([id,key,vid,dp])=>{
+    document.getElementById(id).addEventListener('input',function(){
+      S.pid[key]=+this.value;
+      document.getElementById(vid).textContent=S.pid[key].toFixed(dp);
+      wsSend({t:'pid',...S.pid});
+    });
+  });
+  // Speed sliders
+  [['sBase','base','vBase',0],['sMin','min','vMin',0],['sMax','max','vMax',0],['sThrs','thrs','vThrs',2]].forEach(([id,key,vid,dp])=>{
+    document.getElementById(id).addEventListener('input',function(){
+      S.spd[key]=+this.value;
+      document.getElementById(vid).textContent=S.spd[key].toFixed(dp);
+      wsSend({t:'spd',...S.spd});
+    });
+  });
+
+  // Buttons
+  document.getElementById('btnStart').addEventListener('click',()=>{
+    S.running=true;
+    document.getElementById('btnStart').classList.add('on');
+    const ld=document.getElementById('liveDot');
+    if(ld) ld.classList.remove('paused');
+    if(window.Motion&&!document.documentElement.classList.contains('rm'))
+      window.Motion.animate('#btnStart',{scale:[1.06,1]},{duration:.18,easing:'ease-out'});
+    wsSend({t:'start'});
+  });
+  document.getElementById('btnStop').addEventListener('click',()=>{
+    S.running=false;
+    document.getElementById('btnStart').classList.remove('on');
+    const ld=document.getElementById('liveDot');
+    if(ld) ld.classList.add('paused');
+    wsSend({t:'stop'});
+  });
+  document.getElementById('btnReset').addEventListener('click',()=>{
+    Object.keys(S.pts).forEach(k=>S.pts[k]=[]);
+    S.logLines=[];S.lapTimes=[];S.bestLap=null;S.batFrames=0;
+    document.getElementById('mLap').textContent='--';
+    document.getElementById('btnDump').textContent='⬇ EXPORTAR LOG (0)';
+    document.getElementById('chartEmpty').style.display='';
+    renderLaps();
+    wsSend({t:'reset'});
+  });
+  document.getElementById('btnResetPid').addEventListener('click',()=>{
+    S.pid={kp:3.0,ki:0.0,kd:12.0};
+    document.getElementById('Kp').value=3;  document.getElementById('vKp').textContent='3.00';
+    document.getElementById('Ki').value=0;  document.getElementById('vKi').textContent='0.00';
+    document.getElementById('Kd').value=12; document.getElementById('vKd').textContent='12.00';
+  });
+  document.getElementById('btnDump').addEventListener('click',()=>{
+    const csv='ts,pos,vL,vR,dt\n'+S.logLines.join('\n');
+    const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    const a=document.createElement('a');
+    a.href=url; a.download=`lfr_${Date.now()}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  tickBattery(); S.batFrames=0;
+  scheduleLap();
+  requestAnimationFrame(loop);
+  wsConnect(); // tenta conectar ao simulador Python; fallback para sim JS
+
+  // Motion.dev entrance animations (skip if reduced-motion)
+  if(window.Motion&&!document.documentElement.classList.contains('rm')){
+    const {animate,stagger}=window.Motion;
+    const visCards=[...document.querySelectorAll('.card')].filter(c=>c.offsetParent!==null);
+    animate(visCards,{opacity:[0,1],y:[16,0]},{delay:stagger(.07),duration:.4,easing:'ease-out'});
+    const mcs=[...document.querySelectorAll('.mc')];
+    animate(mcs,{opacity:[0,1],scale:[.9,1]},{delay:stagger(.06,.08),duration:.3,easing:'ease-out'});
+    animate('.live-dot',{scale:[0,1]},{duration:.35,easing:[.34,1.56,.64,1]});
+  }
+});
+</script>
+</body>
+</html>

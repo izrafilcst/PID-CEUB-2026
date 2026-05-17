@@ -5,3 +5,6 @@ __pycache__/
 *.stl
 .claude-flow/
 .swarm/
+.playwright-mcp/
+*.png
+lfr-js.js

@@ -86,7 +86,10 @@ Saída esperada: `47 test cases: 47 succeeded`
 │   └── wheel_hub.scad            # Hub O-ring silicone 34mm, eixo D 3mm
 │
 ├── docs/
-│   ├── dashboard/lfr-cockpit.html  # Painel BLE tempo-real (abre no browser)
+│   ├── dashboard/
+│   │   ├── lfr-cockpit-mock.html   # Dashboard completo (BLE real + simulação WS)
+│   │   ├── lfr_sim.py              # Simulador Python — replica protocolo ESP32
+│   │   └── motion.js               # Motion.dev v11 bundle (offline)
 │   ├── WIRING.md                   # Diagrama completo de fiação
 │   ├── TUNING.md                   # Procedimento Ziegler-Nichols + checklist
 │   ├── tuning_log.csv              # Log de sessões de tuning
@@ -165,31 +168,53 @@ uint32_t best = lt.getBestLapMs();
 
 ### BLETuner
 
-Ajuste de parâmetros em tempo real via BLE (NimBLE-Arduino 2.x). Conectar com o dashboard `docs/dashboard/lfr-cockpit.html`.
+Ajuste de parâmetros e telemetria em tempo real via BLE (NimBLE-Arduino 2.x). Protocolo JSON de 2 características:
 
-| Característica BLE | UUID sufixo | Dados |
-|-------------------|-------------|-------|
-| Kp | `...001` | float como string |
-| Ki | `...002` | float como string |
-| Kd | `...003` | float como string |
-| Speed | `...004` | `"base,min,max,threshold"` |
-| Telemetry | `...005` | notify — CSV linha a linha |
+| Característica BLE | UUID | Direção | Formato |
+|-------------------|------|---------|---------|
+| Telemetry | `0xABCD` | ESP32 → App (Notify) | JSON `{"t":"info"/"tel", ...}` |
+| Command   | `0xABCE` | App → ESP32 (Write)  | JSON `{"t":"pid"/"spd"/"start"/"stop"/"reset", ...}` |
+
+**Telemetria** (30 Hz):
+```json
+{"t":"tel","pos":-350.0,"corr":12.4,"vL":168,"vR":152,
+ "dt":1750,"s":[0,5,80,100,60,10,0,0],"bat":73.2,"lap":8.51,"laps":[8.51,9.03]}
+```
+
+**Comandos** (App → ESP32):
+```json
+{"t":"pid","kp":3.0,"ki":0.0,"kd":12.0}
+{"t":"spd","base":160,"min":60,"max":230,"thrs":0.6}
+{"t":"start"}  {"t":"stop"}  {"t":"reset"}
+```
+
+Conectar com o dashboard `docs/dashboard/lfr-cockpit-mock.html` ou testar offline com o simulador Python.
 
 ---
 
 ## Dashboard de Telemetria
 
-Abrir `docs/dashboard/lfr-cockpit.html` em qualquer browser com Web Bluetooth (Chrome/Edge).
+Abrir `docs/dashboard/lfr-cockpit-mock.html` em Chrome/Edge (Web Bluetooth requer HTTPS ou localhost).
 
 **Funcionalidades:**
-- Conecta ao ESP32 por BLE (botão CONNECT)
-- Gráfico rolling 5s: posição, correção, velocidade L/R
-- Sliders PID (Kp 0–10, Ki 0–1, Kd 0–30) com escrita BLE ao vivo
-- Sliders de velocidade (base, min, max, threshold)
-- Barra de 8 sensores com brilho proporcional
-- Cards: loop µs (alerta se > 2 ms), erro, PWM médio, melhor volta
-- Modo simulação offline (sem hardware)
+- Conecta ao ESP32 por BLE (botão CONNECT) ou ao simulador Python via WebSocket
+- Gráfico rolling 5 s: posição, correção, velocidades L/R
+- Sliders PID (Kp, Ki, Kd) e velocidade (base, min, max, threshold) com envio ao vivo
+- Barra de 8 sensores com brilho proporcional ao valor lido
+- Cards: loop µs (alerta > 2 ms), erro, PWM médio, melhor volta
+- LapTimer: histórico de últimas 5 voltas, destaque da melhor
+- Bateria com indicador visual e alertas críticos
+- Modo claro/escuro; layout responsivo (mobile swipe / desktop grid)
 - Export de log CSV
+- Animações de entrada via Motion.dev v11
+
+**Simulador Python** (sem hardware):
+```bash
+cd docs/dashboard
+python3 lfr_sim.py &          # WebSocket em ws://localhost:8766
+python3 -m http.server 8765   # HTTP em http://localhost:8765
+# Abrir: http://localhost:8765/lfr-cockpit-mock.html
+```
 
 ---
 

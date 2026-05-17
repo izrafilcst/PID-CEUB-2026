@@ -205,32 +205,78 @@ Exportar STL: `openscad -o <name>.stl <name>.scad`
 
 ---
 
-## 8. BOM Final
+## 8. Dashboard de Telemetria
 
-| Componente | Custo estimado |
-|-----------|----------------|
-| ESP32 DevKit V1 | R$ 45 |
-| MCP3008 ADC | R$ 25 |
-| 8ch TCRT5000 array | R$ 40 |
-| 2× N20 600RPM encoder | R$ 80 |
-| TB6612FNG módulo | R$ 18 |
-| LiPo 2S 800mAh 30C | R$ 55 |
-| Carregador B3 | R$ 35 |
-| MP1584 buck | R$ 8 |
-| PETG filamento (~100g) | R$ 25 |
-| Rodas silicone 34mm | R$ 20 |
-| Ball caster metálico | R$ 8 |
-| Parafusos M2/M3 kit | R$ 15 |
-| Fios/conectores | R$ 20 |
-| Capacitores desacoplamento | R$ 5 |
-| Chave SPDT | R$ 3 |
-| Perfboard 5×7 | R$ 6 |
-| Diversos | R$ 15 |
-| **TOTAL** | **~R$ 423** |
+Dashboard web SPA desenvolvido em HTML/CSS/JS puro (sem frameworks), operável sem conexão à internet.
+
+### 8.1 Arquivos
+
+| Arquivo | Descrição |
+|---------|-----------|
+| `docs/dashboard/lfr-cockpit-mock.html` | Dashboard completo (~1 000 linhas) |
+| `docs/dashboard/lfr_sim.py` | Simulador Python — replica protocolo BLE via WebSocket |
+| `docs/dashboard/motion.js` | Motion.dev v11.18.2 bundle (65 KB, offline) |
+
+### 8.2 Funcionalidades
+
+- **Duplo modo de conexão**: BLE real (Web Bluetooth API) ↔ WebSocket (simulador Python)
+- **Gráfico rolling 5 s**: posição, correção PID, velocidades L/R (Canvas 2D)
+- **Painel de sensores**: 8 LEDs com brilho proporcional ao valor normalizado
+- **Sliders ao vivo**: PID (Kp/Ki/Kd) e velocidade (base/min/max/threshold) — enviam JSON via BLE/WS imediatamente
+- **LapTimer**: histórico das últimas 5 voltas, destaque da melhor
+- **Bateria**: barra de progresso com zonas de alerta (< 20% amarelo, < 10% vermelho)
+- **Modo claro/escuro**: toggle persistido em localStorage
+- **Layout responsivo**: swipe entre abas no mobile; grid 50/50 no desktop sem scroll
+- **Animações**: entrada via Motion.dev (stagger), feedback de toque
+- **Export CSV**: log de telemetria da sessão
+- **Auto-reconexão WS**: tenta ws://localhost:8766 a cada 3 s; fallback para simulação JS
+
+### 8.3 Protocolo BLE (implementado em BLETuner)
+
+```
+0xABCD — Telemetry Char (Notify, ESP32→App):
+  {"t":"info","name":"LFR-RACER-01","fw":"v3.1.0","mode":"RUN"}
+  {"t":"tel","pos":−350.0,"corr":12.4,"vL":168,"vR":152,
+   "dt":1750,"s":[0,5,80,100,60,10,0,0],"bat":73.2,
+   "lap":8.51,"laps":[8.51,9.03,8.87]}
+
+0xABCE — Command Char (Write, App→ESP32):
+  {"t":"pid","kp":3.0,"ki":0.0,"kd":12.0}
+  {"t":"spd","base":160,"min":60,"max":230,"thrs":0.6}
+  {"t":"start"} / {"t":"stop"} / {"t":"reset"}
+```
 
 ---
 
-## 9. Referências
+## 9. BOM Final
+
+BOM completa com SKU e links em `hardware/bom.csv`.
+
+### Componentes principais
+
+| Componente | Qtd | Preço (R$) | Notas |
+|-----------|-----|-----------|-------|
+| ESP32 DevKit V1 | 1 | 45 | Clone WROOM-32 |
+| MCP3008 ADC SPI | 1 | 25 | 8 canais, 10-bit |
+| TCRT5000 array 8ch | 1 | 40 | Espaçamento 10 mm |
+| N20 600RPM c/ encoder | 2 | 80 | 7 PPR, eixo D 3mm |
+| TB6612FNG módulo | 1 | 18 | 1.2A cont, 95% efic. |
+| LiPo 2S 800mAh 30C | 1 | 55 | 6.4–8.4 V |
+| Carregador B3 2S/3S | 1 | 35 | Balanceado AC |
+| MP1584 buck 5V | 1 | 8 | Ajustar antes de ligar |
+| PETG filamento ~100g | 1 | 25 | Chassi + suportes |
+| Rodas silicone 34mm | 1 par | 20 | Eixo D 3mm |
+| Ball caster 1/2" | 1 | 8 | Ajustar altura |
+| Perfboard 5×7 | 1 | 6 | Ou PCB KiCad |
+| Passivos (R, C, LED, buzzer) | — | 12 | Ver bom.csv |
+| Mecânicos (parafusos, espaçadores) | — | 19 | M2+M3 kits |
+| Fios silicone + conectores | — | 17 | 26 AWG, JST |
+| Chave SPDT, fita VHB, diversos | — | 11 | |
+| **TOTAL** | | **~R$ 424** | |
+
+---
+
+## 10. Referências
 
 - [Semreh V2 — Campeão brasileiro UFABC/Tamandutech](https://hackaday.io/project/202208-semreh-advanced-line-follower-robot)
 - [ESP32 Line Follower — RoboChallenge 2024](https://github.com/dandominicstaicu/esp32-line-follower)

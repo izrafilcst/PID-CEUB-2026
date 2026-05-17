@@ -1,0 +1,33 @@
+qty,component,description,package,supplier,sku,price_brl,link,notes
+1,ESP32 DevKit V1,MCU dual-core 240 MHz WiFi/BT,DIP-38,Mercado Livre / AliExpress,ESP32-DEVKITV1,45.00,https://www.mercadolivre.com.br/placa-de-desenvolvimento-esp32-devkit-v1/p/MLB26003803,Clone WROOM-32 funciona igual
+1,MCP3008,ADC SPI 8 canais 10-bit,DIP-16,Mercado Livre / Robocore,MCP3008-I/P,25.00,https://www.robocore.net/microcontroladores/conversor-adc-mcp3008-10-bits-8-canais,1 MHz @ 5V; usar divisor de tensão MISO → 3.3V
+1,TCRT5000 array 8 canais,Sensor IR linha 8× TCRT5000 com ajuste,PCB módulo,Mercado Livre / AliExpress,TCRT5000-8CH,40.00,,Espaçamento ~10 mm; verificar tensão de operação 5V
+2,N20 600RPM c/ encoder,Motor DC metal-gear 6V com encoder Hall 7 PPR,N20 3×10mm shaft,Pololu / AliExpress,3081 (Pololu),80.00,https://www.pololu.com/product/3081,Par engrenado; obrigatório com encoder para odometria futura
+1,TB6612FNG módulo,Driver dual H-bridge 1.2A cont / 3.2A pico,módulo PCB,Sparkfun / Mercado Livre,ROB-14450,18.00,https://www.sparkfun.com/products/14450,Eficiência 95%; STBY com pull-down
+1,LiPo 2S 800mAh 30C,Bateria 7.4V 30C conector JST XT30,pouch cell,Hobbyking / Mercado Livre,HXT 2S 800-30C,55.00,,Checar dimensões: máx 65×35×12 mm para encaixar no chassi
+1,Carregador B3 2S/3S,Carregador balanceado LiPo 2S/3S AC,—,Mercado Livre / AliExpress,B3AC,35.00,,Não deixar sem supervisão carregando
+1,MP1584 buck converter,Regulador abaixador ajustável até 3A,módulo PCB,Mercado Livre / AliExpress,MP1584EN,8.00,,Ajustar para 5.0V antes de conectar; verificar ripple
+1,Roda silicone 34mm,Roda com pneu silicone D=34mm eixo 3mm plano,—,AliExpress / Mercado Livre,,20.00,,Par (2 rodas); eixo D-shape 3mm
+1,Ball caster metálico,Roda de apoio traseira ajustável em altura,—,Robocore / Mercado Livre,ROB-09259,8.00,https://www.robocore.net/robotica/bola-de-rodinha-metalica-1-2-polegada,1/2 pol (12.7 mm); ajustar altura com espaçadores M3
+1,PETG filamento 100g,Impressão 3D chassi e suportes (PETG laranja),1.75mm rolo ~100g,Multilaser / Kalatec,,25.00,,PETG: resistência ao calor e impacto > PLA; densidade ~1.27 g/cm³
+1,Capacitor 100µF 16V,Desacoplamento bateria VCC motors,radial electrolítico,Qualquer distribuidora,,2.00,,1× na entrada VCC motores
+4,Capacitor 100nF,Desacoplamento VCC digital,cerâmico 0805,,,,3.00,,1× por CI (MCP3008 + ESP32 + TB6612FNG + regulador)
+1,Resistor 100kΩ 1/4W,Divisor tensão VBAT (R1),—,,,,0.50,,Ver WIRING.md: divisor 100k+47k para GPIO 34
+1,Resistor 47kΩ 1/4W,Divisor tensão VBAT (R2),—,,,,0.50,,
+2,Resistor 10kΩ 1/4W,Pull-down STBY e outros,—,,,,0.50,,
+1,Buzzer 5V passivo 12mm,Feedback sonoro,THT 12mm,,,,2.00,,Passivo (tone() do Arduino); ativo também funciona
+1,LED 5mm (verde + vermelho),Indicação de status,THT 5mm,,,,1.50,,1 verde (READY) + 1 vermelho (ERROR) ou 1 bicolor
+2,Resistor 330Ω 1/4W,Serie para LEDs,—,,,,0.50,,
+1,Chave SPDT mini,Liga/desliga geral,—,,,,3.00,,Corrente mínima 2A para LiPo 2S
+1,Conector JST XH 2.54mm,Conector bateria LiPo,2-pin JST XT30 ou XH,,,,2.00,,Combinar com o conector da bateria
+1,Perfboard 5×7 cm,PCB universal para montagem,—,,,,6.00,,Alternativa: PCB shield ESP32 (arquivo KiCad em hardware/pcb/)
+1,Fios silicone 26 AWG,Cabagem geral (sortido 5 cores 50cm),—,,,,15.00,,Silicone suporta dobramento repetido
+1,Parafusos M2×8 (kit 20un),Fixação sensores e motores N20,M2 chave hex,,,,5.00,,
+1,Parafusos M3×10 (kit 20un),Fixação chassi e suportes,M3 chave hex,,,,5.00,,
+1,Porcas M2 (kit 20un),Par para parafusos M2,M2,,,,2.00,,
+1,Porcas M3 (kit 20un),Par para parafusos M3,M3,,,,2.00,,
+1,Espaçadores M3×5mm (kit 10un),Separar PCB do chassi,alumínio/nylon M3,,,,5.00,,
+1,Fita dupla-face 3M VHB,Fixação bateria e PCB,—,,,,8.00,,Alternativa: velcro para trocar bateria rápido
+1,Kit O-rings silicone 34mm,Pneu extra para rodas (reserva),—,,,,5.00,,Espessura ~2 mm; comprar 2 extras
+,,,,,,,,,
+,TOTAL ESTIMADO (R$),,,,,,423.00,,
