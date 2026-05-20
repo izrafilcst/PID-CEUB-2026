@@ -168,7 +168,6 @@ void BLETuner::update() {
 
 #else
 // ── Stubs native (testes unitários sem hardware) ───────────────────────────
-BLETuner::BLETuner() {}
 void BLETuner::begin(const char*) {}
 void BLETuner::update() {}
 void BLETuner::notifyInfo(const char*, const char*, const char*) {}
@@ -176,6 +175,9 @@ void BLETuner::notifyTelemetry(float, float, int, int, uint32_t,
                                 const float*, int, float,
                                 float, bool, const float*, int) {}
 #endif
+
+// Construtor trivial — válido em ambos os ambientes
+BLETuner::BLETuner() {}
 
 // ── API de consumo de flags (ambos os ambientes) ───────────────────────────
 

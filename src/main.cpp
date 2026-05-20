@@ -42,7 +42,7 @@ static SpeedProfile speedProfile(
     MIN_SPEED, BASE_SPEED_DEFAULT, MAX_SPEED, ERROR_THRESHOLD
 );
 
-static DifferentialDrive drive(BASE_SPEED_DEFAULT, MIN_SPEED, PWM_MAX);
+static DifferentialDrive drive(PWM_MAX);
 static LineFollower lineFollower(calibration, pid, speedProfile, drive);
 static LapTimer lapTimer;
 
