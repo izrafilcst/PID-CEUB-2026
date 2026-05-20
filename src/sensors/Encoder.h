@@ -50,6 +50,9 @@ private:
     void _applyTransition(uint8_t newState);
 
 #ifndef NATIVE_BUILD
-    static void IRAM_ATTR _isrTrampoline(void* ctx);
+    // IRAM_ATTR appears only on the definition (Encoder.cpp). On Arduino-ESP32
+    // GCC, the section attribute on a class-member declaration is parsed as
+    // a stray identifier ("variable or field 'IRAM_ATTR' declared void").
+    static void _isrTrampoline(void* ctx);
 #endif
 };
