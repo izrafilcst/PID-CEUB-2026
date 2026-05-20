@@ -14,6 +14,9 @@
 #define PIN_MOTOR_B_IN2      4
 #define PIN_MOTOR_STBY      23
 
+// ═══ ENCODERS Hall (Fase A — leitura quadratura 4×) ════════════════════════
+// GPIO 36 e 39 são input-only no ESP32 e não têm pull-up interno: use 10kΩ externo.
+// Resolução: 4 transições por período × PPR efetivo (medido na Fase B).
 #define PIN_ENC_LEFT_A      18
 #define PIN_ENC_LEFT_B      19
 #define PIN_ENC_RIGHT_A     36
