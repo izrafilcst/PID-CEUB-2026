@@ -80,11 +80,15 @@ static CascadeController cascade(pidVelL, pidVelR, MAX_RPM_DEFAULT, PWM_MAX);
 
 // ═══ Estado compartilhado Core 0 → Core 1 ══════════════════════════════════
 struct TelemetrySnapshot {
-    float    pos   = 0.0f;
-    float    corr  = 0.0f;
-    int      vL    = 0;
-    int      vR    = 0;
-    uint32_t dtUs  = 0;
+    float    pos       = 0.0f;
+    float    corr      = 0.0f;
+    int      vL        = 0;
+    int      vR        = 0;
+    uint32_t dtUs      = 0;
+    float    rpmL      = 0.0f;
+    float    rpmR      = 0.0f;
+    float    setpointL = 0.0f;
+    float    setpointR = 0.0f;
     float    sensorsPct[SENSOR_COUNT] = {};  // [0–100]
 };
 
@@ -346,11 +350,15 @@ void loop() {
                 int norm[SENSOR_COUNT];
                 calibration.normalize(raw, norm);
                 taskENTER_CRITICAL(&g_snapMux);
-                g_snap.pos  = normErr * 3500.0f;
-                g_snap.corr = static_cast<float>(leftPwm - rightPwm);
-                g_snap.vL   = leftPwm;
-                g_snap.vR   = rightPwm;
-                g_snap.dtUs = dtUs;
+                g_snap.pos       = normErr * 3500.0f;
+                g_snap.corr      = static_cast<float>(leftPwm - rightPwm);
+                g_snap.vL        = leftPwm;
+                g_snap.vR        = rightPwm;
+                g_snap.dtUs      = dtUs;
+                g_snap.rpmL      = velL.getRPM();
+                g_snap.rpmR      = velR.getRPM();
+                g_snap.setpointL = BASE_RPM_DEFAULT + correctionRpm;
+                g_snap.setpointR = BASE_RPM_DEFAULT - correctionRpm;
                 for (int i = 0; i < SENSOR_COUNT; i++)
                     g_snap.sensorsPct[i] = norm[i] / 10.0f;  // [0–1000] → [0–100]
                 taskEXIT_CRITICAL(&g_snapMux);
