@@ -230,6 +230,11 @@ void setup() {
     SPI.begin(PIN_SPI_CLK, PIN_SPI_MISO, PIN_SPI_MOSI, PIN_SPI_CS);
     sensors.begin();
     motors.begin();
+    encL.begin();
+    encR.begin();
+    nvs.begin("lfr");
+    velL.begin();
+    velR.begin();
     analogReadResolution(12);
 
     pinMode(PIN_BTN_START,  INPUT_PULLUP);

@@ -5,6 +5,10 @@
 #include <Arduino.h>
 #endif
 
+// Out-of-class definition required for GCC < 9 when the static constexpr
+// array is odr-used (address taken / passed to linker) — C++17 §9.4.2.
+constexpr int8_t Encoder::QUAD_TABLE[16];
+
 Encoder::Encoder(uint8_t pinA, uint8_t pinB)
     : _pinA(pinA), _pinB(pinB),
       _count(0), _lastReadCount(0), _lastState(0), _lastDir(0) {}
