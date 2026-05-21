@@ -44,6 +44,12 @@
 #define SENSOR_HEIGHT_MM      4
 #define LOOKAHEAD_MM         70
 
+// ═══ ENCODER / VELOCITY (Fase B) ═══════════════════════════════════════════
+// PPR_X4 default = 4 × PPR motor. N20 com encoder Hall típico = 7 PPR → 28 X4.
+// Auto-calibração via BLE sobrescreve esse valor e salva em NVS.
+#define ENCODER_DEFAULT_PPR_X4   28.0f
+#define VELOCITY_FILTER_ALPHA    0.3f  // 0 < α ≤ 1 — menor = mais suave, mais delay
+
 // ═══ PWM LEDC ═══
 #define PWM_FREQ         20000
 #define PWM_RESOLUTION      10
