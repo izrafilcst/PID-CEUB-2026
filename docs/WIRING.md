@@ -55,16 +55,29 @@ LiPo 2S 7.4V
 | H | H | – | Brake |
 | L | L | – | Coast |
 
-### N20 Motores + Encoders Hall
+### N20 Motores + Encoders Hall — Quadratura 4×
+
+A classe `Encoder` (src/sensors/Encoder.h) lê os 2 canais via interrupt
+`CHANGE` em ambos os pinos (4 transições por período do encoder).
 
 | Encoder | ESP32 GPIO | Notas |
 |---------|-----------|-------|
-| Esq. CH-A | GPIO 18 | Interrupção RISING |
-| Esq. CH-B | GPIO 19 | Quadratura direção |
-| Dir. CH-A | GPIO 36 (VP) | Input-only |
-| Dir. CH-B | GPIO 39 (VN) | Input-only |
+| Esq. CH-A | GPIO 18 | Pull-up interno (INPUT) |
+| Esq. CH-B | GPIO 19 | Pull-up interno (INPUT) |
+| Dir. CH-A | GPIO 36 (VP) | Input-only, **pull-up 10kΩ externo obrigatório** |
+| Dir. CH-B | GPIO 39 (VN) | Input-only, **pull-up 10kΩ externo obrigatório** |
 
-> GPIOs 36 e 39 são input-only (sem pull-up interno) — usar resistor 10kΩ externo para VCC.
+> ⚠️ **HARDWARE CHECKLIST OBRIGATÓRIO** — GPIO 36 e 39 são input-only RTC pins
+> sem pull-up interno. `pinMode(36, INPUT_PULLUP)` é silenciosamente ignorado
+> pelo HAL do Arduino-ESP32; o firmware usa `pinMode(36, INPUT)` para deixar
+> isso explícito. **Sem o resistor 10kΩ externo entre o pino e VCC, os pinos
+> ficam flutuando e o ISR dispara em ruído elétrico, "girando" o contador
+> sozinho e destruindo a estabilidade do PID interno.**
+
+```
+VCC (3.3V) ─── 10kΩ ─── GPIO 36 ─── Encoder Dir CH-A
+VCC (3.3V) ─── 10kΩ ─── GPIO 39 ─── Encoder Dir CH-B
+```
 
 ### Controles e Sensores Auxiliares
 

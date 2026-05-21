@@ -34,8 +34,9 @@ src/
 ├── config.h                  # Constantes, pinout, tuning params
 │
 ├── sensors/
-│   ├── SensorArray.h/.cpp    # Leitura MCP3008, calibração, posição
-│   └── Calibration.h/.cpp    # Armazenamento min/max, normalização
+│   ├── SensorArray.h/.cpp        # Leitura MCP3008, calibração, posição
+│   ├── Calibration.h/.cpp        # Armazenamento min/max, normalização
+│   └── Encoder.h/.cpp            # Quadratura 4× (Fase A — ISR ESP32)
 │
 ├── control/
 │   ├── PIDController.h/.cpp  # PID genérico (derivada no processo)
