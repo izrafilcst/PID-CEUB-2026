@@ -19,6 +19,7 @@ void LineFollower::update(const int* rawSensors, int& leftPwm, int& rightPwm,
 
     // Sinal positivo de correção → virar direita → PID inverte sinal do erro
     float correction = -_pid.compute(0.0f, position);
+    _lastCorrection = correction;  // expose for cascade integration
     int baseSpeed = _speed.compute(std::abs(normErr));
     _drive.compute(correction, baseSpeed, leftPwm, rightPwm);
 }
