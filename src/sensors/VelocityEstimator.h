@@ -51,10 +51,11 @@ private:
     Encoder&          _enc;
     IPersistentStore& _store;
     const char*       _keyPrefix;
-    // _key holds "<keyPrefix>_ppr" (≤ 23 chars + null). snprintf truncates
-    // safely; the plan uses "left"/"right" which fit easily.
-    char              _key[24];  // "<prefix>_ppr"
+    // _key holds "<keyPrefix>_ppr" (≤ 15 chars + null per ESP-IDF NVS limit).
+    // Construtor faz null-guard e clamp do prefix em 11 chars (15 − len("_ppr")).
+    char              _key[16];
     float             _pprX4;
     float             _alpha;
     float             _rpmFiltered;
+    bool              _calibrating;  // true entre startCalibration/finishCalibration
 };
