@@ -18,6 +18,10 @@
 #include "strategy/LapTimer.h"
 #include "comm/BLETuner.h"
 #include "comm/Logger.h"
+#include "sensors/Encoder.h"
+#include "sensors/VelocityEstimator.h"
+#include "storage/NvsStore.h"
+#include "control/CascadeController.h"
 
 // ═══ Estado da máquina ═════════════════════════════════════════════════════
 enum class RobotState : uint8_t { IDLE, CALIBRATING, READY, RUNNING, ERROR };
@@ -56,6 +60,23 @@ static MotorDriver::Config cfgB = {
     PIN_MOTOR_B_PWM, PIN_MOTOR_B_IN1, PIN_MOTOR_B_IN2, 1, PWM_FREQ, PWM_RESOLUTION
 };
 static MotorDriver motors(cfgA, cfgB, PIN_MOTOR_STBY);
+
+// ═══ Cascade PID — Fase C ════════════════════════════════════════════════════
+static Encoder encL(PIN_ENC_LEFT_A,  PIN_ENC_LEFT_B);
+static Encoder encR(PIN_ENC_RIGHT_A, PIN_ENC_RIGHT_B);
+
+static NvsStore nvs;
+static VelocityEstimator velL(encL, nvs, "left");
+static VelocityEstimator velR(encR, nvs, "right");
+
+static PIDController pidVelL(
+    KP_VEL_DEFAULT, KI_VEL_DEFAULT, KD_VEL_DEFAULT,
+    -static_cast<float>(PWM_MAX), +static_cast<float>(PWM_MAX), 0.002f);
+static PIDController pidVelR(
+    KP_VEL_DEFAULT, KI_VEL_DEFAULT, KD_VEL_DEFAULT,
+    -static_cast<float>(PWM_MAX), +static_cast<float>(PWM_MAX), 0.002f);
+
+static CascadeController cascade(pidVelL, pidVelR, MAX_RPM_DEFAULT, PWM_MAX);
 
 // ═══ Estado compartilhado Core 0 → Core 1 ══════════════════════════════════
 struct TelemetrySnapshot {
