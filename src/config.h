@@ -50,6 +50,17 @@
 #define ENCODER_DEFAULT_PPR_X4   28.0f
 #define VELOCITY_FILTER_ALPHA    0.3f  // 0 ≤ α ≤ 1 — menor = mais suave, mais delay (α=0 congela)
 
+// ═══ CASCADE PID (Fase C — controle interno de velocidade) ═════════════════
+// Ganhos INICIAIS conservadores; sintonizar via BLE em pista.
+#define KP_VEL_DEFAULT   0.8f
+#define KI_VEL_DEFAULT   0.0f
+#define KD_VEL_DEFAULT   0.05f
+
+// Faixa esperada de RPM no shaft de saída — N20 1500 RPM @ 6V.
+// MAX_RPM é o teto absoluto (clamp); BASE_RPM é o alvo nominal em reta.
+#define MAX_RPM_DEFAULT  1200.0f
+#define BASE_RPM_DEFAULT  600.0f
+
 // ═══ PWM LEDC ═══
 #define PWM_FREQ         20000
 #define PWM_RESOLUTION      10
