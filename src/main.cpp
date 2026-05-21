@@ -292,18 +292,50 @@ void loop() {
 
         case RobotState::RUNNING: {
             uint32_t loopStart = micros();
+            // MED-1: usa dt real em vez de constante; previne erro acumulado
+            // na primeira iteração (prevLoopStart == 0 → assume 2 ms).
+            static uint32_t prevLoopStart = 0;
+            uint32_t dtMs = (prevLoopStart == 0) ? 2 : ((loopStart - prevLoopStart) / 1000);
+            prevLoopStart = loopStart;
 
+            // 1. Atualiza estimadores de velocidade com dt real do loop
+            velL.update(dtMs);
+            velR.update(dtMs);
+
+            // 2. Lê sensores de linha
             int raw[SENSOR_COUNT];
             sensors.readAll(raw);
 
-            int   leftPwm  = 0;
-            int   rightPwm = 0;
+            // 3. PID externo via LineFollower (dentro do mux crítico).
+            //    discardL/R são ignorados — pegamos a correção pura via getLastCorrection().
+            int   discardL = 0;
+            int   discardR = 0;
             float normErr  = 0.0f;
 
             taskENTER_CRITICAL(&lineFollowerMux);
-            lineFollower.update(raw, leftPwm, rightPwm, &normErr);
+            lineFollower.update(raw, discardL, discardR, &normErr);
+            // HIGH-1: usa getLastCorrection() para evitar perda de informação
+            // quando os PWMs ficam clamped (fórmula (L-R)/2 fica incorreta nesses casos).
+            float correctionPwm = lineFollower.getLastCorrection();
             taskEXIT_CRITICAL(&lineFollowerMux);
 
+            // 4. Converte correção PWM-scale → RPM-scale para o cascade.
+            float correctionRpm = correctionPwm * (BASE_RPM_DEFAULT / static_cast<float>(PWM_MAX));
+
+            // 5. Valida RPM (NVS pode ter retornado NaN/Inf na primeira leitura).
+            float rpmLActual = velL.getRPM();
+            float rpmRActual = velR.getRPM();
+            if (!std::isfinite(rpmLActual)) rpmLActual = 0.0f;
+            if (!std::isfinite(rpmRActual)) rpmRActual = 0.0f;
+
+            // 6. Cascade: fecha malha de velocidade em ambos os motores.
+            int leftPwm  = 0;
+            int rightPwm = 0;
+            cascade.compute(correctionRpm, BASE_RPM_DEFAULT,
+                            rpmLActual, rpmRActual,
+                            leftPwm, rightPwm);
+
+            // 7. Aplica PWM nos motores
             motors.setSpeed(MotorId::A, leftPwm);
             motors.setSpeed(MotorId::B, rightPwm);
 
