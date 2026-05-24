@@ -99,6 +99,17 @@ static portMUX_TYPE        lineFollowerMux  = portMUX_INITIALIZER_UNLOCKED;
 static uint32_t            calStart         = 0;
 static constexpr uint32_t  CAL_DURATION_MS  = 5000;
 
+// Estado do cascade — escopo de arquivo p/ permitir reset em transições READY→RUNNING.
+// M-1 (Reviewer) + MS-1 (Security): stale prevLoopStart causa dt fora de escala
+// no 1º tick após re-entry; encoders acumulam pulsos durante IDLE/READY.
+static uint32_t g_prevLoopStart = 0;
+
+static void resetCascadeState() {
+    g_prevLoopStart = 0;
+    velL.update(0);   // Fase B: update(0) drena delta sem atualizar IIR
+    velR.update(0);
+}
+
 // ═══ Bateria ════════════════════════════════════════════════════════════════
 // Divisor: 100 kΩ / 47 kΩ → Vout = Vin × 47/147. LiPo 2S: 6.4–8.4 V.
 static float readBatteryPct() {
@@ -163,6 +174,7 @@ static void taskComm(void* /*pvParameters*/) {
         if (ble.consumeStart() && robotState.load() == RobotState::READY) {
             pid.reset();
             lineFollower.reset();
+            resetCascadeState();
             lapTimer.start(millis());
             logger.setEnabled(true);
             robotState.store(RobotState::RUNNING, std::memory_order_release);
@@ -287,6 +299,7 @@ void loop() {
             if (btnPressed()) {
                 pid.reset();
                 lineFollower.reset();
+                resetCascadeState();
                 lapTimer.start(millis());
                 logger.setEnabled(true);
                 robotState.store(RobotState::RUNNING, std::memory_order_release);
@@ -296,11 +309,10 @@ void loop() {
 
         case RobotState::RUNNING: {
             uint32_t loopStart = micros();
-            // MED-1: usa dt real em vez de constante; previne erro acumulado
-            // na primeira iteração (prevLoopStart == 0 → assume 2 ms).
-            static uint32_t prevLoopStart = 0;
-            uint32_t dtMs = (prevLoopStart == 0) ? 2 : ((loopStart - prevLoopStart) / 1000);
-            prevLoopStart = loopStart;
+            // MED-1: dt real; M-1: g_prevLoopStart é resetado em resetCascadeState()
+            // a cada re-entry no estado, evitando dt stale após STOP/START.
+            uint32_t dtMs = (g_prevLoopStart == 0) ? 2 : ((loopStart - g_prevLoopStart) / 1000);
+            g_prevLoopStart = loopStart;
 
             // 1. Atualiza estimadores de velocidade com dt real do loop
             velL.update(dtMs);
@@ -324,7 +336,10 @@ void loop() {
             taskEXIT_CRITICAL(&lineFollowerMux);
 
             // 4. Converte correção PWM-scale → RPM-scale para o cascade.
-            float correctionRpm = correctionPwm * (BASE_RPM_DEFAULT / static_cast<float>(PWM_MAX));
+            // H-1 (Reviewer): correctionPwm tem range [-PWM_MAX, +PWM_MAX]; deve
+            // mapear para [-MAX_RPM, +MAX_RPM] para preservar autoridade total da
+            // malha externa. Usar BASE_RPM aqui comprimia o range em ~50%.
+            float correctionRpm = correctionPwm * (MAX_RPM_DEFAULT / static_cast<float>(PWM_MAX));
 
             // 5. Valida RPM (NVS pode ter retornado NaN/Inf na primeira leitura).
             float rpmLActual = velL.getRPM();
@@ -351,12 +366,18 @@ void loop() {
                 calibration.normalize(raw, norm);
                 taskENTER_CRITICAL(&g_snapMux);
                 g_snap.pos       = normErr * 3500.0f;
+                // M-2 (Reviewer): semântica de `corr` agora é diff dos PWMs internos do
+                // cascade (não mais saída do PID externo). Renomear o campo é Fase D scope;
+                // por ora documentamos. Para correção pura da malha externa, usar telemetry
+                // de getLastCorrection() (a expor) em Fase D.
                 g_snap.corr      = static_cast<float>(leftPwm - rightPwm);
                 g_snap.vL        = leftPwm;
                 g_snap.vR        = rightPwm;
                 g_snap.dtUs      = dtUs;
-                g_snap.rpmL      = velL.getRPM();
-                g_snap.rpmR      = velR.getRPM();
+                // C-1 (Reviewer): reusa rpmLActual/rpmRActual já validados via isfinite
+                // em vez de chamar getRPM() de novo (TOCTOU defensivo).
+                g_snap.rpmL      = rpmLActual;
+                g_snap.rpmR      = rpmRActual;
                 g_snap.setpointL = BASE_RPM_DEFAULT + correctionRpm;
                 g_snap.setpointR = BASE_RPM_DEFAULT - correctionRpm;
                 for (int i = 0; i < SENSOR_COUNT; i++)

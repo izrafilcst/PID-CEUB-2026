@@ -7,7 +7,12 @@
 
 // Out-of-class definition required for GCC < 9 when the static constexpr
 // array is odr-used (address taken / passed to linker) — C++17 §9.4.2.
+// GCC 9+ treats in-class static constexpr as implicitly inline (C++17 rule)
+// and emits -Wredundant-decls when the out-of-class definition is present.
+// Arduino-ESP32 toolchain is GCC 8.4 → required; native host (GCC 11+) → skip.
+#if defined(__GNUC__) && (__GNUC__ < 9)
 constexpr int8_t Encoder::QUAD_TABLE[16];
+#endif
 
 Encoder::Encoder(uint8_t pinA, uint8_t pinB)
     : _pinA(pinA), _pinB(pinB),
