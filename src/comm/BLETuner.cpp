@@ -77,7 +77,12 @@ void BLETuner::_onWrite(const std::string& val) {
     tp += 5;  // avança após "t":"
 
     taskENTER_CRITICAL(&_mux);
-    if (strncmp(tp, "pid", 3) == 0) {
+    if (strncmp(tp, "pidv", 4) == 0) {
+        _velPid.kp = jsonFloat(json, "kp", _velPid.kp);
+        _velPid.ki = jsonFloat(json, "ki", _velPid.ki);
+        _velPid.kd = jsonFloat(json, "kd", _velPid.kd);
+        _newVelPID = true;
+    } else if (strncmp(tp, "pid", 3) == 0) {
         _pid.kp = jsonFloat(json, "kp", _pid.kp);
         _pid.ki = jsonFloat(json, "ki", _pid.ki);
         _pid.kd = jsonFloat(json, "kd", _pid.kd);
@@ -88,6 +93,24 @@ void BLETuner::_onWrite(const std::string& val) {
         _speed.maxSpeed  = jsonInt(json,  "max",  _speed.maxSpeed);
         _speed.threshold = jsonFloat(json, "thrs", _speed.threshold);
         _newSpeed = true;
+    } else if (strncmp(tp, "rpm", 3) == 0) {
+        _rpm.maxRpm  = jsonFloat(json, "max",  _rpm.maxRpm);
+        _rpm.baseRpm = jsonFloat(json, "base", _rpm.baseRpm);
+        _newRpm = true;
+    } else if (strncmp(tp, "cal", 3) == 0) {
+        const char* op = strstr(json, "\"op\":\"");
+        if (op) {
+            op += 6;
+            if (strncmp(op, "start", 5) == 0) {
+                _cal.op = CalibrationCmd::Op::START;
+            } else if (strncmp(op, "finish", 6) == 0) {
+                _cal.op = CalibrationCmd::Op::FINISH;
+            }
+            _cal.rotations = jsonInt(json, "rot", 10);
+            const char* sd = strstr(json, "\"side\":\"");
+            _cal.leftSide = !(sd && sd[8] == 'R');
+            _newCal = true;
+        }
     } else if (strncmp(tp, "start", 5) == 0) {
         _cmdStart = true;
     } else if (strncmp(tp, "stop", 4) == 0) {
@@ -117,6 +140,7 @@ void BLETuner::notifyInfo(const char* name, const char* fw, const char* mode) {
 // ── notifyTelemetry ────────────────────────────────────────────────────────
 
 void BLETuner::notifyTelemetry(float pos, float corr, int vL, int vR, uint32_t dtUs,
+                                float rpmL, float rpmR, float spL, float spR,
                                 const float* sensors, int nSensors, float batPct,
                                 float bestLapSec, bool hasLap,
                                 const float* laps, int nLaps) {
@@ -150,11 +174,14 @@ void BLETuner::notifyTelemetry(float pos, float corr, int vL, int vR, uint32_t d
     if (hasLap) snprintf(lapVal, sizeof(lapVal), "%.2f", bestLapSec);
     else        snprintf(lapVal, sizeof(lapVal), "null");
 
-    char buf[320];
+    char buf[400];
     snprintf(buf, sizeof(buf),
         "{\"t\":\"tel\",\"pos\":%.1f,\"corr\":%.1f,\"vL\":%d,\"vR\":%d,"
-        "\"dt\":%lu,\"s\":%s,\"bat\":%.1f,\"lap\":%s,\"laps\":%s}",
-        pos, corr, vL, vR, static_cast<unsigned long>(dtUs), sarr, batPct, lapVal, larr);
+        "\"dt\":%lu,\"rpmL\":%.1f,\"rpmR\":%.1f,\"spL\":%.1f,\"spR\":%.1f,"
+        "\"s\":%s,\"bat\":%.1f,\"lap\":%s,\"laps\":%s}",
+        pos, corr, vL, vR, static_cast<unsigned long>(dtUs),
+        rpmL, rpmR, spL, spR,
+        sarr, batPct, lapVal, larr);
 
     _charTel->setValue(buf);
     _charTel->notify();
@@ -172,6 +199,7 @@ void BLETuner::begin(const char*) {}
 void BLETuner::update() {}
 void BLETuner::notifyInfo(const char*, const char*, const char*) {}
 void BLETuner::notifyTelemetry(float, float, int, int, uint32_t,
+                                float, float, float, float,
                                 const float*, int, float,
                                 float, bool, const float*, int) {}
 #endif
@@ -273,4 +301,74 @@ bool BLETuner::consumeNewConnection() {
     taskEXIT_CRITICAL(&_mux);
 #endif
     return v;
+}
+
+bool BLETuner::hasNewVelocityPID() const {
+#ifndef NATIVE_BUILD
+    taskENTER_CRITICAL(&const_cast<BLETuner*>(this)->_mux);
+#endif
+    bool v = _newVelPID;
+#ifndef NATIVE_BUILD
+    taskEXIT_CRITICAL(&const_cast<BLETuner*>(this)->_mux);
+#endif
+    return v;
+}
+
+bool BLETuner::hasNewRpm() const {
+#ifndef NATIVE_BUILD
+    taskENTER_CRITICAL(&const_cast<BLETuner*>(this)->_mux);
+#endif
+    bool v = _newRpm;
+#ifndef NATIVE_BUILD
+    taskEXIT_CRITICAL(&const_cast<BLETuner*>(this)->_mux);
+#endif
+    return v;
+}
+
+bool BLETuner::hasNewCalibration() const {
+#ifndef NATIVE_BUILD
+    taskENTER_CRITICAL(&const_cast<BLETuner*>(this)->_mux);
+#endif
+    bool v = _newCal;
+#ifndef NATIVE_BUILD
+    taskEXIT_CRITICAL(&const_cast<BLETuner*>(this)->_mux);
+#endif
+    return v;
+}
+
+VelocityPIDParams BLETuner::getVelocityPID() {
+#ifndef NATIVE_BUILD
+    taskENTER_CRITICAL(&_mux);
+#endif
+    VelocityPIDParams p = _velPid;
+    _newVelPID = false;
+#ifndef NATIVE_BUILD
+    taskEXIT_CRITICAL(&_mux);
+#endif
+    return p;
+}
+
+RpmParams BLETuner::getRpm() {
+#ifndef NATIVE_BUILD
+    taskENTER_CRITICAL(&_mux);
+#endif
+    RpmParams r = _rpm;
+    _newRpm = false;
+#ifndef NATIVE_BUILD
+    taskEXIT_CRITICAL(&_mux);
+#endif
+    return r;
+}
+
+CalibrationCmd BLETuner::getCalibration() {
+#ifndef NATIVE_BUILD
+    taskENTER_CRITICAL(&_mux);
+#endif
+    CalibrationCmd c = _cal;
+    _newCal = false;
+    _cal.op = CalibrationCmd::Op::NONE;
+#ifndef NATIVE_BUILD
+    taskEXIT_CRITICAL(&_mux);
+#endif
+    return c;
 }
