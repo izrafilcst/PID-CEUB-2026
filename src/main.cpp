@@ -94,6 +94,7 @@ struct TelemetrySnapshot {
 
 static TelemetrySnapshot   g_snap;
 static portMUX_TYPE        g_snapMux        = portMUX_INITIALIZER_UNLOCKED;
+static volatile float      g_baseRpm        = BASE_RPM_DEFAULT;  // mutável via BLE
 static std::atomic<RobotState> robotState{RobotState::IDLE};
 static portMUX_TYPE        lineFollowerMux  = portMUX_INITIALIZER_UNLOCKED;
 static uint32_t            calStart         = 0;
@@ -170,6 +171,56 @@ static void taskComm(void* /*pvParameters*/) {
             taskEXIT_CRITICAL(&lineFollowerMux);
         }
 
+        // Aplica ganhos do PID interno de velocidade
+        if (ble.hasNewVelocityPID()) {
+            VelocityPIDParams p = ble.getVelocityPID();
+            // Hardening (Wave 3): ganho negativo inverte o sinal da malha
+            // (realimentação positiva → descontrole). NaN/Inf → 0. Piso em 0.
+            float kp = (std::isfinite(p.kp) && p.kp >= 0.0f) ? p.kp : 0.0f;
+            float ki = (std::isfinite(p.ki) && p.ki >= 0.0f) ? p.ki : 0.0f;
+            float kd = (std::isfinite(p.kd) && p.kd >= 0.0f) ? p.kd : 0.0f;
+            taskENTER_CRITICAL(&lineFollowerMux);
+            cascade.setInnerGains(kp, ki, kd);
+            taskEXIT_CRITICAL(&lineFollowerMux);
+        }
+
+        // Aplica novo MAX_RPM (clamp do cascade)
+        if (ble.hasNewRpm()) {
+            RpmParams r = ble.getRpm();
+            // Hardening (Wave 3): clampa comandos BLE à faixa física antes de
+            // tocar a malha. max inválido/≤0 → default; base confinada a [0,max].
+            float maxRpm  = (std::isfinite(r.maxRpm) && r.maxRpm > 0.0f)
+                          ? (r.maxRpm < RPM_HARD_CEILING ? r.maxRpm : RPM_HARD_CEILING)
+                          : MAX_RPM_DEFAULT;
+            float baseRpm = (std::isfinite(r.baseRpm) && r.baseRpm >= 0.0f)
+                          ? (r.baseRpm < maxRpm ? r.baseRpm : maxRpm)
+                          : 0.0f;
+            taskENTER_CRITICAL(&lineFollowerMux);
+            cascade.setMaxRpm(maxRpm);
+            g_baseRpm = baseRpm;
+            taskEXIT_CRITICAL(&lineFollowerMux);
+        }
+
+        // Comando de calibração de encoder
+        if (ble.hasNewCalibration()) {
+            CalibrationCmd c = ble.getCalibration();
+            VelocityEstimator& target = c.leftSide ? velL : velR;
+            if (c.op == CalibrationCmd::Op::START) {
+                target.startCalibration();
+                beep(50);
+            } else if (c.op == CalibrationCmd::Op::FINISH) {
+                bool ok = target.finishCalibration(c.rotations);
+                beep(ok ? 200 : 500);
+                char buf[40];
+                snprintf(buf, sizeof(buf), "%.2f", target.getEffectivePPR());
+                // NOTE: notifyInfo(name, fw, mode) — fw/mode fields are repurposed
+                // as status/value for this confirmation message. Tracked as known
+                // deviation; proper fix (new overload) is out of Fase D scope.
+                ble.notifyInfo(c.leftSide ? "CAL_L" : "CAL_R",
+                               ok ? "OK" : "FAIL", buf);
+            }
+        }
+
         // Comandos de controle remoto via BLE
         if (ble.consumeStart() && robotState.load() == RobotState::READY) {
             pid.reset();
@@ -229,6 +280,7 @@ static void taskComm(void* /*pvParameters*/) {
 
             ble.notifyTelemetry(
                 snap.pos, snap.corr, snap.vL, snap.vR, snap.dtUs,
+                snap.rpmL, snap.rpmR, snap.setpointL, snap.setpointR,
                 snap.sensorsPct, SENSOR_COUNT,
                 batPct, bestLap, hasLap, laps, nLaps
             );
@@ -350,7 +402,7 @@ void loop() {
             // 6. Cascade: fecha malha de velocidade em ambos os motores.
             int leftPwm  = 0;
             int rightPwm = 0;
-            cascade.compute(correctionRpm, BASE_RPM_DEFAULT,
+            cascade.compute(correctionRpm, g_baseRpm,
                             rpmLActual, rpmRActual,
                             leftPwm, rightPwm);
 
@@ -378,8 +430,8 @@ void loop() {
                 // em vez de chamar getRPM() de novo (TOCTOU defensivo).
                 g_snap.rpmL      = rpmLActual;
                 g_snap.rpmR      = rpmRActual;
-                g_snap.setpointL = BASE_RPM_DEFAULT + correctionRpm;
-                g_snap.setpointR = BASE_RPM_DEFAULT - correctionRpm;
+                g_snap.setpointL = g_baseRpm + correctionRpm;
+                g_snap.setpointR = g_baseRpm - correctionRpm;
                 for (int i = 0; i < SENSOR_COUNT; i++)
                     g_snap.sensorsPct[i] = norm[i] / 10.0f;  // [0–1000] → [0–100]
                 taskEXIT_CRITICAL(&g_snapMux);

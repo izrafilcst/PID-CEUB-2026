@@ -61,6 +61,11 @@
 #define MAX_RPM_DEFAULT  1200.0f
 #define BASE_RPM_DEFAULT  600.0f
 
+// Teto físico absoluto p/ comandos de RPM vindos via BLE. Impede que um write
+// malicioso/acidental comande velocidade fora da faixa física do N20
+// (~1500 RPM @ 6V) — evita runaway e overflow do buffer de telemetria.
+#define RPM_HARD_CEILING 2000.0f
+
 // ═══ PWM LEDC ═══
 #define PWM_FREQ         20000
 #define PWM_RESOLUTION      10
