@@ -1,0 +1,71 @@
+<h2>Como a NN se encaixa no controlador?</h2>
+<p class="subtitle">Três arquiteturas — diferentes tradeoffs entre facilidade de treino e potência. Minha recomendação está marcada.</p>
+
+<div class="options">
+  <div class="option" data-choice="residual" onclick="toggleSelect(this)" style="border: 2px solid #4ade80;">
+    <div class="letter" style="background:#4ade80;color:#000;">A ★</div>
+    <div class="content">
+      <h3>Camada de Correção Residual <span style="font-size:0.8em;color:#4ade80;">(Recomendado)</span></h3>
+      <p>O PID roda sempre. A NN monitora sensores + encoders e, quando detecta slip ou linha perdida, injeta um delta de correção na saída do PID + ajusta o EDF.</p>
+      <br>
+      <div class="mockup">
+        <div class="mockup-header">Fluxo de controle</div>
+        <div class="mockup-body" style="font-family:monospace;font-size:0.85em;line-height:1.8;">
+          Sensores → PID → pwm_base<br>
+          Sensores + Encoders + Inércia → <strong>NN</strong> → Δpwm_L, Δpwm_R, pwm_EDF<br>
+          <strong>Saída final = pwm_base + Δpwm</strong> (só quando slip_detected)
+        </div>
+      </div>
+      <br>
+      <div class="pros-cons">
+        <div class="pros"><h4>Prós</h4><ul><li>Action space pequeno → treina rápido (PPO converge em ~500k steps)</li><li>Seguro: PID garante comportamento baseline</li><li>NN só ativa em condições adversariais</li><li>Mais fácil de validar e debugar</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>Precisa definir o trigger de slip (threshold)</li><li>Teto de performance limitado pelo PID base</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="gain-sched" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Adaptação de Ganhos (Gain Scheduling)</h3>
+      <p>O PID ainda executa. A NN ajusta continuamente Kp, Kd e o setpoint de base RPM conforme as condições de pista. EDF também é controlado pela NN.</p>
+      <br>
+      <div class="mockup">
+        <div class="mockup-header">Fluxo de controle</div>
+        <div class="mockup-body" style="font-family:monospace;font-size:0.85em;line-height:1.8;">
+          Sensores + Encoders → <strong>NN</strong> → Kp, Kd, base_rpm, pwm_EDF<br>
+          → PID(Kp, Kd) → pwm_L, pwm_R
+        </div>
+      </div>
+      <br>
+      <div class="pros-cons">
+        <div class="pros"><h4>Prós</h4><ul><li>NN aprende controle adaptativo (estado da arte em robótica)</li><li>Generaliza melhor para pistas variadas</li><li>Action space ainda interpretável</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>Action space maior (4 dimensões contínuas)</li><li>Mais difícil de estabilizar o treino</li><li>~2–3M steps para convergir</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="full-replace" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Substituição Total do PID</h3>
+      <p>A NN controla diretamente [pwm_L, pwm_R, pwm_EDF]. O PID é removido no modo Offroad. A NN aprende tudo do zero.</p>
+      <br>
+      <div class="mockup">
+        <div class="mockup-header">Fluxo de controle</div>
+        <div class="mockup-body" style="font-family:monospace;font-size:0.85em;line-height:1.8;">
+          Sensores + Encoders + Inércia → <strong>NN</strong> → pwm_L, pwm_R, pwm_EDF
+        </div>
+      </div>
+      <br>
+      <div class="pros-cons">
+        <div class="pros"><h4>Prós</h4><ul><li>Máxima liberdade de aprendizado</li><li>Potencial performance além do PID manual</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>Sample inefficiente: 10–50M steps</li><li>Muito difícil de garantir segurança</li><li>O PID bem tunado que temos é desperdício</li><li>Requer curriculum learning (pista fácil → difícil)</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top:1.5rem;padding:1rem;background:rgba(74,222,128,0.1);border-left:3px solid #4ade80;border-radius:4px;">
+  <strong>Minha recomendação: A — Correção Residual.</strong> O PID que você já tem é bem tunado para pista limpa. A NN precisa só aprender o que o PID <em>não consegue fazer</em> — recuperação de slip, manutenção de downforce em curvas de alta velocidade. Menor action space = convergência mais rápida = resultado em semanas, não meses.
+</p>

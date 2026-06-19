@@ -8,3 +8,12 @@ __pycache__/
 .playwright-mcp/
 *.png
 lfr-js.js
+
+# Superpowers brainstorming sessions
+.superpowers/
+
+# Graphify outputs
+graphify-out/
+
+# Vector DB
+ruvector.db

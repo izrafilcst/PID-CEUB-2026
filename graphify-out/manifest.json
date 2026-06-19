@@ -1,0 +1,330 @@
+{
+  "/home/linux/dev/carro-pid/lfr-js.js": {
+    "mtime": 1780202059.0413296,
+    "hash": "a647b31a00addf145803b81de463e103"
+  },
+  "/home/linux/dev/carro-pid/examples/sensor_calibration_test.cpp": {
+    "mtime": 1778814451.154083,
+    "hash": "f3d9c4655983a2d08969c30c0862378e"
+  },
+  "/home/linux/dev/carro-pid/examples/sensor_raw_test.cpp": {
+    "mtime": 1778814451.155083,
+    "hash": "f5fa0b3956088806595743ac78c43765"
+  },
+  "/home/linux/dev/carro-pid/examples/differential_hw_test.cpp": {
+    "mtime": 1778814451.152083,
+    "hash": "af352b8d0a1103c738fb52a713f44cbe"
+  },
+  "/home/linux/dev/carro-pid/examples/velocity_calibration_test.cpp": {
+    "mtime": 1779404965.4603548,
+    "hash": "da30d3cb3bd5bd775c5683775940bb56"
+  },
+  "/home/linux/dev/carro-pid/examples/motor_smoke_test.cpp": {
+    "mtime": 1778814451.1530828,
+    "hash": "d575e2ad9fffcd7100329d0d5dcf7efc"
+  },
+  "/home/linux/dev/carro-pid/examples/encoder_smoke_test.cpp": {
+    "mtime": 1779315684.5439703,
+    "hash": "a74d9721bcffcd56975ddb04533573c2"
+  },
+  "/home/linux/dev/carro-pid/src/config.h": {
+    "mtime": 1780276620.0260336,
+    "hash": "19df87805a3abd20003256f444cbce5e"
+  },
+  "/home/linux/dev/carro-pid/src/main.cpp": {
+    "mtime": 1780276620.0270333,
+    "hash": "6183035264cf23867da50f4455e24602"
+  },
+  "/home/linux/dev/carro-pid/src/control/CascadeController.h": {
+    "mtime": 1779405770.0052366,
+    "hash": "dc42d09793cd28db113b2fa850f9cc1a"
+  },
+  "/home/linux/dev/carro-pid/src/control/VelocityProfile.cpp": {
+    "mtime": 1778814451.2010822,
+    "hash": "b90c37120777b292af6ffd17e31a96ea"
+  },
+  "/home/linux/dev/carro-pid/src/control/PIDController.h": {
+    "mtime": 1778814451.1660826,
+    "hash": "0646001133bac0c05f1c0c77dbe4d2df"
+  },
+  "/home/linux/dev/carro-pid/src/control/VelocityProfile.h": {
+    "mtime": 1778814451.2010822,
+    "hash": "ee551f0b1da625398bc80e8600f956e4"
+  },
+  "/home/linux/dev/carro-pid/src/control/CascadeController.cpp": {
+    "mtime": 1779406373.8729134,
+    "hash": "094d9714fe3a4546a236dfb1a7c4c1bd"
+  },
+  "/home/linux/dev/carro-pid/src/control/SpeedProfile.cpp": {
+    "mtime": 1778814451.158886,
+    "hash": "31f801ff547d3ce36ca6f328bbb18f9c"
+  },
+  "/home/linux/dev/carro-pid/src/control/PIDController.cpp": {
+    "mtime": 1778814451.1660826,
+    "hash": "7b03e6e3e4e8d37a892a0277cfe63c29"
+  },
+  "/home/linux/dev/carro-pid/src/control/SpeedProfile.h": {
+    "mtime": 1778814451.159083,
+    "hash": "73913d261b63dfce979d48ac593ea206"
+  },
+  "/home/linux/dev/carro-pid/src/storage/IPersistentStore.h": {
+    "mtime": 1779404605.8010275,
+    "hash": "73442b24fe22a5614cdfde86754e14b7"
+  },
+  "/home/linux/dev/carro-pid/src/storage/NvsStore.h": {
+    "mtime": 1779404896.006656,
+    "hash": "21d8d4d1e9408bcb75509b7f4054cafc"
+  },
+  "/home/linux/dev/carro-pid/src/storage/NvsStore.cpp": {
+    "mtime": 1779404905.83733,
+    "hash": "bae68c8ecdf5d181700bf26b683f22f1"
+  },
+  "/home/linux/dev/carro-pid/src/storage/InMemoryStore.h": {
+    "mtime": 1779404615.3819702,
+    "hash": "9e714890d032b69af9fa7ae3fa3e59bf"
+  },
+  "/home/linux/dev/carro-pid/src/strategy/LapTimer.cpp": {
+    "mtime": 1778814451.2010822,
+    "hash": "ba43b0493c191ebab46cce474c927f47"
+  },
+  "/home/linux/dev/carro-pid/src/strategy/LineFollower.h": {
+    "mtime": 1779405834.0576153,
+    "hash": "5a989d9991d3bc7a19cc6e86b6dca6cd"
+  },
+  "/home/linux/dev/carro-pid/src/strategy/LineFollower.cpp": {
+    "mtime": 1779405841.1752403,
+    "hash": "02348257e701caf9f7c17a9e38004331"
+  },
+  "/home/linux/dev/carro-pid/src/strategy/LapTimer.h": {
+    "mtime": 1778814451.2010822,
+    "hash": "48700ac2580532aee92cbe6779a5846f"
+  },
+  "/home/linux/dev/carro-pid/src/sensors/SensorArray.cpp": {
+    "mtime": 1778814451.1604693,
+    "hash": "7bd6336a2a23bedc8588a1538f4e5536"
+  },
+  "/home/linux/dev/carro-pid/src/sensors/Calibration.cpp": {
+    "mtime": 1778814451.1660826,
+    "hash": "7a91aef9bdbbc420a8c016d7b252bb78"
+  },
+  "/home/linux/dev/carro-pid/src/sensors/SensorArray.h": {
+    "mtime": 1778814451.1604693,
+    "hash": "882631c3e2245e03d896ec3dcc0e37e1"
+  },
+  "/home/linux/dev/carro-pid/src/sensors/Calibration.h": {
+    "mtime": 1778814451.1660826,
+    "hash": "4931d1755549d125db3a63c16971bca8"
+  },
+  "/home/linux/dev/carro-pid/src/sensors/VelocityEstimator.cpp": {
+    "mtime": 1779405380.1126375,
+    "hash": "5e7204b9f4212f301ef68e1d11ad03d3"
+  },
+  "/home/linux/dev/carro-pid/src/sensors/Encoder.cpp": {
+    "mtime": 1779647453.9568818,
+    "hash": "ee7c7b1b539bfc1f1e974275d0ebc4f2"
+  },
+  "/home/linux/dev/carro-pid/src/sensors/VelocityEstimator.h": {
+    "mtime": 1779405337.0509887,
+    "hash": "db55534f978382ba56b37f5e4c1f2c02"
+  },
+  "/home/linux/dev/carro-pid/src/sensors/Encoder.h": {
+    "mtime": 1779320743.2626944,
+    "hash": "7a108b737544fd1c99fc564b2f678f85"
+  },
+  "/home/linux/dev/carro-pid/src/comm/Logger.cpp": {
+    "mtime": 1778814451.1578188,
+    "hash": "2367c27e08a4343874b9c57e5a7453ca"
+  },
+  "/home/linux/dev/carro-pid/src/comm/Logger.h": {
+    "mtime": 1778814451.1580827,
+    "hash": "3afeb423e438cdd4444e3341d6c0abb4"
+  },
+  "/home/linux/dev/carro-pid/src/comm/BLETuner.cpp": {
+    "mtime": 1780276620.0260336,
+    "hash": "f53cbdbac31efda05aa4d55ff1eaffda"
+  },
+  "/home/linux/dev/carro-pid/src/comm/BLETuner.h": {
+    "mtime": 1780276620.0260336,
+    "hash": "b60517362b2207884f3e4f978c5ec9d2"
+  },
+  "/home/linux/dev/carro-pid/src/motors/DifferentialDrive.h": {
+    "mtime": 1778814451.1660826,
+    "hash": "0a1121b85d48a282f79d7fe590f7e263"
+  },
+  "/home/linux/dev/carro-pid/src/motors/MotorDriver.h": {
+    "mtime": 1778814451.1600075,
+    "hash": "9b101df0ededa608a32c5bf553ae588c"
+  },
+  "/home/linux/dev/carro-pid/src/motors/DifferentialDrive.cpp": {
+    "mtime": 1778814451.1660826,
+    "hash": "879984f633428a708d1da516b4cc6303"
+  },
+  "/home/linux/dev/carro-pid/src/motors/MotorDriver.cpp": {
+    "mtime": 1778814451.1660826,
+    "hash": "a39b8ce25e7f7b09198f4a67049313f8"
+  },
+  "/home/linux/dev/carro-pid/tools/analyze_telemetry.py": {
+    "mtime": 1778814451.1870823,
+    "hash": "61dd9910ffed6e16b636a93524398655"
+  },
+  "/home/linux/dev/carro-pid/docs/dashboard/lfr_sim.py": {
+    "mtime": 1779025134.91641,
+    "hash": "0f8c523bb50fd053565f0782c0bfe7fd"
+  },
+  "/home/linux/dev/carro-pid/docs/dashboard/motion.js": {
+    "mtime": 1778963404.7828653,
+    "hash": "9f48cfec717d9ab773f60f977aee6ad5"
+  },
+  "/home/linux/dev/carro-pid/docs/simulations/pid_simulation.py": {
+    "mtime": 1778814451.143083,
+    "hash": "b328670f1113f55e415f9d7b040dcc34"
+  },
+  "/home/linux/dev/carro-pid/docs/simulations/sensor_simulation.py": {
+    "mtime": 1778814451.149083,
+    "hash": "a0212dac2f7113d5f695a74661f224c2"
+  },
+  "/home/linux/dev/carro-pid/test/unity_config.h": {
+    "mtime": 1778814451.1621954,
+    "hash": "cfcadd6861216c1bc40d086a0b69480c"
+  },
+  "/home/linux/dev/carro-pid/test/test_velocity_estimator/test_velocity_estimator.cpp": {
+    "mtime": 1779404684.7596643,
+    "hash": "3d34e1ed6130606940b72f6c9eb873c8"
+  },
+  "/home/linux/dev/carro-pid/test/test_velocity_profile/test_velocity_profile.cpp": {
+    "mtime": 1778814451.2020822,
+    "hash": "0dc605a805dc6637c310fd5ddaba7b0d"
+  },
+  "/home/linux/dev/carro-pid/test/test_line_follower/test_line_follower.cpp": {
+    "mtime": 1778814451.1670828,
+    "hash": "566762edfd039fd7f24e3608edc4274d"
+  },
+  "/home/linux/dev/carro-pid/test/test_encoder/test_encoder.cpp": {
+    "mtime": 1779315209.535022,
+    "hash": "6bb6ab9b12445c8734ace42092c7cdeb"
+  },
+  "/home/linux/dev/carro-pid/test/test_pid/test_pid.cpp": {
+    "mtime": 1778814451.1670828,
+    "hash": "ec138da55220f68dde87e4f7a58bb896"
+  },
+  "/home/linux/dev/carro-pid/test/test_speed_profile/test_speed_profile.cpp": {
+    "mtime": 1778814451.1621954,
+    "hash": "5f7284694287af92418057b5846cdd82"
+  },
+  "/home/linux/dev/carro-pid/test/test_cascade/test_cascade.cpp": {
+    "mtime": 1779405642.2065015,
+    "hash": "e9fbf43de765e759b5d7791079e7c5bf"
+  },
+  "/home/linux/dev/carro-pid/test/test_motors/test_differential.cpp": {
+    "mtime": 1778814451.1670828,
+    "hash": "454a8bf56a2ea155bed61927715a07b8"
+  },
+  "/home/linux/dev/carro-pid/test/test_calibration/test_calibration.cpp": {
+    "mtime": 1778814451.1612368,
+    "hash": "bbfcf99c6eded1b7cbb2d108ac475b56"
+  },
+  "/home/linux/dev/carro-pid/test/test_ble_tuner/test_ble_tuner.cpp": {
+    "mtime": 1780276620.0270333,
+    "hash": "38d64139a6b41c3baf7ec5c9306af2b4"
+  },
+  "/home/linux/dev/carro-pid/test/test_lap_timer/test_lap_timer.cpp": {
+    "mtime": 1778814451.2020822,
+    "hash": "f01ad8ab0d80344dc427c81a41cdbf01"
+  },
+  "/home/linux/dev/carro-pid/test/test_smoke/test_smoke.cpp": {
+    "mtime": 1778814451.1618326,
+    "hash": "d4b4337870ee17bf0c2253bfe98195b6"
+  },
+  "/home/linux/dev/carro-pid/README.md": {
+    "mtime": 1781486113.8935857,
+    "hash": "93c6e137c37536c7e4580e003a518b2d"
+  },
+  "/home/linux/dev/carro-pid/CLAUDE.md": {
+    "mtime": 1779404533.001526,
+    "hash": "7914d0ebd88460099496bfa313cadfd6"
+  },
+  "/home/linux/dev/carro-pid/PROMPTS.md": {
+    "mtime": 1778814451.1300833,
+    "hash": "63874b2b106a4ff66db074c02c4a3b10"
+  },
+  "/home/linux/dev/carro-pid/docs/WIRING.md": {
+    "mtime": 1779404524.4579957,
+    "hash": "26b2867cf9846fe9b886644be6a87ad2"
+  },
+  "/home/linux/dev/carro-pid/docs/RELATORIO_FINAL.md": {
+    "mtime": 1779044301.8452504,
+    "hash": "308a2d07d259ea8b953cc1f054cd876f"
+  },
+  "/home/linux/dev/carro-pid/docs/TUNING.md": {
+    "mtime": 1778814451.1870823,
+    "hash": "39c7bed0c3cf9e7424fc41d97232e7ac"
+  },
+  "/home/linux/dev/carro-pid/docs/dashboard/lfr-cockpit.html": {
+    "mtime": 1778814451.1800826,
+    "hash": "2d50cb975a1b6d32d46e41f36e5ffff1"
+  },
+  "/home/linux/dev/carro-pid/docs/dashboard/lfr-cockpit-mock.html": {
+    "mtime": 1779025218.9065685,
+    "hash": "3068eec4a10810b5ff19bc9d43b03681"
+  },
+  "/home/linux/dev/carro-pid/docs/superpowers/specs/2026-05-31-fase-d-impl-spec.md": {
+    "mtime": 1780276620.0260336,
+    "hash": "4656248ed8ceacf67a161a6e8f73ebb8"
+  },
+  "/home/linux/dev/carro-pid/docs/superpowers/plans/2026-05-20-fase-a-encoder-quadratura.md": {
+    "mtime": 1779302966.3641589,
+    "hash": "5bcb8d581494832aa90ebd378cae035a"
+  },
+  "/home/linux/dev/carro-pid/docs/superpowers/plans/2026-05-14-fase0-fase1-fundacoes.md": {
+    "mtime": 1778814451.150083,
+    "hash": "b5571730eb2f46a01e676ede0c255973"
+  },
+  "/home/linux/dev/carro-pid/docs/superpowers/plans/2026-05-20-fase-c-cascade-controller.md": {
+    "mtime": 1779313971.9407976,
+    "hash": "84132cd76afce90e7a2a713d0a83a5f0"
+  },
+  "/home/linux/dev/carro-pid/docs/superpowers/plans/2026-05-20-fase-b-velocity-estimator.md": {
+    "mtime": 1779313841.64874,
+    "hash": "17a87b4a20ca7fa19b7eebebc0114c10"
+  },
+  "/home/linux/dev/carro-pid/docs/superpowers/plans/2026-05-20-fase-d-ble-tuner-dashboard.md": {
+    "mtime": 1780276620.0250337,
+    "hash": "23da7d7c00b4b03724cbafe226cc819e"
+  },
+  "/home/linux/dev/carro-pid/ws-connected.png": {
+    "mtime": 1779025261.9019384,
+    "hash": "5cb69fe8dd456413a9fa10ce49b2b399"
+  },
+  "/home/linux/dev/carro-pid/desktop-final.png": {
+    "mtime": 1778982438.7347128,
+    "hash": "256ccf3b9025e450af8219cfcbfc4569"
+  },
+  "/home/linux/dev/carro-pid/mobile-final.png": {
+    "mtime": 1778982464.586904,
+    "hash": "9676e94f7cecedd7d5094196f25e9509"
+  },
+  "/home/linux/dev/carro-pid/desktop-v2.png": {
+    "mtime": 1779024710.1425853,
+    "hash": "210bb6e11082c157b68ed3804c590bb7"
+  },
+  "/home/linux/dev/carro-pid/mobile-390.png": {
+    "mtime": 1778982062.061638,
+    "hash": "4a34e569bd3e7323055765af11c6fea2"
+  },
+  "/home/linux/dev/carro-pid/test-live.png": {
+    "mtime": 1779043516.6303277,
+    "hash": "7da81cba361e4a5d0842b4e5fc97d41d"
+  },
+  "/home/linux/dev/carro-pid/desktop-1280.png": {
+    "mtime": 1778981187.5803704,
+    "hash": "2620d3efba27f4aa4bc64792f9b7fc19"
+  },
+  "/home/linux/dev/carro-pid/docs/simulations/pid_response.png": {
+    "mtime": 1778814451.1420832,
+    "hash": "b73cdcbb81e96f8df8637eac54220459"
+  },
+  "/home/linux/dev/carro-pid/docs/simulations/sensor_linearity.png": {
+    "mtime": 1778814451.148083,
+    "hash": "44d99161a74b428b0c52adee98db76fc"
+  }
+}

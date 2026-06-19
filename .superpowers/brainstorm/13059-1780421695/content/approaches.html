@@ -1,0 +1,76 @@
+<h2>Três abordagens de arquitetura</h2>
+<p class="subtitle">Como estruturar o projeto simulator/ antes de escrever uma linha de código.</p>
+
+<div class="options">
+  <div class="option" data-choice="hal-first" onclick="toggleSelect(this)" style="border: 2px solid #4ade80;">
+    <div class="letter" style="background:#4ade80;color:#000;">A ★</div>
+    <div class="content">
+      <h3>HAL-First <span style="font-size:0.8em;color:#4ade80;">(Recomendado)</span></h3>
+      <p>Define as funções HAL como contrato Python abstrato <em>primeiro</em>. O Gymnasium env chama apenas a HAL. PyBullet é um dos backends. Quando portar pro ESP32-S3, só troca o backend.</p>
+      <br>
+      <div class="mockup">
+        <div class="mockup-header">Estrutura</div>
+        <div class="mockup-body" style="font-family:monospace;font-size:0.82em;line-height:1.9;">
+          simulator/<br>
+          ├── hal/<br>
+          │&nbsp;&nbsp; ├── base.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# ABC: read_sensors, read_encoders…<br>
+          │&nbsp;&nbsp; └── pybullet_hal.py &nbsp;# implementação PyBullet<br>
+          ├── envs/<br>
+          │&nbsp;&nbsp; ├── line_follower_env.py &nbsp;# Gymnasium — usa só HAL<br>
+          │&nbsp;&nbsp; └── physics.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# modelo EDF, slip, pista<br>
+          ├── models/<br>
+          │&nbsp;&nbsp; └── model_data.h &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# TFLite C array<br>
+          ├── train.py<br>
+          ├── evaluate.py<br>
+          └── export_tflite.py
+        </div>
+      </div>
+      <br>
+      <div class="pros-cons">
+        <div class="pros"><h4>Prós</h4><ul><li>Porta pro ESP32-S3 sem reescrever env</li><li>Testável: mock HAL para unit tests</li><li>Alinhado com o CLAUDE.md já escrito</li><li>Separação clara sim ↔ lógica de controle</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>~1 dia a mais de setup inicial</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="sim-first" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Sim-First (acoplado)</h3>
+      <p>Escreve o env diretamente acoplado ao PyBullet. Sem abstração HAL. Porta pro hardware depois, quando necessário.</p>
+      <br>
+      <div class="mockup">
+        <div class="mockup-header">Estrutura</div>
+        <div class="mockup-body" style="font-family:monospace;font-size:0.82em;line-height:1.9;">
+          simulator/<br>
+          ├── envs/<br>
+          │&nbsp;&nbsp; └── line_follower_env.py &nbsp;# chama PyBullet direto<br>
+          ├── train.py<br>
+          └── export_tflite.py
+        </div>
+      </div>
+      <br>
+      <div class="pros-cons">
+        <div class="pros"><h4>Prós</h4><ul><li>Mais rápido de prototipar</li><li>Menos arquivos inicialmente</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>Portabilidade exige refactor completo depois</li><li>Sem separação clara sim ↔ lógica</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="dual-backend" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Dual-Backend (sim + serial real)</h3>
+      <p>HAL tem dois backends completos: PyBullet (sim) e Serial/USB (hardware real via protocolo). Um flag <code>--backend=sim|real</code> troca na hora. O mesmo script de treino roda no hardware.</p>
+      <br>
+      <div class="pros-cons">
+        <div class="pros"><h4>Prós</h4><ul><li>Treino em hardware real (sim-to-real gap zero)</li><li>Validação automática sim vs. real</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>2× mais trabalho (HAL serial é complexo)</li><li>Treino no hardware é lento (1 env, sem paralelismo)</li><li>Faz sentido só depois de validar no sim</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top:1.5rem;padding:1rem;background:rgba(74,222,128,0.1);border-left:3px solid #4ade80;border-radius:4px;">
+  <strong>Recomendação: A — HAL-First.</strong> O contrato <code>read_sensors / read_encoders / set_motors / set_edf</code> já está no CLAUDE.md. Formalizar isso como ABC Python hoje custa 1 dia e elimina um refactor completo na hora de portar pro ESP32-S3. O Approach C (dual-backend) pode ser adicionado depois, se necessário.
+</p>

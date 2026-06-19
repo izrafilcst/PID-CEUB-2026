@@ -5,8 +5,8 @@
 ```
 LiPo 2S 7.4V
     │
-    ├─── MP1584 buck ──► 5V ──► ESP32 VIN
-    │                         └► MCP3008 VDD / VREF
+    ├─── MP1584 buck ──► 5V ──► ESP32 VIN ──► (LDO onboard) ──► 3V3 pin
+    │                                              └► MCP3008 VDD/VREF + QTR-8A VCC (3.3V)
     │
     └─── TB6612FNG VM (7.4V direto)
 ```
@@ -98,39 +98,48 @@ Tensão no GPIO = Vbat × 47 / (100+47) = Vbat × 0.32
 
 ---
 
-## Array de Sensores TCRT5000
+## Array de Sensores — Pololu QTR-8A (analógico)
 
-8 sensores em linha, espaçamento 10 mm, conectados ao MCP3008:
+8 sensores em linha (passo 9,525 mm), saídas analógicas lidas pelo MCP3008.
+A placa QTR-8A já traz os LEDs IR, fototransistores e pull-ups embutidos — basta
+alimentar e ligar as 8 saídas ao ADC. **Não há resistores discretos a montar.**
 
 ```
-CH0  CH1  CH2  CH3  CH4  CH5  CH6  CH7
- S0   S1   S2   S3   S4   S5   S6   S7
- │    │    │    │    │    │    │    │
-[──────────── MCP3008 ────────────────]
+QTR-8A  OUT1 OUT2 OUT3 OUT4 OUT5 OUT6 OUT7 OUT8
+         │    │    │    │    │    │    │    │
+MCP3008  CH0  CH1  CH2  CH3  CH4  CH5  CH6  CH7
               │  SPI  │
            ESP32 GPIO 12-15
 ```
 
-**Cada TCRT5000:**
-```
-VCC (5V) ─── 220Ω ─── LED (pino 1)
-GND ─────────────── LED (pino 2)
-VCC (5V) ─── 10kΩ ─── Coletor (pino 3) ─── MCP3008 CHx
-                       Emissor (pino 4) ─── GND
-```
+| QTR-8A | Liga em | Notas |
+|--------|---------|-------|
+| VCC | **3.3V** | jumper/seleção da placa em 3.3V — casa com VREF do MCP3008 |
+| GND | GND | terra comum |
+| OUT1–OUT8 | MCP3008 CH0–CH7 | uma saída analógica por canal |
+| LEDON | (deixar solto) | pull-up interno mantém os emissores ligados |
 
-Saída: HIGH (pista preta / baixa reflexão), LOW (linha branca / alta reflexão).
+> ⚠️ **Alimente o QTR-8A em 3.3V, não 5V.** O MCP3008 opera com VDD/VREF = 3.3V;
+> a 5V as saídas do array chegariam a ~5V e excederiam a tensão de entrada do ADC
+> (máx VDD+0,3V), além de perder faixa útil. Em 3.3V a saída varia 0–3.3V → faixa
+> cheia e segura.
+
+> ℹ️ O passo físico do QTR-8A é 9,525 mm; `config.h` usa `SENSOR_SPACING_MM 10`.
+> A diferença (~5%) é cosmética — apenas escala a magnitude do erro, absorvida pelo
+> Kp e pela calibração min/max por canal.
+
+Saída analógica: tensão **alta** sobre preto (baixa reflexão), **baixa** sobre a
+linha branca (alta reflexão). A classe `Calibration` aprende min/max por canal,
+então a polaridade é normalizada automaticamente.
 
 ---
 
 ## Alimentação
 
 ```
-LiPo 2S 7.4V ──┬── MP1584 buck converter
-               │         │
-               │         └── 5V ──── ESP32 VIN
-               │               └─── MCP3008 VDD
-               │               └─── TCRT5000 VCC (via 220Ω)
+LiPo 2S 7.4V ──┬── MP1584 buck ── 5V ──┬── ESP32 VIN ──► 3V3 pin ─┬─ MCP3008 VDD/VREF
+               │                       │                          └─ QTR-8A VCC
+               │                       └── TB6612FNG VCC (lógica)
                │
                └── TB6612FNG VM (direto 7.4V)
 
@@ -145,7 +154,7 @@ Capacitores de desacoplamento:
 |-----------|---------|
 | ESP32 (WiFi off) | ~80 mA |
 | 2× N20 em carga | ~400 mA |
-| TCRT5000 × 8 | ~120 mA |
+| QTR-8A (8 emissores) | ~100 mA |
 | MCP3008 | ~1 mA |
 | **Total** | **~600 mA** |
 

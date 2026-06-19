@@ -1,0 +1,73 @@
+<h2>Design: Física & Domain Randomization</h2>
+<p class="subtitle">Seção 3 de 4 — o modelo físico. 1 decisão aberta no fim (fonte das pistas).</p>
+
+<div class="section">
+  <h3>O acoplamento que importa: EDF → Aderência</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="font-family:monospace;font-size:0.84em;line-height:1.9;">
+      <span style="color:#94a3b8;"># Força normal aumenta com downforce do EDF:</span><br>
+      N = m·g + <strong style="color:#4ade80;">F_edf</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;onde F_edf = (pwm/1023)·F_EDF_MAX<br>
+      <br>
+      <span style="color:#94a3b8;"># Força lateral máxima antes de deslizar:</span><br>
+      F_lat_max = <strong style="color:#fbbf24;">μ</strong> · N<br>
+      <br>
+      <span style="color:#94a3b8;"># Em curva rápida, demanda lateral cresce com v²/raio.</span><br>
+      <span style="color:#94a3b8;"># Mais EDF → mais N → mais F_lat_max → menos slip.</span><br>
+      <span style="color:#94a3b8;"># ESSA é a razão de existir do ventilador.</span>
+    </div>
+  </div>
+  <p style="font-size:0.85em;color:#cbd5e1;margin-top:8px;">
+    <strong>Abordagem:</strong> deixar o solver de contato do PyBullet resolver a física — basta alimentar <code>lateralFriction</code> (μ) por superfície e aplicar F_edf como força vertical no CoM via <code>applyExternalForce()</code>. A aderência extra emerge naturalmente do aumento de N. Sem modelo de slip custom.
+  </p>
+</div>
+
+<div class="section">
+  <h3>Modelo do robô (URDF)</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:0.85em;">
+    <tbody>
+      <tr style="border-bottom:1px solid #1e293b;"><td style="padding:4px 10px;">Massa</td><td style="padding:4px 10px;">~150 g (chassis PETG + bateria)</td></tr>
+      <tr style="border-bottom:1px solid #1e293b;"><td style="padding:4px 10px;">Tração</td><td style="padding:4px 10px;">2× roda N20 (differential drive), 1 ball caster</td></tr>
+      <tr style="border-bottom:1px solid #1e293b;"><td style="padding:4px 10px;">Motor</td><td style="padding:4px 10px;">resposta 1ª ordem: pwm→rpm_alvo→rpm com τ (lag)</td></tr>
+      <tr style="border-bottom:1px solid #1e293b;"><td style="padding:4px 10px;">EDF</td><td style="padding:4px 10px;">força vertical no CoM, [0, F_EDF_MAX]</td></tr>
+      <tr><td style="padding:4px 10px;">Sensores IR</td><td style="padding:4px 10px;">8× raycast p/ baixo, leem textura da pista (branco=1)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section">
+  <h3>Domain Randomization — a chave do sim→real</h3>
+  <p style="font-size:0.88em;color:#cbd5e1;">A cada episódio, randomiza os parâmetros físicos. A política aprende a ser robusta à incerteza, então transfere para o robô real sem overfit ao simulador.</p>
+  <table style="width:100%;border-collapse:collapse;font-size:0.85em;">
+    <thead><tr style="border-bottom:1px solid #334155;">
+      <th style="text-align:left;padding:5px 10px;">Parâmetro</th><th style="text-align:left;padding:5px 10px;">Faixa randomizada</th>
+    </tr></thead>
+    <tbody>
+      <tr style="border-bottom:1px solid #1e293b;"><td style="padding:4px 10px;">μ (atrito)</td><td style="padding:4px 10px;">0.2–0.8 (limpo ↔ poeira)</td></tr>
+      <tr style="border-bottom:1px solid #1e293b;"><td style="padding:4px 10px;">F_EDF_MAX</td><td style="padding:4px 10px;">0.5–1.5 N</td></tr>
+      <tr style="border-bottom:1px solid #1e293b;"><td style="padding:4px 10px;">τ motor / ganho</td><td style="padding:4px 10px;">±20%</td></tr>
+      <tr style="border-bottom:1px solid #1e293b;"><td style="padding:4px 10px;">ruído sensor IR</td><td style="padding:4px 10px;">±5% gaussiano</td></tr>
+      <tr style="border-bottom:1px solid #1e293b;"><td style="padding:4px 10px;">massa</td><td style="padding:4px 10px;">130–170 g</td></tr>
+      <tr><td style="padding:4px 10px;">layout da pista</td><td style="padding:4px 10px;">procedural por episódio</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section">
+  <h3>Frequências de controle</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="font-family:monospace;font-size:0.84em;line-height:1.9;">
+      PyBullet física: &nbsp;240–1000 Hz (substeps)<br>
+      PID referência: &nbsp;&nbsp;roda todo substep (espelha 1 kHz do firmware)<br>
+      <strong>Decisão NN: &nbsp;&nbsp;&nbsp;~100 Hz</strong> (1 ação a cada N substeps)<br>
+      <span style="color:#94a3b8;"># MLP 14→64→64→3 em TFLite Micro ≈ &lt;0.5ms no S3,</span><br>
+      <span style="color:#94a3b8;"># mas 100 Hz de decisão é granularidade saudável p/ o MDP.</span>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="background:rgba(251,191,36,0.08);border-left:3px solid #fbbf24;padding:1rem;border-radius:4px;">
+  <h3 style="margin-top:0;">⚠ Decisão aberta: fonte das pistas de treino</h3>
+  <p style="font-size:0.9em;margin:6px 0;"><strong>A)</strong> Procedural aleatória (retas+curvas+cruzamentos gerados) — máxima diversidade, melhor generalização.</p>
+  <p style="font-size:0.9em;margin:6px 0;"><strong>B)</strong> Réplicas de pistas reais de competição (RoboCore/IronCup) — treina no que vai enfrentar.</p>
+  <p style="font-size:0.9em;margin:6px 0;"><strong>C)</strong> Ambos — procedural p/ robustez + réplicas p/ fine-tuning final.</p>
+</div>

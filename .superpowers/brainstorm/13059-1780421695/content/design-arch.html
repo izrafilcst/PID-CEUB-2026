@@ -1,0 +1,79 @@
+<h2>Design: Arquitetura Geral</h2>
+<p class="subtitle">Seção 1 de 4 — visão de cima. Confirme antes de avançar.</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">Camadas do sistema</div>
+    <div class="mockup-body" style="font-family:monospace;font-size:0.82em;line-height:2.1;">
+      <span style="color:#94a3b8;">── Treino (Python, offline) ─────────────────────────────────</span><br>
+      &nbsp;train.py<br>
+      &nbsp;&nbsp;└── SB3 PPO (SubprocVecEnv × 8)<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── <strong>LineFollowerEnv</strong> (Gymnasium)<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── <strong>HAL.PyBulletHAL</strong><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── PyBullet (física, pista, EDF, slip)<br>
+      <br>
+      <span style="color:#94a3b8;">── Export (Python, uma vez) ─────────────────────────────────</span><br>
+      &nbsp;export_tflite.py<br>
+      &nbsp;&nbsp;└── SB3 policy → ONNX → TFLite FlatBuffer<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── xxd -i model.tflite → models/model_data.h<br>
+      <br>
+      <span style="color:#94a3b8;">── Deploy (C++, ESP32-S3) ───────────────────────────────────</span><br>
+      &nbsp;src/control/MLController.h/.cpp<br>
+      &nbsp;&nbsp;└── TFLite Micro (model_data.h)<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── obs[14] → Δpwm_L, Δpwm_R, pwm_EDF<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ somado à saída do CascadeController existente
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Fronteiras de responsabilidade</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:0.88em;">
+    <thead><tr style="border-bottom:1px solid #334155;">
+      <th style="text-align:left;padding:6px 10px;">Módulo</th>
+      <th style="text-align:left;padding:6px 10px;">Responsabilidade</th>
+      <th style="text-align:left;padding:6px 10px;">Arquivo</th>
+    </tr></thead>
+    <tbody>
+      <tr style="border-bottom:1px solid #1e293b;">
+        <td style="padding:6px 10px;"><code>hal/base.py</code></td>
+        <td style="padding:6px 10px;">ABC com 4 métodos — contrato sim→real</td>
+        <td style="padding:6px 10px;">Python</td>
+      </tr>
+      <tr style="border-bottom:1px solid #1e293b;">
+        <td style="padding:6px 10px;"><code>hal/pybullet_hal.py</code></td>
+        <td style="padding:6px 10px;">Implementa ABC via PyBullet + raycasts</td>
+        <td style="padding:6px 10px;">Python</td>
+      </tr>
+      <tr style="border-bottom:1px solid #1e293b;">
+        <td style="padding:6px 10px;"><code>envs/physics.py</code></td>
+        <td style="padding:6px 10px;">Modelo EDF, slip, geração de pista</td>
+        <td style="padding:6px 10px;">Python</td>
+      </tr>
+      <tr style="border-bottom:1px solid #1e293b;">
+        <td style="padding:6px 10px;"><code>envs/line_follower_env.py</code></td>
+        <td style="padding:6px 10px;">Gymnasium: obs, reward, step, reset</td>
+        <td style="padding:6px 10px;">Python</td>
+      </tr>
+      <tr style="border-bottom:1px solid #1e293b;">
+        <td style="padding:6px 10px;"><code>train.py</code></td>
+        <td style="padding:6px 10px;">SB3 PPO, hiperparâmetros, checkpoints</td>
+        <td style="padding:6px 10px;">Python</td>
+      </tr>
+      <tr style="border-bottom:1px solid #1e293b;">
+        <td style="padding:6px 10px;"><code>export_tflite.py</code></td>
+        <td style="padding:6px 10px;">SB3→ONNX→TFLite→C array</td>
+        <td style="padding:6px 10px;">Python</td>
+      </tr>
+      <tr>
+        <td style="padding:6px 10px;"><code>MLController.h/.cpp</code></td>
+        <td style="padding:6px 10px;">Inferência TFLite Micro no ESP32-S3</td>
+        <td style="padding:6px 10px;">C++</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p style="margin-top:1.5rem;padding:1rem;background:rgba(99,102,241,0.1);border-left:3px solid #6366f1;border-radius:4px;font-size:0.9em;">
+  A <code>LineFollowerEnv</code> nunca chama PyBullet diretamente — só chama <code>hal.read_sensors()</code>, <code>hal.read_encoders()</code>, etc. Isso garante que o env funciona idêntico com qualquer backend futuro (serial, mock de teste).
+</p>

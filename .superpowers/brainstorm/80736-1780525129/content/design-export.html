@@ -1,0 +1,70 @@
+<h2>Design: Export, Testes & Fasamento</h2>
+<p class="subtitle">Seção 4 de 4 — fechando o loop sim→real. 1 decisão aberta: método de inferência.</p>
+
+<div class="section" style="background:rgba(251,191,36,0.08);border-left:3px solid #fbbf24;padding:1rem;border-radius:4px;">
+  <h3 style="margin-top:0;">⚠ Decisão aberta: como rodar a NN no ESP32-S3?</h3>
+  <div class="split" style="margin-top:10px;">
+    <div class="mockup">
+      <div class="mockup-header" style="color:#4ade80;">A — Inferência manual em C++ (recomendado)</div>
+      <div class="mockup-body" style="font-size:0.82em;line-height:1.7;">
+        Rede é só 14→64→64→3 = 2 matmuls + tanh.<br>
+        ~50 linhas de C++, <strong>zero dependências</strong>.<br>
+        Export: PyTorch → extrai pesos → <code>weights.h</code><br><br>
+        <strong style="color:#4ade80;">+</strong> Determinístico, trivial de verificar<br>
+        <strong style="color:#4ade80;">+</strong> Sem framework, ~5KB total<br>
+        <strong style="color:#4ade80;">+</strong> Paridade Python↔C++ exata<br>
+        <strong style="color:#f87171;">−</strong> Manual se a rede crescer muito
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">B — TFLite Micro</div>
+      <div class="mockup-body" style="font-size:0.82em;line-height:1.7;">
+        Pipeline do CLAUDE.md original.<br>
+        Export: PyTorch → ONNX → TFLite → <code>model_data.h</code><br><br>
+        <strong style="color:#4ade80;">+</strong> Padrão da indústria, escala p/ redes grandes<br>
+        <strong style="color:#4ade80;">+</strong> Quantização int8 pronta<br>
+        <strong style="color:#f87171;">−</strong> ~50–100KB de framework<br>
+        <strong style="color:#f87171;">−</strong> Pipeline de conversão mais frágil<br>
+        <strong style="color:#f87171;">−</strong> Overkill p/ MLP de 5KB
+      </div>
+    </div>
+  </div>
+  <p style="font-size:0.85em;color:#cbd5e1;margin-top:10px;">Recomendo <strong>A</strong> para o MVP: a rede é minúscula, e inferência manual dá paridade exata sim↔real (o teste de correção mais importante). TFLite Micro fica como caminho B se a rede crescer.</p>
+</div>
+
+<div class="section">
+  <h3>Estratégia de Testes (TDD — filosofia do projeto)</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:0.84em;">
+    <thead><tr style="border-bottom:1px solid #334155;">
+      <th style="text-align:left;padding:5px 10px;">Camada</th><th style="text-align:left;padding:5px 10px;">O que testa</th>
+    </tr></thead>
+    <tbody>
+      <tr style="border-bottom:1px solid #1e293b;"><td style="padding:4px 10px;">HAL contract</td><td style="padding:4px 10px;">mock backend cumpre as 4 assinaturas, shapes corretos</td></tr>
+      <tr style="border-bottom:1px solid #1e293b;"><td style="padding:4px 10px;">Physics</td><td style="padding:4px 10px;">F_edf escala com pwm; mais N → menos slip</td></tr>
+      <tr style="border-bottom:1px solid #1e293b;"><td style="padding:4px 10px;">Env (Gymnasium)</td><td style="padding:4px 10px;">reset/step shapes, reward bounds, terminação em linha perdida</td></tr>
+      <tr style="border-bottom:1px solid #1e293b;"><td style="padding:4px 10px;">Reward</td><td style="padding:4px 10px;">cada termo isolado (progresso, track, slip, edf, terminal)</td></tr>
+      <tr style="border-bottom:1px solid #1e293b;"><td style="padding:4px 10px;"><strong style="color:#fbbf24;">Paridade export</strong></td><td style="padding:4px 10px;"><strong>Python policy(obs) == C++ infer(obs)</strong> — gate de correção sim→real</td></tr>
+      <tr><td style="padding:4px 10px;"><strong style="color:#fbbf24;">Paridade PID</strong></td><td style="padding:4px 10px;">PID-Python == CascadeController C++ p/ mesma entrada</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section">
+  <h3>Fasamento — cada fase é spec→plano→impl próprio</h3>
+  <div class="mockup">
+    <div class="mockup-body" style="font-family:monospace;font-size:0.83em;line-height:1.9;">
+      <strong style="color:#6366f1;">Fase S1</strong> — HAL + PyBulletHAL + URDF + env skeleton<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(robô anda, sensores leem, SEM ML) → testável<br>
+      <strong style="color:#6366f1;">Fase S2</strong> — physics (EDF/slip/DR) + track gen + reward<br>
+      <strong style="color:#6366f1;">Fase S3</strong> — treino PPO (SB3) + evaluate → política que segue linha<br>
+      <strong style="color:#6366f1;">Fase S4</strong> — export weights.h + MLController C++ + paridade + deploy<br>
+      <br>
+      <span style="color:#94a3b8;"># Esta sessão produz a SPEC do sistema inteiro +</span><br>
+      <span style="color:#94a3b8;"># o PLANO detalhado só da Fase S1. As demais virão depois.</span>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top:1.5rem;padding:1rem;background:rgba(74,222,128,0.1);border-left:3px solid #4ade80;border-radius:4px;font-size:0.9em;">
+  Após sua aprovação desta seção, escrevo o documento de design (spec) cobrindo o sistema completo, e em seguida o plano de implementação detalhado da <strong>Fase S1</strong>.
+</p>
