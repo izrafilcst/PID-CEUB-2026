@@ -90,6 +90,8 @@ struct TelemetrySnapshot {
     float    setpointL = 0.0f;
     float    setpointR = 0.0f;
     float    sensorsPct[SENSOR_COUNT] = {};  // [0–100]
+    bool     lineLost  = false;
+    bool     crossing  = false;
 };
 
 static TelemetrySnapshot   g_snap;
@@ -122,11 +124,23 @@ static float readBatteryPct() {
 }
 
 // ═══ Helpers de hardware ════════════════════════════════════════════════════
-static void beep(uint32_t ms) {
+// Buzzer não-bloqueante: beepStart() liga e agenda o desligamento; serviceBuzzer()
+// (chamado nos dois loops) desliga quando vence o prazo. Evita busy-wait no loop
+// de controle (Core 0) e na task de BLE (Core 1).
+static volatile uint32_t g_buzzerOffMs = 0;
+
+static void beepStart(uint32_t ms) {
     digitalWrite(PIN_BUZZER, HIGH);
-    uint32_t t = millis();
-    while (millis() - t < ms) {}
-    digitalWrite(PIN_BUZZER, LOW);
+    g_buzzerOffMs = millis() + ms;
+    if (g_buzzerOffMs == 0) g_buzzerOffMs = 1;  // 0 é sentinela de "desligado"
+}
+
+static void serviceBuzzer() {
+    uint32_t off = g_buzzerOffMs;
+    if (off != 0 && static_cast<int32_t>(millis() - off) >= 0) {
+        digitalWrite(PIN_BUZZER, LOW);
+        g_buzzerOffMs = 0;
+    }
 }
 
 static inline bool btnPressed() {
@@ -148,6 +162,7 @@ static void taskComm(void* /*pvParameters*/) {
     uint32_t lastLapMs = 0;  // detecta quando LapTimer registra uma nova volta
 
     for (;;) {
+        serviceBuzzer();
         ble.update();
 
         // Envia frame de identificação ao cliente recém-conectado
@@ -202,15 +217,15 @@ static void taskComm(void* /*pvParameters*/) {
         }
 
         // Comando de calibração de encoder
-        if (ble.hasNewCalibration()) {
+        if (ble.hasNewCalibration() && robotState.load() != RobotState::RUNNING) {
             CalibrationCmd c = ble.getCalibration();
             VelocityEstimator& target = c.leftSide ? velL : velR;
             if (c.op == CalibrationCmd::Op::START) {
                 target.startCalibration();
-                beep(50);
+                beepStart(50);
             } else if (c.op == CalibrationCmd::Op::FINISH) {
                 bool ok = target.finishCalibration(c.rotations);
-                beep(ok ? 200 : 500);
+                beepStart(ok ? 200 : 500);
                 char buf[40];
                 snprintf(buf, sizeof(buf), "%.2f", target.getEffectivePPR());
                 // NOTE: notifyInfo(name, fw, mode) — fw/mode fields are repurposed
@@ -229,13 +244,13 @@ static void taskComm(void* /*pvParameters*/) {
             lapTimer.start(millis());
             logger.setEnabled(true);
             robotState.store(RobotState::RUNNING, std::memory_order_release);
-            beep(50);
+            beepStart(50);
         }
         if (ble.consumeStop() && robotState.load() == RobotState::RUNNING) {
             motors.stop();
             logger.setEnabled(false);
             robotState.store(RobotState::READY, std::memory_order_release);
-            beep(300);
+            beepStart(300);
         }
         if (ble.consumeReset()) {
             motors.stop();
@@ -244,7 +259,7 @@ static void taskComm(void* /*pvParameters*/) {
             hasLap = false;
             nLaps  = 0;
             robotState.store(RobotState::IDLE, std::memory_order_release);
-            beep(100);
+            beepStart(100);
         }
 
         // Bateria: leitura a cada ~1 s (100 × 10 ms)
@@ -315,11 +330,12 @@ void setup() {
 
     robotState.store(RobotState::IDLE, std::memory_order_release);
     digitalWrite(PIN_LED_STATUS, HIGH);
-    beep(100);
+    beepStart(100);
 }
 
 // ═══ Loop — Core 0 (controle tempo-real) ════════════════════════════════════
 void loop() {
+    serviceBuzzer();
     switch (robotState.load(std::memory_order_acquire)) {
 
         case RobotState::IDLE:
@@ -328,7 +344,7 @@ void loop() {
                 calStart = millis();
                 calibration.reset();
                 sensors.begin();
-                beep(100);
+                beepStart(100);
                 digitalWrite(PIN_LED_STATUS, LOW);
             }
             break;
@@ -341,7 +357,7 @@ void loop() {
             if (millis() - calStart >= CAL_DURATION_MS) {
                 robotState.store(RobotState::READY, std::memory_order_release);
                 digitalWrite(PIN_LED_STATUS, LOW);
-                beep(200);
+                beepStart(200);
             }
             break;
         }
@@ -355,7 +371,7 @@ void loop() {
                 lapTimer.start(millis());
                 logger.setEnabled(true);
                 robotState.store(RobotState::RUNNING, std::memory_order_release);
-                beep(50);
+                beepStart(50);
             }
             break;
 
@@ -363,54 +379,53 @@ void loop() {
             uint32_t loopStart = micros();
             // MED-1: dt real; M-1: g_prevLoopStart é resetado em resetCascadeState()
             // a cada re-entry no estado, evitando dt stale após STOP/START.
-            uint32_t dtMs = (g_prevLoopStart == 0) ? 2 : ((loopStart - g_prevLoopStart) / 1000);
+            uint32_t dtUs = (g_prevLoopStart == 0) ? 0 : (loopStart - g_prevLoopStart);
             g_prevLoopStart = loopStart;
+            // dtUs==0 no 1º tick pós-reset → usa período nominal p/ o dt dos PIDs.
+            float dtSec = (dtUs == 0) ? (LOOP_PERIOD_US * 1e-6f) : (dtUs * 1e-6f);
 
-            // 1. Atualiza estimadores de velocidade com dt real do loop
-            velL.update(dtMs);
-            velR.update(dtMs);
+            // 1. Atualiza estimadores de velocidade com dt REAL do loop (µs)
+            velL.update(dtUs);
+            velR.update(dtUs);
 
             // 2. Lê sensores de linha
             int raw[SENSOR_COUNT];
             sensors.readAll(raw);
 
-            // 3. PID externo via LineFollower (dentro do mux crítico).
-            //    discardL/R são ignorados — pegamos a correção pura via getLastCorrection().
-            int   discardL = 0;
-            int   discardR = 0;
-            float normErr  = 0.0f;
-
-            taskENTER_CRITICAL(&lineFollowerMux);
-            lineFollower.update(raw, discardL, discardR, &normErr);
-            // HIGH-1: usa getLastCorrection() para evitar perda de informação
-            // quando os PWMs ficam clamped (fórmula (L-R)/2 fica incorreta nesses casos).
-            float correctionPwm = lineFollower.getLastCorrection();
-            taskEXIT_CRITICAL(&lineFollowerMux);
-
-            // 4. Converte correção PWM-scale → RPM-scale para o cascade.
-            // H-1 (Reviewer): correctionPwm tem range [-PWM_MAX, +PWM_MAX]; deve
-            // mapear para [-MAX_RPM, +MAX_RPM] para preservar autoridade total da
-            // malha externa. Usar BASE_RPM aqui comprimia o range em ~50%.
-            float correctionRpm = correctionPwm * (MAX_RPM_DEFAULT / static_cast<float>(PWM_MAX));
-
-            // 5. Valida RPM (NVS pode ter retornado NaN/Inf na primeira leitura).
+            // 3. Valida RPM antes de entrar na seção crítica (leitura só-Core0).
             float rpmLActual = velL.getRPM();
             float rpmRActual = velR.getRPM();
             if (!std::isfinite(rpmLActual)) rpmLActual = 0.0f;
             if (!std::isfinite(rpmRActual)) rpmRActual = 0.0f;
 
-            // 6. Cascade: fecha malha de velocidade em ambos os motores.
-            int leftPwm  = 0;
-            int rightPwm = 0;
+            int   discardL = 0;
+            int   discardR = 0;
+            float normErr  = 0.0f;
+            int   leftPwm  = 0;
+            int   rightPwm = 0;
+            bool  lineLost = false;
+            bool  crossing = false;
+
+            // Seção crítica cobre PID externo + cascade + leitura de g_baseRpm.
+            // Fecha a corrida com setInnerGains()/setMaxRpm()/g_baseRpm (Core 1),
+            // que também rodam sob lineFollowerMux.
+            taskENTER_CRITICAL(&lineFollowerMux);
+            lineFollower.update(raw, discardL, discardR, &normErr, dtSec);
+            float correctionPwm = lineFollower.getLastCorrection();
+            lineLost = lineFollower.isLineLost();
+            crossing = lineFollower.isCrossing();
+            float correctionRpm =
+                correctionPwm * (MAX_RPM_DEFAULT / static_cast<float>(PWM_MAX));
             cascade.compute(correctionRpm, g_baseRpm,
                             rpmLActual, rpmRActual,
-                            leftPwm, rightPwm);
+                            leftPwm, rightPwm, dtSec);
+            taskEXIT_CRITICAL(&lineFollowerMux);
 
-            // 7. Aplica PWM nos motores
+            // 7. Aplica PWM nos motores (fora da seção crítica)
             motors.setSpeed(MotorId::A, leftPwm);
             motors.setSpeed(MotorId::B, rightPwm);
 
-            uint32_t dtUs = micros() - loopStart;
+            uint32_t loopDurationUs = micros() - loopStart;
 
             // Atualiza snapshot de telemetria para o Core 1
             {
@@ -425,7 +440,7 @@ void loop() {
                 g_snap.corr      = static_cast<float>(leftPwm - rightPwm);
                 g_snap.vL        = leftPwm;
                 g_snap.vR        = rightPwm;
-                g_snap.dtUs      = dtUs;
+                g_snap.dtUs      = loopDurationUs;
                 // C-1 (Reviewer): reusa rpmLActual/rpmRActual já validados via isfinite
                 // em vez de chamar getRPM() de novo (TOCTOU defensivo).
                 g_snap.rpmL      = rpmLActual;
@@ -434,6 +449,8 @@ void loop() {
                 g_snap.setpointR = g_baseRpm - correctionRpm;
                 for (int i = 0; i < SENSOR_COUNT; i++)
                     g_snap.sensorsPct[i] = norm[i] / 10.0f;  // [0–1000] → [0–100]
+                g_snap.lineLost = lineLost;
+                g_snap.crossing = crossing;
                 taskEXIT_CRITICAL(&g_snapMux);
             }
 
@@ -449,21 +466,21 @@ void loop() {
                 entry.correction = static_cast<float>(leftPwm - rightPwm);
                 entry.vLeft      = leftPwm;
                 entry.vRight     = rightPwm;
-                entry.dtUs       = dtUs;
+                entry.dtUs       = loopDurationUs;
                 logger.push(entry);
             }
 #else
-            (void)dtUs;
+            (void)loopDurationUs;
 #endif
 
             if (btnPressed()) {
                 motors.stop();
                 logger.setEnabled(false);
                 robotState.store(RobotState::READY, std::memory_order_release);
-                beep(300);
+                beepStart(300);
             }
 
-            if (dtUs > 4000) {
+            if (loopDurationUs > 4000) {
                 motors.stop();
                 robotState.store(RobotState::ERROR, std::memory_order_release);
             }
@@ -476,7 +493,7 @@ void loop() {
             digitalWrite(PIN_LED_STATUS, (millis() / 200) % 2);
             if (btnPressed()) {
                 robotState.store(RobotState::IDLE, std::memory_order_release);
-                beep(100);
+                beepStart(100);
             }
             break;
     }
