@@ -9,7 +9,7 @@ CascadeController::CascadeController(PIDController& innerLeft, PIDController& in
 
 void CascadeController::compute(float correction, float targetBaseRpm,
                                 float actualRpmL, float actualRpmR,
-                                int& pwmL, int& pwmR) {
+                                int& pwmL, int& pwmR, float dtSec) {
     // 0. Defense-in-depth: NaN/Inf em qualquer entrada vira 0.0f.
     // std::max/std::min com NaN retornam NaN silenciosamente → static_cast<int>(NaN)
     // é UB. Sanitização explícita evita o cast UB mesmo se a chain externa falhar.
@@ -27,8 +27,8 @@ void CascadeController::compute(float correction, float targetBaseRpm,
     setpointR = _clampF(setpointR, -_maxRpm, +_maxRpm);
 
     // 3. PID interno: erro = setpoint − measurement → saída em PWM.
-    float outL = _pidL.compute(setpointL, actualRpmL);
-    float outR = _pidR.compute(setpointR, actualRpmR);
+    float outL = _pidL.compute(setpointL, actualRpmL, dtSec);
+    float outR = _pidR.compute(setpointR, actualRpmR, dtSec);
 
     // 4. Saturação final em PWM (já vem clamped pelo PIDController, mas garantimos
     //    cast seguro para int e respeito ao limite externo se setMaxPwm() mudou).

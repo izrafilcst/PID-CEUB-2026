@@ -1,4 +1,5 @@
 #include <unity.h>
+#include <cmath>
 #include "strategy/LineFollower.h"
 #include "sensors/Calibration.h"
 #include "control/PIDController.h"
@@ -101,6 +102,27 @@ void test_sequential_derivative_smooths() {
     TEST_ASSERT_TRUE(abs(lp2 - rp2) <= abs(lp1 - rp1) + 1);
 }
 
+void test_line_follower_uses_provided_dt() {
+    delete pid; pid = new PIDController(0.0f, 0.0f, 0.0001f, -255.0f, 255.0f);
+    delete lf;  lf  = new LineFollower(*cal, *pid, *speed, *drive);
+
+    int raw_center[8] = {0, 0, 0, 700, 700, 0, 0, 0};   // posição ≈ 0
+    int raw_right[8]  = {0, 0, 0, 0, 700, 700, 0, 0};    // posição ≈ +1000
+    int l, r;
+
+    lf->update(raw_center, l, r, nullptr, 0.01f);        // estabelece prevMeas
+    lf->update(raw_right,  l, r, nullptr, 0.01f);
+    float corrBig = lf->getLastCorrection();             // ~ +10
+
+    pid->reset();
+    lf->update(raw_center, l, r, nullptr, 0.002f);
+    lf->update(raw_right,  l, r, nullptr, 0.002f);
+    float corrSmall = lf->getLastCorrection();           // ~ +50
+
+    // dt menor → derivada maior → |correção| maior
+    TEST_ASSERT_TRUE(fabsf(corrSmall) > fabsf(corrBig));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_straight_line_equal_high_speeds);
@@ -109,5 +131,6 @@ int main() {
     RUN_TEST(test_line_lost_maintains_last_direction);
     RUN_TEST(test_pid_update_changes_behavior);
     RUN_TEST(test_sequential_derivative_smooths);
+    RUN_TEST(test_line_follower_uses_provided_dt);
     return UNITY_END();
 }

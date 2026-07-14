@@ -33,7 +33,7 @@ public:
     // pwmL/pwmR       : saídas (referência), com sinal
     void compute(float correction, float targetBaseRpm,
                  float actualRpmL, float actualRpmR,
-                 int& pwmL, int& pwmR);
+                 int& pwmL, int& pwmR, float dtSec = 0.002f);
 
     // Aplica os mesmos ganhos em ambos os PIDs internos (uso típico via BLE).
     void setInnerGains(float kp, float ki, float kd);

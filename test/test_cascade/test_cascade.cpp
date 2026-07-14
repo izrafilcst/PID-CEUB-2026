@@ -98,6 +98,29 @@ void test_cascade_set_inner_gains_updates_both_pids() {
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.5f, innerR->getKd());
 }
 
+// ─── 9. compute() usa o dt fornecido no termo derivativo ─────────────────
+void test_cascade_uses_provided_dt_for_derivative() {
+    // PIDs internos só com Kd (derivada no processo). Kp=Ki=0.
+    PIDController dL(0.0f, 0.0f, 0.001f, -1023.0f, 1023.0f, 0.01f);
+    PIDController dR(0.0f, 0.0f, 0.001f, -1023.0f, 1023.0f, 0.01f);
+    CascadeController dcc(dL, dR, 1000.0f, 1023);
+    int pwmL = 0, pwmR = 0;
+
+    // 1º compute estabelece _prevMeasurement (=0). dt grande.
+    dcc.compute(0.0f, 0.0f, 0.0f, 0.0f, pwmL, pwmR, 0.01f);
+    // measurement salta p/ 100: derivada = -(100-0)/dt; Kd=0.001
+    dcc.compute(0.0f, 0.0f, 100.0f, 100.0f, pwmL, pwmR, 0.01f);
+    int atDtBig = pwmL;   // -0.001 * 100/0.01 = -10
+
+    dL.reset(); dR.reset();
+    dcc.compute(0.0f, 0.0f, 0.0f, 0.0f, pwmL, pwmR, 0.002f);
+    dcc.compute(0.0f, 0.0f, 100.0f, 100.0f, pwmL, pwmR, 0.002f);
+    int atDtSmall = pwmL; // -0.001 * 100/0.002 = -50
+
+    TEST_ASSERT_EQUAL_INT(-10, atDtBig);
+    TEST_ASSERT_EQUAL_INT(-50, atDtSmall);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_cascade_straight_line_equal_setpoints);
@@ -108,5 +131,6 @@ int main(int, char**) {
     RUN_TEST(test_cascade_negative_setpoint_drives_reverse);
     RUN_TEST(test_cascade_pwm_clamped_to_max);
     RUN_TEST(test_cascade_set_inner_gains_updates_both_pids);
+    RUN_TEST(test_cascade_uses_provided_dt_for_derivative);
     return UNITY_END();
 }

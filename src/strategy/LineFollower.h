@@ -12,7 +12,7 @@ public:
     // Executa um ciclo completo: raw → pwm L/R
     // normalizedError retorna erro em [-1, +1] para diagnóstico
     void update(const int* rawSensors, int& leftPwm, int& rightPwm,
-                float* normalizedError = nullptr);
+                float* normalizedError = nullptr, float dtSec = 0.01f);
 
     void setPID(float kp, float ki, float kd);
     void setSpeed(int minSpeed, int baseSpeed, int maxSpeed, float threshold);

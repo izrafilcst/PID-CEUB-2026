@@ -6,7 +6,7 @@ LineFollower::LineFollower(Calibration& cal, PIDController& pid,
     : _cal(cal), _pid(pid), _speed(speed), _drive(drive) {}
 
 void LineFollower::update(const int* rawSensors, int& leftPwm, int& rightPwm,
-                          float* normalizedError) {
+                          float* normalizedError, float dtSec) {
     _cal.normalize(rawSensors, _normalized);
     float position = _cal.weightedPosition(_normalized);
 
@@ -18,7 +18,7 @@ void LineFollower::update(const int* rawSensors, int& leftPwm, int& rightPwm,
     if (normalizedError) *normalizedError = normErr;
 
     // Sinal positivo de correção → virar direita → PID inverte sinal do erro
-    float correction = -_pid.compute(0.0f, position);
+    float correction = -_pid.compute(0.0f, position, dtSec);
     _lastCorrection = correction;  // expose for cascade integration
     int baseSpeed = _speed.compute(std::abs(normErr));
     _drive.compute(correction, baseSpeed, leftPwm, rightPwm);
