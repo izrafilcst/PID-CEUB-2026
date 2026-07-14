@@ -36,9 +36,19 @@ static void simulateRotations(Encoder& e, int rotations, int countsPerRotation =
     }
 }
 
+// Injeta N períodos de quadratura para frente (4 contagens por período).
+static void injectPeriods(Encoder& e, int periods) {
+    for (int i = 0; i < periods; i++) {
+        e._simulatePulse(false, true);
+        e._simulatePulse(true,  true);
+        e._simulatePulse(true,  false);
+        e._simulatePulse(false, false);
+    }
+}
+
 // ─── 1. RPM zero quando não há pulsos ─────────────────────────────────────
 void test_velocity_zero_when_no_pulses() {
-    ve->update(10);  // 10ms passaram, zero pulsos
+    ve->update(10000);  // 10ms passaram, zero pulsos
     TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, ve->getRPM());
 }
 
@@ -47,7 +57,7 @@ void test_velocity_converts_pulses_to_rpm() {
     // PPR_x4 default = 28. Em 100ms (0.1s), 28 pulsos = 1 rotação = 10 rps = 600 RPM
     ve->setFilterAlpha(1.0f);  // desabilita filtro para teste determinístico
     simulateRotations(*enc, 1);
-    ve->update(100);  // 100 ms
+    ve->update(100000);  // 100 ms
     TEST_ASSERT_FLOAT_WITHIN(1.0f, 600.0f, ve->getRPM());
 }
 
@@ -57,13 +67,13 @@ void test_velocity_low_pass_smooths_spikes() {
     // Primeiro update: estabilize em 600 RPM
     for (int i = 0; i < 20; i++) {
         simulateRotations(*enc, 1);
-        ve->update(100);
+        ve->update(100000);
     }
     float steady = ve->getRPM();
     TEST_ASSERT_FLOAT_WITHIN(20.0f, 600.0f, steady);
     // Spike: 5× a velocidade em 1 update
     simulateRotations(*enc, 5);
-    ve->update(100);
+    ve->update(100000);
     float afterSpike = ve->getRPM();
     // Filtro deve atenuar — afterSpike < 3000 (RPM cru) e > steady
     TEST_ASSERT_TRUE(afterSpike < 3000.0f);
@@ -87,8 +97,30 @@ void test_velocity_signed_with_direction() {
         enc->_simulatePulse(false, true);
         enc->_simulatePulse(false, false);
     }
-    ve->update(100);
+    ve->update(100000);
     TEST_ASSERT_FLOAT_WITHIN(1.0f, -600.0f, ve->getRPM());
+}
+
+// ─── Pulsos NÃO são perdidos em ticks menores que a janela mínima ─────────
+void test_velocity_accumulates_pulses_across_subwindow_ticks() {
+    ve->setFilterAlpha(1.0f);   // sem IIR — resultado determinístico
+    ve->setMinWindowUs(6000);   // janela mínima = 6 ms
+    injectPeriods(*enc, 4);     // 16 contagens
+    ve->update(4000);           // 4 ms < 6 ms → acumula, NÃO estima ainda
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, ve->getRPM());
+    injectPeriods(*enc, 3);     // +12 contagens = 28 no total
+    ve->update(4000);           // acumUs=8 ms ≥ 6 ms → estima sobre 8 ms, 28 contagens
+    // 28 * 60e6 / (8000 µs * 28 PPR) = 7500 RPM
+    TEST_ASSERT_FLOAT_WITHIN(1.0f, 7500.0f, ve->getRPM());
+}
+
+// ─── Abaixo da janela mínima, mantém o RPM anterior ───────────────────────
+void test_velocity_holds_rpm_below_min_window() {
+    ve->setFilterAlpha(1.0f);
+    ve->setMinWindowUs(6000);
+    injectPeriods(*enc, 7);     // 28 contagens
+    ve->update(2000);           // 2 ms < 6 ms → não estima
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, ve->getRPM());
 }
 
 // ─── 6. PPR default carregado quando não há valor salvo ───────────────────
@@ -123,7 +155,7 @@ void test_velocity_uses_calibrated_ppr() {
     ve->setFilterAlpha(1.0f);
     // Após calibração: 40 PPR_x4 efetivo. 40 pulsos em 100ms = 1 volta = 600 RPM.
     simulateRotations(*enc, 1, 40);
-    ve->update(100);
+    ve->update(100000);
     TEST_ASSERT_FLOAT_WITHIN(2.0f, 600.0f, ve->getRPM());
 }
 
@@ -140,6 +172,8 @@ int main(int, char**) {
     RUN_TEST(test_velocity_zero_when_no_pulses);
     RUN_TEST(test_velocity_converts_pulses_to_rpm);
     RUN_TEST(test_velocity_low_pass_smooths_spikes);
+    RUN_TEST(test_velocity_accumulates_pulses_across_subwindow_ticks);
+    RUN_TEST(test_velocity_holds_rpm_below_min_window);
     RUN_TEST(test_velocity_handles_zero_dt_safely);
     RUN_TEST(test_velocity_signed_with_direction);
     RUN_TEST(test_velocity_default_ppr_when_no_calibration);

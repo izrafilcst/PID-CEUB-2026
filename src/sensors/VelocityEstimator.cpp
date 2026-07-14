@@ -9,9 +9,8 @@
 static constexpr float PPR_MIN_SANE = 0.5f;
 static constexpr float PPR_MAX_SANE = 100000.0f;
 
-// dtMs máximo aceito antes de descartar a janela (jitter, scheduler hiccup,
-// primeira chamada). Acima disso o cálculo de RPM perde sentido físico.
-static constexpr uint32_t DT_MAX_MS = 500;
+// dtUs acumulado máximo antes de descartar a janela (stall / scheduler hiccup).
+static constexpr uint32_t DT_MAX_US = 500000;  // 0,5 s
 
 // Limite ESP-IDF NVS: chaves ≤ 15 chars. Reservamos "_ppr" (4) → prefix ≤ 11.
 static constexpr size_t PREFIX_MAX_LEN = 11;
@@ -22,7 +21,10 @@ VelocityEstimator::VelocityEstimator(Encoder& enc, IPersistentStore& store, cons
       _pprX4(ENCODER_DEFAULT_PPR_X4),
       _alpha(VELOCITY_FILTER_ALPHA),
       _rpmFiltered(0.0f),
-      _calibrating(false)
+      _calibrating(false),
+      _accumCounts(0),
+      _accumUs(0),
+      _minWindowUs(VELOCITY_MIN_WINDOW_US)
 {
     // Clamp prefix em 11 chars antes de compor a chave NVS.
     // Sem isso, prefixes longos seriam silenciosamente rejeitados pelo
@@ -53,27 +55,58 @@ void VelocityEstimator::begin() {
     }
     _rpmFiltered = 0.0f;
     _calibrating = false;
+    _accumCounts = 0;
+    _accumUs     = 0;
     // Descarta delta acumulado antes do primeiro uso — intencional.
     // Sem isso, contagens stale antes do begin() corrompem o 1º RPM.
     // Mantenedores futuros: NÃO remover esta chamada.
     _enc.getDelta();
 }
 
-void VelocityEstimator::update(uint32_t dtMs) {
-    // Sempre drena delta — evita acumulação que distorceria a próxima janela.
+void VelocityEstimator::update(uint32_t dtUs) {
+    // Sempre drena o delta do encoder para manter os contadores vivos.
     int32_t delta = _enc.getDelta();
-    // Durante calibração: usuário gira a roda manualmente; suprimir o IIR
-    // evita emitir RPM mentiroso para o PID externo (Wave 3 MED-1).
-    if (_calibrating) return;
-    if (dtMs == 0 || dtMs > DT_MAX_MS || _pprX4 <= 0.0f) {
-        // dt inválido (jitter, primeira chamada, stall) — descarta janela,
-        // mantém o RPM filtrado anterior.
+
+    // Durante calibração o usuário gira a roda à mão; não alimentar o IIR.
+    if (_calibrating) {
+        _accumCounts = 0;
+        _accumUs     = 0;
         return;
     }
-    // pulsos/ms → rotações/min: ×60_000 / pprX4
-    float rpmRaw = (static_cast<float>(delta) * 60000.0f)
-                 / (static_cast<float>(dtMs) * _pprX4);
-    _rpmFiltered = _alpha * rpmRaw + (1.0f - _alpha) * _rpmFiltered;
+
+    // dtUs==0 = sinal de reset (1ª chamada / re-entry): zera a janela.
+    if (dtUs == 0) {
+        _accumCounts = 0;
+        _accumUs     = 0;
+        return;
+    }
+
+    // Acumula este tick na janela corrente — pulsos NUNCA são descartados.
+    _accumCounts += delta;
+    _accumUs     += dtUs;
+
+    // Stall: a janela cresceu demais (loop travou) → descarta, mantém RPM.
+    if (_accumUs > DT_MAX_US) {
+        _accumCounts = 0;
+        _accumUs     = 0;
+        return;
+    }
+
+    // Tempo real insuficiente para estimativa confiável → segue acumulando.
+    if (_accumUs < _minWindowUs) return;
+
+    // Estima sobre o dt REAL da janela (variável), então reinicia a janela.
+    if (_pprX4 > 0.0f) {
+        float rpmRaw = (static_cast<float>(_accumCounts) * 60000000.0f)
+                     / (static_cast<float>(_accumUs) * _pprX4);
+        _rpmFiltered = _alpha * rpmRaw + (1.0f - _alpha) * _rpmFiltered;
+    }
+    _accumCounts = 0;
+    _accumUs     = 0;
+}
+
+void VelocityEstimator::setMinWindowUs(uint32_t us) {
+    _minWindowUs = us;
 }
 
 float VelocityEstimator::getRPM() const {
@@ -95,6 +128,8 @@ void VelocityEstimator::setFilterAlpha(float alpha) {
 void VelocityEstimator::startCalibration() {
     _enc.reset();
     _rpmFiltered = 0.0f;
+    _accumCounts = 0;
+    _accumUs     = 0;
     _calibrating = true;
 }
 
@@ -114,6 +149,8 @@ bool VelocityEstimator::finishCalibration(int rotations) {
     _pprX4 = absCount / static_cast<float>(rotations);
     _store.putFloat(_key, _pprX4);
     _rpmFiltered = 0.0f;
+    _accumCounts = 0;
+    _accumUs     = 0;
     _calibrating = false;
     // Sincroniza baseline de delta para a próxima update() começar do zero.
     // Sem isso, contagens da calibração vazariam no 1º RPM pós-cal.

@@ -50,6 +50,11 @@
 #define ENCODER_DEFAULT_PPR_X4   28.0f
 #define VELOCITY_FILTER_ALPHA    0.3f  // 0 ≤ α ≤ 1 — menor = mais suave, mais delay (α=0 congela)
 
+// Janela mínima (µs) de tempo real acumulado antes de estimar RPM. Resolve a
+// baixa resolução do encoder (28 PPR) em loops sub-ms: pulsos são acumulados
+// até a janela fechar, então o RPM é calculado sobre o dt REAL da janela.
+#define VELOCITY_MIN_WINDOW_US   4000
+
 // ═══ CASCADE PID (Fase C — controle interno de velocidade) ═════════════════
 // Ganhos INICIAIS conservadores; sintonizar via BLE em pista.
 #define KP_VEL_DEFAULT   0.8f

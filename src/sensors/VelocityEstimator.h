@@ -18,7 +18,7 @@
  *   VelocityEstimator velL(encL, nvs, "left");
  *   velL.begin();             // carrega PPR salvo (ou default ENCODER_DEFAULT_PPR_X4)
  *   ... loop ...
- *   velL.update(dtMs);        // chamar periodicamente (10–20 ms)
+ *   velL.update(dtUs);        // chamar periodicamente, dt REAL em microssegundos
  *   float rpm = velL.getRPM();
  */
 class VelocityEstimator {
@@ -28,8 +28,9 @@ public:
     // Carrega PPR persistido (ou usa default). Chamar uma vez no setup.
     void begin();
 
-    // Atualiza RPM dado intervalo desde última chamada (ms).
-    void update(uint32_t dtMs);
+    // Atualiza RPM dado o intervalo REAL desde a última chamada (microssegundos).
+    // dtUs==0 reseta a janela de acumulação (drena delta, não toca no IIR).
+    void update(uint32_t dtUs);
 
     // RPM filtrado (com sinal — negativo = sentido reverso).
     float getRPM() const;
@@ -39,6 +40,9 @@ public:
 
     // Ajusta α do filtro IIR. α=1.0 desabilita filtro (uso em testes).
     void setFilterAlpha(float alpha);
+
+    // Janela mínima (µs) de tempo real acumulado antes de estimar RPM.
+    void setMinWindowUs(uint32_t us);
 
     // ── Auto-calibração ─────────────────────────────────────────────────
     // 1. startCalibration()  — zera contagem.
@@ -58,4 +62,7 @@ private:
     float             _alpha;
     float             _rpmFiltered;
     bool              _calibrating;  // true entre startCalibration/finishCalibration
+    int32_t           _accumCounts;  // pulsos acumulados na janela corrente
+    uint32_t          _accumUs;      // tempo real acumulado na janela corrente (µs)
+    uint32_t          _minWindowUs;  // janela mínima antes de estimar
 };
