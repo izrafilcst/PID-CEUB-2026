@@ -123,6 +123,28 @@ void test_line_follower_uses_provided_dt() {
     TEST_ASSERT_TRUE(fabsf(corrSmall) > fabsf(corrBig));
 }
 
+void test_line_follower_goes_straight_on_crossing() {
+    int raw_cross[8] = {800,800,800,800,800,800,800,800};  // cruzamento
+    int l, r;
+    lf->update(raw_cross, l, r);
+    TEST_ASSERT_TRUE(lf->isCrossing());
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f, lf->getLastCorrection());  // reto
+    TEST_ASSERT_EQUAL(r, l);
+}
+
+void test_line_follower_holds_correction_when_line_lost() {
+    int raw_right[8] = {0,0,0,0,0,0,100,900};  // curva à direita
+    int l, r;
+    lf->update(raw_right, l, r);
+    float held = lf->getLastCorrection();
+    TEST_ASSERT_TRUE(fabsf(held) > 0.0f);
+
+    int raw_lost[8] = {0,0,0,0,0,0,0,0};        // linha perdida
+    lf->update(raw_lost, l, r);
+    TEST_ASSERT_TRUE(lf->isLineLost());
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, held, lf->getLastCorrection());  // mantém
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_straight_line_equal_high_speeds);
@@ -132,5 +154,7 @@ int main() {
     RUN_TEST(test_pid_update_changes_behavior);
     RUN_TEST(test_sequential_derivative_smooths);
     RUN_TEST(test_line_follower_uses_provided_dt);
+    RUN_TEST(test_line_follower_goes_straight_on_crossing);
+    RUN_TEST(test_line_follower_holds_correction_when_line_lost);
     return UNITY_END();
 }

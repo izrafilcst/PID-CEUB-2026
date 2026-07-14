@@ -18,8 +18,19 @@ void LineFollower::update(const int* rawSensors, int& leftPwm, int& rightPwm,
     if (normalizedError) *normalizedError = normErr;
 
     // Sinal positivo de correção → virar direita → PID inverte sinal do erro
-    float correction = -_pid.compute(0.0f, position, dtSec);
-    _lastCorrection = correction;  // expose for cascade integration
+    float correction;
+    if (_cal.isLineLost()) {
+        // Recuperação: mantém a última correção conhecida (segue virando
+        // para o lado onde a linha estava). Não recalcula o PID.
+        correction = _lastCorrection;
+    } else {
+        correction = -_pid.compute(0.0f, position, dtSec);
+        if (_cal.isCrossing()) {
+            correction = 0.0f;  // cruzamento → segue reto através da interseção
+        }
+        _lastCorrection = correction;
+    }
+
     int baseSpeed = _speed.compute(std::abs(normErr));
     _drive.compute(correction, baseSpeed, leftPwm, rightPwm);
 }

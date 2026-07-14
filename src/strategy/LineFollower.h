@@ -23,6 +23,11 @@ public:
      *  it from clamped PWM outputs (which would be lossy when motors saturate). */
     float getLastCorrection() const { return _lastCorrection; }
 
+    /** Estado do último update(): linha perdida (todos sensores no preto). */
+    bool isLineLost() const { return _cal.isLineLost(); }
+    /** Estado do último update(): cruzamento (muitos sensores no branco). */
+    bool isCrossing() const { return _cal.isCrossing(); }
+
 private:
     Calibration&       _cal;
     PIDController&     _pid;

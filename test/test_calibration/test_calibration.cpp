@@ -126,6 +126,47 @@ void test_line_lost_returns_last_known() {
     TEST_ASSERT_FLOAT_WITHIN(0.001f, pos1, pos2);  // mantém última posição
 }
 
+void test_crossing_detected_when_many_sensors_active() {
+    Calibration cal(8);
+    int rawMin[8] = {0,0,0,0,0,0,0,0};
+    int rawMax[8] = {1000,1000,1000,1000,1000,1000,1000,1000};
+    cal.update(rawMin);
+    cal.update(rawMax);
+    int readings[8] = {800,800,800,800,800,800,800,800};  // linha perpendicular
+    int normalized[8];
+    cal.normalize(readings, normalized);
+    cal.weightedPosition(normalized);
+    TEST_ASSERT_TRUE(cal.isCrossing());
+    TEST_ASSERT_FALSE(cal.isLineLost());
+}
+
+void test_no_crossing_on_single_line() {
+    Calibration cal(8);
+    int rawMin[8] = {0,0,0,0,0,0,0,0};
+    int rawMax[8] = {1000,1000,1000,1000,1000,1000,1000,1000};
+    cal.update(rawMin);
+    cal.update(rawMax);
+    int readings[8] = {0,0,0,700,700,0,0,0};  // linha normal (2 sensores)
+    int normalized[8];
+    cal.normalize(readings, normalized);
+    cal.weightedPosition(normalized);
+    TEST_ASSERT_FALSE(cal.isCrossing());
+}
+
+void test_no_crossing_when_line_lost() {
+    Calibration cal(8);
+    int rawMin[8] = {0,0,0,0,0,0,0,0};
+    int rawMax[8] = {1000,1000,1000,1000,1000,1000,1000,1000};
+    cal.update(rawMin);
+    cal.update(rawMax);
+    int zeros[8] = {0,0,0,0,0,0,0,0};
+    int normalized[8];
+    cal.normalize(zeros, normalized);
+    cal.weightedPosition(normalized);
+    TEST_ASSERT_FALSE(cal.isCrossing());
+    TEST_ASSERT_TRUE(cal.isLineLost());
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_initial_min_max_inverted);
@@ -138,5 +179,8 @@ int main() {
     RUN_TEST(test_weighted_position_left);
     RUN_TEST(test_weighted_position_right);
     RUN_TEST(test_line_lost_returns_last_known);
+    RUN_TEST(test_crossing_detected_when_many_sensors_active);
+    RUN_TEST(test_no_crossing_on_single_line);
+    RUN_TEST(test_no_crossing_when_line_lost);
     return UNITY_END();
 }

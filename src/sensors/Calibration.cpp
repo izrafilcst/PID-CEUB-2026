@@ -3,7 +3,7 @@
 #include <cmath>
 
 Calibration::Calibration(int sensorCount)
-    : _count(sensorCount), _lastPosition(0.0f), _lineLost(false) {
+    : _count(sensorCount), _lastPosition(0.0f), _lineLost(false), _crossing(false) {
     assert(sensorCount > 0 && sensorCount <= MAX_SENSORS);
     reset();
 }
@@ -15,6 +15,7 @@ void Calibration::reset() {
     }
     _lastPosition = 0.0f;
     _lineLost = false;
+    _crossing = false;
 }
 
 int Calibration::getMin(int idx) const { return _min[idx]; }
@@ -42,20 +43,24 @@ void Calibration::normalize(const int* rawValues, int* normalizedOut) const {
 float Calibration::weightedPosition(const int* normalized) const {
     long sum = 0;
     long weightedSum = 0;
+    int  activeCount = 0;
     const int halfRange = (_count - 1) * static_cast<int>(POSITION_SCALE) / 2;
 
     for (int i = 0; i < _count; i++) {
         int pos = i * static_cast<int>(POSITION_SCALE) - halfRange;
         sum += normalized[i];
         weightedSum += static_cast<long>(pos) * normalized[i];
+        if (normalized[i] >= CROSSING_ACTIVE_LEVEL) activeCount++;
     }
 
     if (sum < LINE_LOST_THRESHOLD) {
         _lineLost = true;
+        _crossing = false;
         return _lastPosition;
     }
 
     _lineLost = false;
+    _crossing = (activeCount >= CROSSING_MIN_ACTIVE);
     _lastPosition = static_cast<float>(weightedSum) / static_cast<float>(sum);
     return _lastPosition;
 }
