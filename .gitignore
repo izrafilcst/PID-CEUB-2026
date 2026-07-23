@@ -17,3 +17,10 @@ graphify-out/
 
 # Vector DB
 ruvector.db
+
+# AgentDB (RuVector) — artefato local
+agentdb.rvf
+agentdb.rvf.lock
+
+# Claude Code — config/local de agentes
+.claude/
