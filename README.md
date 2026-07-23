@@ -2,7 +2,9 @@
 
 Firmware completo em C++17 para robô seguidor de linha baseado em ESP32, desenvolvido com TDD estrito (Red → Green → Refactor). Projetado para competições brasileiras (RoboCore, IronCup, Salão de Robótica).
 
-**47 testes unitários • 0 warnings • loop de controle < 2 ms • BLE tuning em tempo real**
+**91 testes unitários • controle em cascata (posição + RPM) • firmware sem warnings (`-Wall -Wextra`) • loop de controle < 2 ms com `dt` real (µs) • detecção de cruzamento • BLE tuning em tempo real**
+
+> **Estado:** `main` estável até a **Fase D** (cascade PID, encoders, auto-calibração de PPR em NVS, tuner BLE estendido), com **timing de controle por `dt` real (µs)** e **tratamento de cruzamento / linha perdida**. O port para **ESP32-S3** e o **simulador RL sim-to-real** estão em desenvolvimento na branch `feat/esp32s3-port` — ver [Roadmap](#roadmap--branches).
 
 ---
 
@@ -43,7 +45,7 @@ pio run -e esp32dev --target upload
 pio test -e native
 ```
 
-Saída esperada: `47 test cases: 47 succeeded`
+Saída esperada: `91 test cases: 91 succeeded`
 
 ---
 
@@ -51,34 +53,47 @@ Saída esperada: `47 test cases: 47 succeeded`
 
 ```
 ├── src/
-│   ├── config.h                  # Pinout, constantes, parâmetros PID
+│   ├── config.h                  # Pinout, constantes, parâmetros PID/cascade
 │   ├── main.cpp                  # Orquestração, máquina de estados, dual-core
 │   ├── control/
 │   │   ├── PIDController         # PID com derivada no processo e anti-windup
 │   │   ├── SpeedProfile          # Velocidade adaptativa por erro
-│   │   └── VelocityProfile       # SpeedProfile + predição de curvatura (buffer 8)
+│   │   ├── VelocityProfile       # SpeedProfile + predição de curvatura (buffer 8)
+│   │   └── CascadeController     # PID posição (externo) → 2× PID RPM (interno)
 │   ├── sensors/
 │   │   ├── SensorArray           # Leitura MCP3008 via SPI
-│   │   └── Calibration           # Min/max por canal, posição ponderada [-3500,+3500]
+│   │   ├── Calibration           # Min/max por canal, posição ponderada [-3500,+3500]
+│   │   ├── Encoder               # Quadratura 4× (ISR ESP32)
+│   │   └── VelocityEstimator     # Encoder → RPM filtrado (IIR) + auto-cal de PPR
 │   ├── motors/
 │   │   ├── MotorDriver           # TB6612FNG via LEDC (20 kHz, 10 bits)
 │   │   └── DifferentialDrive     # Conversão correção → PWM esq/dir
 │   ├── strategy/
-│   │   ├── LineFollower          # Pipeline sensor→PID→motor
+│   │   ├── LineFollower          # Pipeline sensor→PID→motor + cruzamento / hold em linha perdida
 │   │   └── LapTimer             # Cronômetro de volta, melhor tempo
+│   ├── storage/
+│   │   ├── IPersistentStore      # Interface chave-valor (DI)
+│   │   ├── NvsStore              # ESP32 (Preferences/NVS) — PPR persistido
+│   │   └── InMemoryStore         # Implementação native para testes
 │   └── comm/
-│       ├── BLETuner              # Ajuste PID/vel via BLE (NimBLE 2.x)
+│       ├── BLETuner              # Ajuste PID/PIDv/RPM/cal via BLE (NimBLE 2.x)
 │       └── Logger                # Telemetria CSV via BLE (SPSC ring buffer)
 │
-├── test/                         # 8 suítes Unity, ambiente native
-│   ├── test_pid/
+├── test/                         # 12 suítes Unity (native) + 1 hardware-only
+│   ├── test_pid/                 #   test_sensors roda só em esp32dev
 │   ├── test_speed_profile/
 │   ├── test_velocity_profile/
 │   ├── test_calibration/
+│   ├── test_encoder/
+│   ├── test_velocity_estimator/
+│   ├── test_cascade/
 │   ├── test_motors/
 │   ├── test_line_follower/
 │   ├── test_lap_timer/
+│   ├── test_ble_tuner/
 │   └── test_smoke/
+│
+├── examples/                     # Sketches de bring-up de hardware (bancada)
 │
 ├── hardware/chassis/             # OpenSCAD paramétrico
 │   ├── body_f1.scad              # Chassis 180×120mm formato F1
@@ -90,6 +105,7 @@ Saída esperada: `47 test cases: 47 succeeded`
 │   │   ├── lfr-cockpit-mock.html   # Dashboard completo (BLE real + simulação WS)
 │   │   ├── lfr_sim.py              # Simulador Python — replica protocolo ESP32
 │   │   └── motion.js               # Motion.dev v11 bundle (offline)
+│   ├── GUIA_HARDWARE.html          # Guia de bancada: pinout + testes + gravação (abrir no navegador)
 │   ├── WIRING.md                   # Diagrama completo de fiação
 │   ├── TUNING.md                   # Procedimento Ziegler-Nichols + checklist
 │   ├── tuning_log.csv              # Log de sessões de tuning
@@ -113,23 +129,34 @@ IDLE ──BTN──► CALIBRATING ──BTN──► READY ──BTN──► 
                                                    ERROR
 ```
 
-### Pipeline de controle (Core 0, < 2 ms)
+### Pipeline de controle em cascata (Core 0, < 2 ms)
 
 ```
-SensorArray.read()        → raw[8]  (0–1023)
-Calibration.normalize()   → norm[8] (0–1000)
-Calibration.weightedPosition() → pos  (-3500 … +3500)
-PIDController.compute(0, pos)  → correction
-VelocityProfile.computeSpeed() → baseSpeed  (+ predição de curva)
-DifferentialDrive.update()     → leftPwm, rightPwm
-MotorDriver.setSpeed()         → LEDC PWM
+SensorArray.read()               → raw[8]  (0–1023)
+Calibration.normalize()          → norm[8] (0–1000)
+Calibration.weightedPosition()   → pos  (-3500 … +3500)
+PIDController.compute(0, pos)    → correction          (PID EXTERNO — posição da linha)
+VelocityEstimator.getRPM() ×2    → rpmL, rpmR           (encoders → RPM filtrado)
+CascadeController.compute(...)    → pwmL, pwmR           (2× PID INTERNO — RPM por roda)
+MotorDriver.setSpeed()           → LEDC PWM
 ```
+
+O PID externo transforma a posição da linha em uma `correction`; o `CascadeController`
+converte isso em setpoints de RPM por roda (`base ± correction`) e cada PID interno fecha
+a malha contra o RPM medido pelos encoders — tornando a velocidade real insensível a
+variações de bateria e atrito.
+
+Cada ciclo mede o **`dt` real** (µs, via `micros()`) e o propaga tanto ao PID externo
+quanto aos PIDs internos da cascata, mantendo os termos I/D corretos mesmo com jitter de
+período. O `LineFollower` também detecta **cruzamentos** e, quando a linha é perdida,
+**segura a última correção** (hold via `isLineLost()`/`isCrossing()`) em vez de saltar para
+zero — evitando que o robô "solte a linha" em interseções.
 
 ### Dual-core FreeRTOS
 
 | Core | Tarefa | Prioridade |
 |------|--------|-----------|
-| Core 0 | Sensor + PID + Motor | Tempo-real |
+| Core 0 | Sensor + PID + Cascade + Motor | Tempo-real |
 | Core 1 | BLE + Logger | Não-crítico |
 
 ---
@@ -143,6 +170,32 @@ Derivada calculada sobre a **medição** (não sobre o erro), eliminando spikes 
 ```cpp
 PIDController pid(Kp, Ki, Kd, outMin, outMax);
 float correction = pid.compute(setpoint, measurement);
+```
+
+### CascadeController
+
+Controle em cascata para o diferencial: o PID externo de posição entrega uma `correction`,
+que vira setpoints de RPM por roda (`setpointL = base + correction`, `setpointR = base − correction`).
+Dois PIDs internos fecham a malha contra o RPM medido, saturando o setpoint em `±maxRpm`.
+Desacoplado do hardware — o cliente injeta o RPM medido, o que torna os testes determinísticos.
+
+```cpp
+CascadeController cascade(pidVelL, pidVelR, maxRpm, maxPwm);
+cascade.compute(correction, baseRpm, rpmL, rpmR, pwmL, pwmR);
+cascade.setInnerGains(kp, ki, kd);   // ajuste ao vivo via BLE {"t":"pidv"}
+```
+
+### Encoder + VelocityEstimator
+
+`Encoder` decodifica a quadratura 4× (ISR no ESP32). `VelocityEstimator` converte a contagem
+em RPM filtrado por um IIR de 1ª ordem. O PPR efetivo é **auto-calibrado** (gira-se a roda N
+voltas manualmente) e persistido em NVS via `IPersistentStore`, sobrevivendo a reboots.
+
+```cpp
+VelocityEstimator velL(encL, nvs, "left");
+velL.begin();               // carrega PPR salvo (ou ENCODER_DEFAULT_PPR_X4)
+velL.update(dtMs);          // chamar periodicamente
+float rpm = velL.getRPM();  // com sinal (negativo = reverso)
 ```
 
 ### VelocityProfile
@@ -173,18 +226,23 @@ Ajuste de parâmetros e telemetria em tempo real via BLE (NimBLE-Arduino 2.x). P
 | Característica BLE | UUID | Direção | Formato |
 |-------------------|------|---------|---------|
 | Telemetry | `0xABCD` | ESP32 → App (Notify) | JSON `{"t":"info"/"tel", ...}` |
-| Command   | `0xABCE` | App → ESP32 (Write)  | JSON `{"t":"pid"/"spd"/"start"/"stop"/"reset", ...}` |
+| Command   | `0xABCE` | App → ESP32 (Write)  | JSON `{"t":"pid"/"pidv"/"spd"/"rpm"/"cal"/"start"/"stop"/"reset", ...}` |
 
-**Telemetria** (30 Hz):
+**Telemetria** (30 Hz) — agora com RPM medido e setpoints da cascata:
 ```json
-{"t":"tel","pos":-350.0,"corr":12.4,"vL":168,"vR":152,
- "dt":1750,"s":[0,5,80,100,60,10,0,0],"bat":73.2,"lap":8.51,"laps":[8.51,9.03]}
+{"t":"tel","pos":-350.0,"corr":12.4,"vL":168,"vR":152,"dt":1750,
+ "rpmL":592.0,"rpmR":611.0,"spL":612.4,"spR":587.6,
+ "s":[0,5,80,100,60,10,0,0],"bat":73.2,"lap":8.51,"laps":[8.51,9.03]}
 ```
 
 **Comandos** (App → ESP32):
 ```json
-{"t":"pid","kp":3.0,"ki":0.0,"kd":12.0}
-{"t":"spd","base":160,"min":60,"max":230,"thrs":0.6}
+{"t":"pid","kp":3.0,"ki":0.0,"kd":12.0}          // PID externo (posição da linha)
+{"t":"pidv","kp":0.8,"ki":0.0,"kd":0.05}         // PID interno (RPM dos motores — cascata)
+{"t":"spd","base":160,"min":60,"max":230,"thrs":0.6}  // perfil de velocidade em PWM (legado)
+{"t":"rpm","max":1200,"base":600}                // alvos de velocidade em RPM (cascata)
+{"t":"cal","op":"start","side":"L","rot":10}     // inicia auto-calibração de PPR do encoder
+{"t":"cal","op":"finish","side":"L","rot":10}    // finaliza e grava PPR em NVS
 {"t":"start"}  {"t":"stop"}  {"t":"reset"}
 ```
 
@@ -290,18 +348,25 @@ pio test -e esp32dev
 | test_pid | 9 | PIDController |
 | test_speed_profile | 7 | SpeedProfile |
 | test_velocity_profile | 4 | VelocityProfile |
-| test_calibration | 10 | Calibration |
+| test_calibration | 13 | Calibration |
+| test_encoder | 9 | Encoder |
+| test_velocity_estimator | 12 | VelocityEstimator |
+| test_cascade | 9 | CascadeController |
 | test_motors | 6 | DifferentialDrive |
-| test_line_follower | 6 | LineFollower |
+| test_line_follower | 9 | LineFollower (inclui cruzamento / linha perdida) |
 | test_lap_timer | 4 | LapTimer |
+| test_ble_tuner | 8 | BLETuner |
 | test_smoke | 1 | Framework |
-| **Total** | **47** | |
+| **Total** | **91** | |
+
+> `test_sensors` roda apenas no ambiente `esp32dev` (precisa de hardware) e é ignorado em `native`.
 
 ---
 
 ## Fiação
 
-Diagrama completo: [`docs/WIRING.md`](docs/WIRING.md)
+Diagrama completo: [`docs/WIRING.md`](docs/WIRING.md)  
+Guia de bancada interativo (pinout + testes + gravação): [`docs/GUIA_HARDWARE.html`](docs/GUIA_HARDWARE.html) — abrir no navegador
 
 **Resumo de conexões críticas:**
 
@@ -367,6 +432,33 @@ build_flags = -Wall -Wextra -std=gnu++17 -DUNITY_INCLUDE_FLOAT -DNATIVE_BUILD
 [env:esp32dev]
 build_flags = -Wall -Wextra -std=gnu++17 -DUNITY_INCLUDE_FLOAT
 ```
+
+---
+
+## Roadmap / Branches
+
+| Branch | Foco | Estado |
+|--------|------|--------|
+| `main` | Firmware ESP32 DevKit V1 — cascade PID, encoders, NVS, BLE tuner | **Estável — Fase A→D + timing/cruzamento, 91 testes** |
+| `feat/esp32s3-port` | Port ESP32-S3 N16R8 + simulador RL sim-to-real | **Pausada** — ver [`docs/DECISOES.md`](docs/DECISOES.md) |
+
+> **Decisão de 2026-07-04:** o roadmap S3/RL/EDF está **congelado** até haver um baseline medido
+> na pista real. O foco imediato é montar o hardware do `main` e coletar tempos de volta.
+> Racional completo em [`docs/DECISOES.md`](docs/DECISOES.md).
+
+A branch **`feat/esp32s3-port`** explora a próxima geração do robô:
+
+- **Port ESP32-S3 N16R8** (16 MB Flash, 8 MB PSRAM): mapeamento de pista em PSRAM
+  (*Modo Corsa* — 1ª volta mapeia curvas/retas por odometria, 2ª volta otimiza a velocidade
+  por feedforward), inferência **TFLite** (*Modo Offroad* — rede neural leve para lidar com
+  perda de aderência, sujeira e perda de linha) e **downforce por EDF** (Electric Ducted Fan).
+- **Simulador RL** (`simulator/`): ambiente **PyBullet + Gymnasium + Stable-Baselines3 (PPO/SAC)**
+  com HAL portável Python→C++ e um harness de **vetores-golden** que garante paridade numérica
+  entre o PID/cascata do firmware e o do simulador (sim-to-real). Fases: **S1 concluída**
+  (HAL + URDF + env), **S2a em andamento** (`reference_pid` + golden vectors de paridade).
+  Contexto completo em `simulator/CLAUDE.md` (na branch).
+
+Planos e specs de cada fase ficam em `docs/superpowers/`.
 
 ---
 

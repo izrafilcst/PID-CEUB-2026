@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LFR ESP32 — Guia de Ligação, Testes e Gravação</title>
+<style>
+  /* ============================================================
+     Tokens — paleta "datasheet / esquemático": neutros com viés
+     ardósia (slate), acento ciano (trilha de PCB) + cobre.
+     Categorias de barramento têm cor própria (info design).
+     ============================================================ */
+  :root {
+    color-scheme: light dark;
+
+    --bg:        #eceff3;
+    --surface:   #ffffff;
+    --surface-2: #f4f7fa;
+    --surface-3: #eaeef3;
+    --ink:       #141a22;
+    --ink-soft:  #38424e;
+    --muted:     #5c6773;
+    --faint:     #8b97a3;
+    --border:    #d6dde5;
+    --border-2:  #c3ccd6;
+
+    --accent:      #0d7d8f;   /* ciano/teal — links, ativo, marca */
+    --accent-ink:  #075866;
+    --accent-wash: #d9eef1;
+
+    /* categorias de barramento */
+    --c-spi:     #0e7490;   /* SPI / ADC        */
+    --c-motor:   #b0602f;   /* driver / motores */
+    --c-enc:     #6d4fb3;   /* encoders         */
+    --c-aux:     #a8720f;   /* aux / controle   */
+    --c-power:   #2c7a54;   /* alimentação      */
+
+    /* semânticos */
+    --danger:    #c0392b;
+    --danger-bg: #fbe7e4;
+    --warn:      #9a6a08;
+    --warn-bg:   #fbf1d9;
+    --ok:        #2c7a54;
+    --ok-bg:     #dcefe4;
+
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+
+    --radius: 10px;
+    --radius-sm: 6px;
+    --maxw: 1180px;
+    --shadow: 0 1px 2px rgba(20,26,34,.05), 0 4px 16px rgba(20,26,34,.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:        #0c1015;
+      --surface:   #141b24;
+      --surface-2: #10161e;
+      --surface-3: #1a222c;
+      --ink:       #e6edf3;
+      --ink-soft:  #c4cfda;
+      --muted:     #8b97a5;
+      --faint:     #66727f;
+      --border:    #232d38;
+      --border-2:  #2f3a47;
+
+      --accent:      #35c4d6;
+      --accent-ink:  #7fe0ec;
+      --accent-wash: #0f2b31;
+
+      --c-spi:     #38b6d4;
+      --c-motor:   #d18a56;
+      --c-enc:     #a58be6;
+      --c-aux:     #d9a63a;
+      --c-power:   #57c78c;
+
+      --danger:    #f2837a;
+      --danger-bg: #331917;
+      --warn:      #e6bd5a;
+      --warn-bg:   #2c2412;
+      --ok:        #57c78c;
+      --ok-bg:     #12271c;
+
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 22px rgba(0,0,0,.35);
+    }
+  }
+
+  /* Toggle manual sobrepõe a media query nos dois sentidos */
+  :root[data-theme="light"] {
+    --bg:#eceff3; --surface:#fff; --surface-2:#f4f7fa; --surface-3:#eaeef3;
+    --ink:#141a22; --ink-soft:#38424e; --muted:#5c6773; --faint:#8b97a3;
+    --border:#d6dde5; --border-2:#c3ccd6;
+    --accent:#0d7d8f; --accent-ink:#075866; --accent-wash:#d9eef1;
+    --c-spi:#0e7490; --c-motor:#b0602f; --c-enc:#6d4fb3; --c-aux:#a8720f; --c-power:#2c7a54;
+    --danger:#c0392b; --danger-bg:#fbe7e4; --warn:#9a6a08; --warn-bg:#fbf1d9; --ok:#2c7a54; --ok-bg:#dcefe4;
+    --shadow:0 1px 2px rgba(20,26,34,.05), 0 4px 16px rgba(20,26,34,.06);
+  }
+  :root[data-theme="dark"] {
+    --bg:#0c1015; --surface:#141b24; --surface-2:#10161e; --surface-3:#1a222c;
+    --ink:#e6edf3; --ink-soft:#c4cfda; --muted:#8b97a5; --faint:#66727f;
+    --border:#232d38; --border-2:#2f3a47;
+    --accent:#35c4d6; --accent-ink:#7fe0ec; --accent-wash:#0f2b31;
+    --c-spi:#38b6d4; --c-motor:#d18a56; --c-enc:#a58be6; --c-aux:#d9a63a; --c-power:#57c78c;
+    --danger:#f2837a; --danger-bg:#331917; --warn:#e6bd5a; --warn-bg:#2c2412; --ok:#57c78c; --ok-bg:#12271c;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 22px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 84px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+  code, kbd, samp { font-family: var(--mono); }
+
+  /* ---------- Top bar ---------- */
+  header.bar {
+    position: sticky; top: 0; z-index: 40;
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px clamp(16px, 4vw, 40px);
+    background: color-mix(in srgb, var(--surface) 86%, transparent);
+    backdrop-filter: saturate(1.4) blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  .bar .mark {
+    font-family: var(--mono); font-weight: 700; font-size: .82rem;
+    letter-spacing: .14em; text-transform: uppercase;
+    color: var(--ink); white-space: nowrap;
+  }
+  .bar .mark .dot { color: var(--accent); }
+  .bar .spacer { flex: 1; }
+  .bar .board {
+    font-family: var(--mono); font-size: .72rem; color: var(--muted);
+    letter-spacing: .04em; display: none;
+  }
+  @media (min-width: 720px){ .bar .board { display: inline; } }
+  .theme-btn {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .08em;
+    text-transform: uppercase;
+    background: var(--surface-2); color: var(--ink-soft);
+    border: 1px solid var(--border-2); border-radius: 999px;
+    padding: 6px 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 7px;
+  }
+  .theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- Shell ---------- */
+  .shell { max-width: var(--maxw); margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px); }
+  .layout { display: block; }
+  @media (min-width: 1000px) {
+    .layout { display: grid; grid-template-columns: 232px minmax(0,1fr); gap: 48px; align-items: start; }
+  }
+
+  /* ---------- TOC ---------- */
+  nav.toc {
+    position: sticky; top: 70px; align-self: start;
+    display: none; padding: 8px 0; max-height: calc(100vh - 90px); overflow-y: auto;
+  }
+  @media (min-width: 1000px) { nav.toc { display: block; } }
+  nav.toc .eyebrow { font-family: var(--mono); font-size: .66rem; letter-spacing: .16em; text-transform: uppercase; color: var(--faint); padding: 0 0 10px 12px; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; counter-reset: t; }
+  nav.toc li { margin: 1px 0; }
+  nav.toc a {
+    display: flex; gap: 10px; align-items: baseline;
+    padding: 5px 10px; border-radius: var(--radius-sm);
+    color: var(--muted); font-size: .86rem; line-height: 1.35;
+    border-left: 2px solid transparent;
+  }
+  nav.toc a .n { font-family: var(--mono); font-size: .72rem; color: var(--faint); min-width: 16px; }
+  nav.toc a:hover { color: var(--ink); background: var(--surface-2); text-decoration: none; }
+  nav.toc a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-wash); }
+  nav.toc a.active .n { color: var(--accent); }
+
+  main { min-width: 0; }
+
+  /* ---------- Hero ---------- */
+  .hero { padding: clamp(34px,6vw,72px) 0 26px; border-bottom: 1px solid var(--border); }
+  .hero .eyebrow {
+    font-family: var(--mono); font-size: .74rem; letter-spacing: .22em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 16px;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5.4vw, 3.15rem); line-height: 1.04; margin: 0 0 16px;
+    font-weight: 800; letter-spacing: -.02em; text-wrap: balance;
+  }
+  .hero p.lead { font-size: clamp(1.02rem,2.2vw,1.2rem); color: var(--ink-soft); max-width: 60ch; margin: 0 0 28px; }
+
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px,1fr)); gap: 1px;
+           background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .facts .f { background: var(--surface); padding: 14px 16px; }
+  .facts .f .k { font-family: var(--mono); font-size: .64rem; letter-spacing: .12em; text-transform: uppercase; color: var(--faint); margin-bottom: 5px; }
+  .facts .f .v { font-size: 1rem; font-weight: 650; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .facts .f .v small { font-weight: 500; color: var(--muted); font-size: .8rem; }
+
+  /* ---------- Sections ---------- */
+  section { padding: 48px 0; border-bottom: 1px solid var(--border); scroll-margin-top: 76px; }
+  section:last-of-type { border-bottom: 0; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin: 0 0 6px; }
+  .sec-head .num { font-family: var(--mono); font-size: .82rem; color: var(--accent); font-weight: 700; letter-spacing: .04em; }
+  h2 { font-size: clamp(1.4rem,3vw,1.85rem); line-height: 1.15; margin: 0; font-weight: 750; letter-spacing: -.015em; text-wrap: balance; }
+  .sec-intro { color: var(--muted); max-width: 66ch; margin: 12px 0 26px; }
+  h3 { font-size: 1.12rem; margin: 34px 0 12px; font-weight: 700; letter-spacing: -.01em; }
+  h3 .tag { font-family: var(--mono); font-size: .66rem; font-weight: 600; vertical-align: middle; margin-left: 8px;
+            padding: 2px 7px; border-radius: 999px; border: 1px solid var(--border-2); color: var(--muted); letter-spacing: .04em; }
+  p { margin: 0 0 14px; }
+
+  /* ---------- Legend ---------- */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 26px; padding: 14px 16px;
+            background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); }
+  .legend .li { display: inline-flex; align-items: center; gap: 8px; font-size: .82rem; color: var(--ink-soft); font-weight: 600; }
+  .swatch { width: 11px; height: 11px; border-radius: 3px; flex: none; box-shadow: 0 0 0 1px rgba(0,0,0,.08) inset; }
+
+  /* ---------- Bus cards (pin map) ---------- */
+  .buses { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 16px; }
+  .bus {
+    --c: var(--muted);
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .bus > header {
+    display: flex; align-items: center; gap: 10px; padding: 12px 15px;
+    border-bottom: 1px solid var(--border);
+    border-top: 3px solid var(--c);
+    background: color-mix(in srgb, var(--c) 8%, var(--surface));
+  }
+  .bus > header .icon { width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 22%, transparent); }
+  .bus > header .title { font-weight: 750; font-size: .96rem; letter-spacing: -.01em; }
+  .bus > header .to { margin-left: auto; font-family: var(--mono); font-size: .68rem; color: var(--muted); text-align: right; letter-spacing: .02em; }
+  .bus ul { list-style: none; margin: 0; padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+  .pin { display: grid; grid-template-columns: 62px 1fr; gap: 10px; align-items: center; padding: 7px 9px; border-radius: var(--radius-sm); }
+  .pin:hover { background: var(--surface-2); }
+  .pin .gpio {
+    font-family: var(--mono); font-weight: 700; font-size: .8rem; text-align: center;
+    color: var(--c); background: color-mix(in srgb, var(--c) 12%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--c) 32%, transparent);
+    border-radius: 5px; padding: 3px 4px; letter-spacing: .01em; white-space: nowrap;
+  }
+  .pin .meta .sig { font-weight: 650; font-size: .88rem; }
+  .pin .meta .dst { font-family: var(--mono); font-size: .72rem; color: var(--muted); }
+  .pin .meta .note { display: inline-block; font-size: .7rem; color: var(--warn); font-weight: 600; margin-top: 1px; }
+
+  /* ---------- Tables ---------- */
+  .tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); margin: 0 0 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: .875rem; min-width: 460px; }
+  thead th {
+    text-align: left; font-family: var(--mono); font-size: .66rem; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600; padding: 11px 14px; background: var(--surface-2);
+    border-bottom: 1px solid var(--border); white-space: nowrap; position: sticky; top: 0;
+  }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr { background: var(--surface); }
+  tbody tr:hover { background: var(--surface-2); }
+  td .g, td.g { font-family: var(--mono); font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .mono, code.inline { font-family: var(--mono); font-size: .82em;
+    background: var(--surface-3); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; color: var(--ink-soft); white-space: nowrap; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-size: .72rem; font-weight: 650;
+          font-family: var(--mono); letter-spacing: .02em; padding: 2px 8px; border-radius: 999px;
+          border: 1px solid color-mix(in srgb, var(--cc) 35%, transparent); color: var(--cc);
+          background: color-mix(in srgb, var(--cc) 12%, transparent); white-space: nowrap; }
+  .chip.spi{--cc:var(--c-spi);} .chip.motor{--cc:var(--c-motor);} .chip.enc{--cc:var(--c-enc);}
+  .chip.aux{--cc:var(--c-aux);} .chip.power{--cc:var(--c-power);}
+
+  /* ---------- Callouts ---------- */
+  .note-box { border: 1px solid var(--border); border-left: 3px solid var(--muted); border-radius: var(--radius);
+              padding: 13px 16px; margin: 18px 0; background: var(--surface-2); font-size: .9rem; }
+  .note-box.danger { border-left-color: var(--danger); background: var(--danger-bg); }
+  .note-box.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+  .note-box.ok { border-left-color: var(--ok); background: var(--ok-bg); }
+  .note-box .lbl { font-family: var(--mono); font-size: .66rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 5px; }
+  .note-box.danger .lbl { color: var(--danger); }
+  .note-box.warn .lbl { color: var(--warn); }
+  .note-box.ok .lbl { color: var(--ok); }
+  .note-box p:last-child { margin-bottom: 0; }
+  .note-box code { font-family: var(--mono); font-size: .84em; background: color-mix(in srgb, var(--ink) 8%, transparent); padding: 1px 5px; border-radius: 4px; }
+
+  /* ---------- Code / command blocks ---------- */
+  .cmd { position: relative; margin: 14px 0; }
+  .cmd pre {
+    margin: 0; overflow-x: auto; background: var(--surface-2); color: var(--ink-soft);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 46px 14px 16px; font-family: var(--mono); font-size: .82rem; line-height: 1.65;
+  }
+  .cmd pre .c { color: var(--faint); }           /* comentário */
+  .cmd pre .p { color: var(--accent); font-weight: 600; }  /* prompt/comando */
+  .cmd pre .s { color: var(--c-power); }          /* string/valor */
+  .copy {
+    position: absolute; top: 8px; right: 8px;
+    font-family: var(--mono); font-size: .64rem; letter-spacing: .06em; text-transform: uppercase;
+    background: var(--surface); color: var(--muted); border: 1px solid var(--border-2);
+    border-radius: 6px; padding: 4px 8px; cursor: pointer; opacity: .85;
+  }
+  .copy:hover { color: var(--accent); border-color: var(--accent); opacity: 1; }
+  .copy.done { color: var(--ok); border-color: var(--ok); }
+
+  /* ---------- Power flow diagram ---------- */
+  .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; margin: 10px 0 4px; }
+  .node { flex: 1 1 150px; min-width: 140px; background: var(--surface); border: 1px solid var(--border);
+          border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); border-top: 3px solid var(--nc, var(--c-power)); }
+  .node .rail { font-family: var(--mono); font-weight: 700; font-size: .95rem; color: var(--nc, var(--ink)); }
+  .node .desc { font-size: .78rem; color: var(--muted); margin-top: 3px; }
+  .node ul { margin: 8px 0 0; padding-left: 16px; font-size: .78rem; color: var(--ink-soft); }
+  .node ul li { margin: 2px 0; }
+
+  /* ---------- Steps (bring-up) ---------- */
+  .steps { display: flex; flex-direction: column; gap: 14px; counter-reset: step; }
+  .step { display: grid; grid-template-columns: 40px 1fr; gap: 16px; background: var(--surface);
+          border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+  .step .idx { counter-increment: step; font-family: var(--mono); font-weight: 700; font-size: 1.05rem;
+               color: var(--accent); }
+  .step .idx::before { content: counter(step, decimal-leading-zero); }
+  .step .body { min-width: 0; }
+  .step h4 { margin: 2px 0 4px; font-size: 1.02rem; font-weight: 700; }
+  .step .file { font-family: var(--mono); font-size: .74rem; color: var(--c-spi); font-weight: 600; }
+  .step .grid2 { display: grid; gap: 10px 20px; margin-top: 10px; }
+  @media (min-width: 620px){ .step .grid2 { grid-template-columns: 1fr 1fr; } }
+  .step .sub { font-family: var(--mono); font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); margin-bottom: 3px; }
+  .step .grid2 .v { font-size: .85rem; color: var(--ink-soft); }
+  .pass { display: inline-flex; gap: 7px; align-items: flex-start; font-size: .85rem; color: var(--ink-soft);
+          border-top: 1px dashed var(--border-2); margin-top: 12px; padding-top: 10px; }
+  .pass::before { content: "PASS"; font-family: var(--mono); font-size: .6rem; font-weight: 700; letter-spacing: .08em;
+          color: var(--ok); background: var(--ok-bg); border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent);
+          padding: 2px 6px; border-radius: 4px; flex: none; }
+
+  /* ---------- State machine ---------- */
+  .states { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 18px; }
+  .state { font-family: var(--mono); font-weight: 700; font-size: .8rem; padding: 8px 12px; border-radius: 8px;
+           border: 1px solid var(--border-2); background: var(--surface); color: var(--ink); }
+  .state.run { border-color: var(--ok); color: var(--ok); background: var(--ok-bg); }
+  .state.err { border-color: var(--danger); color: var(--danger); background: var(--danger-bg); }
+  .arrow { font-family: var(--mono); color: var(--faint); font-size: .72rem; }
+  .arrow b { color: var(--accent); }
+
+  ul.plain { margin: 10px 0 14px; padding-left: 20px; }
+  ul.plain li { margin: 5px 0; }
+  ul.plain li::marker { color: var(--accent); }
+  strong { font-weight: 700; color: var(--ink); }
+
+  /* ---------- Footer ---------- */
+  footer.foot { padding: 40px 0 64px; color: var(--muted); font-size: .82rem; }
+  footer.foot .src { font-family: var(--mono); font-size: .74rem; color: var(--faint); }
+  footer.foot code { font-family: var(--mono); background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+
+  @media print {
+    header.bar, nav.toc, .theme-btn, .copy { display: none !important; }
+    .layout { display: block; }
+    section, .hero { break-inside: avoid-page; }
+    body { background: #fff; color: #000; }
+  }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="mark">LFR<span class="dot">·</span>ESP32</span>
+  <span class="board">ESP32 DevKit V1 · 30 pinos · Arduino/PlatformIO</span>
+  <span class="spacer"></span>
+  <button class="theme-btn" id="themeBtn" aria-label="Alternar tema">
+    <span id="themeIcon">◐</span><span id="themeLabel">Tema</span>
+  </button>
+</header>
+
+<div class="shell">
+<div class="layout">
+
+  <nav class="toc" aria-label="Índice">
+    <div class="eyebrow">Neste guia</div>
+    <ol>
+      <li><a href="#visao"><span class="n">00</span><span>Visão geral & legenda</span></a></li>
+      <li><a href="#mapa"><span class="n">01</span><span>Mapa de GPIOs por barramento</span></a></li>
+      <li><a href="#tabela"><span class="n">02</span><span>Tabela mestra de pinos</span></a></li>
+      <li><a href="#spi"><span class="n">03</span><span>SPI → MCP3008 → QTR-8A</span></a></li>
+      <li><a href="#motor"><span class="n">04</span><span>Motores → TB6612FNG</span></a></li>
+      <li><a href="#enc"><span class="n">05</span><span>Encoders Hall (quadratura)</span></a></li>
+      <li><a href="#power"><span class="n">06</span><span>Alimentação</span></a></li>
+      <li><a href="#testes"><span class="n">07</span><span>Guia de testes de bancada</span></a></li>
+      <li><a href="#gravar"><span class="n">08</span><span>Gravação do firmware</span></a></li>
+      <li><a href="#exemplos"><span class="n">09</span><span>Gravar sketches de bancada</span></a></li>
+      <li><a href="#estados"><span class="n">10</span><span>Máquina de estados & LED/buzzer</span></a></li>
+      <li><a href="#ble"><span class="n">11</span><span>Comandos BLE</span></a></li>
+      <li><a href="#checklist"><span class="n">12</span><span>Checklist de energização</span></a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <!-- HERO -->
+    <div class="hero" id="top">
+      <p class="eyebrow">Guia de hardware · ligação · testes · gravação</p>
+      <h1>Line Follower Racer — ESP32 DevKit V1</h1>
+      <p class="lead">Referência de bancada gerada a partir do firmware em produção (<code class="inline">src/config.h</code>, <code class="inline">src/main.cpp</code>, <code class="inline">examples/</code>). Cada GPIO abaixo corresponde a uma linha real do código — nada aqui é aproximado.</p>
+      <div class="facts">
+        <div class="f"><div class="k">MCU</div><div class="v">ESP32 <small>DevKit V1</small></div></div>
+        <div class="f"><div class="k">GPIOs usados</div><div class="v">19</div></div>
+        <div class="f"><div class="k">Loop de controle</div><div class="v">500 Hz <small>2 ms</small></div></div>
+        <div class="f"><div class="k">Gravar</div><div class="v"><small>pio run -e esp32dev -t upload</small></div></div>
+        <div class="f"><div class="k">Serial</div><div class="v">115200 <small>baud</small></div></div>
+        <div class="f"><div class="k">Testes nativos</div><div class="v">91 <small>pio test</small></div></div>
+      </div>
+    </div>
+
+    <!-- 00 VISÃO -->
+    <section id="visao">
+      <div class="sec-head"><span class="num">00</span><h2>Visão geral & legenda de cores</h2></div>
+      <p class="sec-intro">Todo o guia usa uma cor por barramento. A mesma cor identifica o pino no mapa, na tabela e nos conectores — siga a cor para não trocar fio.</p>
+      <div class="legend">
+        <span class="li"><span class="swatch" style="background:var(--c-spi)"></span>SPI / ADC (MCP3008)</span>
+        <span class="li"><span class="swatch" style="background:var(--c-motor)"></span>Motores (TB6612FNG)</span>
+        <span class="li"><span class="swatch" style="background:var(--c-enc)"></span>Encoders Hall</span>
+        <span class="li"><span class="swatch" style="background:var(--c-aux)"></span>Aux / controle</span>
+        <span class="li"><span class="swatch" style="background:var(--c-power)"></span>Alimentação</span>
+      </div>
+      <p>A cadeia de sinal do robô é: <strong>QTR-8A</strong> (8 sensores analógicos) → <strong>MCP3008</strong> (ADC SPI 10 bits) → <strong>ESP32</strong> (PID de posição + cascata de RPM) → <strong>TB6612FNG</strong> (ponte H dupla) → <strong>2× N20</strong> com encoder Hall, cujo RPM realimenta o ESP32. Tudo roda em 500 Hz no Core 0; BLE e telemetria no Core 1.</p>
+      <div class="note-box"><span class="lbl">Convenção de lados</span><p>No código, <strong>Motor A = roda ESQUERDA</strong> (GPIO 25/26/27) e <strong>Motor B = roda DIREITA</strong> (GPIO 33/32/4) — ver <code>motors.setSpeed(MotorId::A, leftPwm)</code> em <code>main.cpp</code>. Mantenha esse mapeamento na hora de soldar, ou o robô vira para o lado errado.</p></div>
+    </section>
+
+    <!-- 01 MAPA -->
+    <section id="mapa">
+      <div class="sec-head"><span class="num">01</span><h2>Mapa de GPIOs por barramento</h2></div>
+      <p class="sec-intro">Os 19 GPIOs em uso, agrupados por destino. Cada cartão é um conector físico do robô. <em>Agrupamento lógico</em> — confira a posição física de cada pino na serigrafia da sua placa antes de soldar.</p>
+
+      <div class="buses">
+
+        <div class="bus" style="--c:var(--c-spi)">
+          <header><span class="icon"></span><span class="title">SPI → MCP3008</span><span class="to">1 MHz · modo 0,0</span></header>
+          <ul>
+            <li class="pin"><span class="gpio">GPIO13</span><span class="meta"><span class="sig">MOSI</span><span class="dst">→ MCP3008 DIN (pino 11)</span></span></li>
+            <li class="pin"><span class="gpio">GPIO12</span><span class="meta"><span class="sig">MISO</span><span class="dst">→ MCP3008 DOUT (pino 12)</span><span class="note">strap pin — ver tabela</span></span></li>
+            <li class="pin"><span class="gpio">GPIO14</span><span class="meta"><span class="sig">CLK</span><span class="dst">→ MCP3008 CLK (pino 13)</span></span></li>
+            <li class="pin"><span class="gpio">GPIO15</span><span class="meta"><span class="sig">CS</span><span class="dst">→ MCP3008 CS/SHDN (pino 10)</span></span></li>
+          </ul>
+        </div>
+
+        <div class="bus" style="--c:var(--c-motor)">
+          <header><span class="icon"></span><span class="title">Motor A (esq.) → TB6612</span><span class="to">LEDC ch0 · 20 kHz</span></header>
+          <ul>
+            <li class="pin"><span class="gpio">GPIO25</span><span class="meta"><span class="sig">PWMA</span><span class="dst">→ TB6612 PWMA</span></span></li>
+            <li class="pin"><span class="gpio">GPIO26</span><span class="meta"><span class="sig">AIN1</span><span class="dst">→ TB6612 AIN1</span></span></li>
+            <li class="pin"><span class="gpio">GPIO27</span><span class="meta"><span class="sig">AIN2</span><span class="dst">→ TB6612 AIN2</span></span></li>
+          </ul>
+        </div>
+
+        <div class="bus" style="--c:var(--c-motor)">
+          <header><span class="icon"></span><span class="title">Motor B (dir.) → TB6612</span><span class="to">LEDC ch1 · 20 kHz</span></header>
+          <ul>
+            <li class="pin"><span class="gpio">GPIO33</span><span class="meta"><span class="sig">PWMB</span><span class="dst">→ TB6612 PWMB</span></span></li>
+            <li class="pin"><span class="gpio">GPIO32</span><span class="meta"><span class="sig">BIN1</span><span class="dst">→ TB6612 BIN1</span></span></li>
+            <li class="pin"><span class="gpio">GPIO4</span><span class="meta"><span class="sig">BIN2</span><span class="dst">→ TB6612 BIN2</span></span></li>
+            <li class="pin"><span class="gpio">GPIO23</span><span class="meta"><span class="sig">STBY</span><span class="dst">→ TB6612 STBY (HIGH = ativo)</span></span></li>
+          </ul>
+        </div>
+
+        <div class="bus" style="--c:var(--c-enc)">
+          <header><span class="icon"></span><span class="title">Encoder Esquerdo</span><span class="to">quadratura 4×</span></header>
+          <ul>
+            <li class="pin"><span class="gpio">GPIO18</span><span class="meta"><span class="sig">ENC-L CH-A</span><span class="dst">pull-up interno OK</span></span></li>
+            <li class="pin"><span class="gpio">GPIO19</span><span class="meta"><span class="sig">ENC-L CH-B</span><span class="dst">pull-up interno OK</span></span></li>
+          </ul>
+        </div>
+
+        <div class="bus" style="--c:var(--c-enc)">
+          <header><span class="icon"></span><span class="title">Encoder Direito</span><span class="to">input-only</span></header>
+          <ul>
+            <li class="pin"><span class="gpio">GPIO36</span><span class="meta"><span class="sig">ENC-R CH-A (VP)</span><span class="dst">input-only</span><span class="note">10 kΩ externo p/ 3V3 obrigatório</span></span></li>
+            <li class="pin"><span class="gpio">GPIO39</span><span class="meta"><span class="sig">ENC-R CH-B (VN)</span><span class="dst">input-only</span><span class="note">10 kΩ externo p/ 3V3 obrigatório</span></span></li>
+          </ul>
+        </div>
+
+        <div class="bus" style="--c:var(--c-aux)">
+          <header><span class="icon"></span><span class="title">Aux / Controle</span><span class="to">botão · LED · buzzer · bat</span></header>
+          <ul>
+            <li class="pin"><span class="gpio">GPIO0</span><span class="meta"><span class="sig">Botão START/CAL</span><span class="dst">pull-up interno · LOW = pressionado</span><span class="note">strap pin</span></span></li>
+            <li class="pin"><span class="gpio">GPIO22</span><span class="meta"><span class="sig">Buzzer passivo</span><span class="dst">tom PWM (beep não-bloqueante)</span></span></li>
+            <li class="pin"><span class="gpio">GPIO2</span><span class="meta"><span class="sig">LED de status</span><span class="dst">onboard · HIGH = aceso</span><span class="note">strap pin</span></span></li>
+            <li class="pin"><span class="gpio">GPIO34</span><span class="meta"><span class="sig">VBAT (divisor)</span><span class="dst">input-only · 100k/47k → ADC</span></span></li>
+          </ul>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 02 TABELA -->
+    <section id="tabela">
+      <div class="sec-head"><span class="num">02</span><h2>Tabela mestra de pinos</h2></div>
+      <p class="sec-intro">Referência única para lookup rápido por número de GPIO. Ordenada por pino.</p>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>GPIO</th><th>Sinal</th><th>Barramento</th><th>Destino</th><th>Observações</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="g">0</td><td>Botão START/CAL</td><td><span class="chip aux">AUX</span></td><td>Botão → GND</td><td>Pull-up interno · LOW = pressionado · <strong>strap pin</strong></td></tr>
+            <tr><td class="g">2</td><td>LED status</td><td><span class="chip aux">AUX</span></td><td>LED onboard</td><td>HIGH = aceso · <strong>strap pin</strong></td></tr>
+            <tr><td class="g">4</td><td>BIN2</td><td><span class="chip motor">MOTOR</span></td><td>TB6612 BIN2</td><td>Direção motor B (dir.)</td></tr>
+            <tr><td class="g">12</td><td>MISO / DOUT</td><td><span class="chip spi">SPI</span></td><td>MCP3008 pino 12</td><td>Entrada do ADC · <strong>strap pin</strong> (deve estar LOW no boot)</td></tr>
+            <tr><td class="g">13</td><td>MOSI / DIN</td><td><span class="chip spi">SPI</span></td><td>MCP3008 pino 11</td><td>Comandos para o ADC</td></tr>
+            <tr><td class="g">14</td><td>CLK</td><td><span class="chip spi">SPI</span></td><td>MCP3008 pino 13</td><td>Clock SPI</td></tr>
+            <tr><td class="g">15</td><td>CS</td><td><span class="chip spi">SPI</span></td><td>MCP3008 pino 10</td><td>Chip select ativo-baixo · <strong>strap pin</strong></td></tr>
+            <tr><td class="g">18</td><td>ENC-L CH-A</td><td><span class="chip enc">ENC</span></td><td>Encoder esq. A</td><td>Pull-up interno suficiente</td></tr>
+            <tr><td class="g">19</td><td>ENC-L CH-B</td><td><span class="chip enc">ENC</span></td><td>Encoder esq. B</td><td>Pull-up interno suficiente</td></tr>
+            <tr><td class="g">22</td><td>Buzzer</td><td><span class="chip aux">AUX</span></td><td>Buzzer passivo</td><td>Tom PWM para feedback</td></tr>
+            <tr><td class="g">23</td><td>STBY</td><td><span class="chip motor">MOTOR</span></td><td>TB6612 STBY</td><td>HIGH = driver habilitado</td></tr>
+            <tr><td class="g">25</td><td>PWMA</td><td><span class="chip motor">MOTOR</span></td><td>TB6612 PWMA</td><td>Motor A (esq.) · LEDC ch0</td></tr>
+            <tr><td class="g">26</td><td>AIN1</td><td><span class="chip motor">MOTOR</span></td><td>TB6612 AIN1</td><td>Direção motor A</td></tr>
+            <tr><td class="g">27</td><td>AIN2</td><td><span class="chip motor">MOTOR</span></td><td>TB6612 AIN2</td><td>Direção motor A</td></tr>
+            <tr><td class="g">32</td><td>BIN1</td><td><span class="chip motor">MOTOR</span></td><td>TB6612 BIN1</td><td>Direção motor B (dir.)</td></tr>
+            <tr><td class="g">33</td><td>PWMB</td><td><span class="chip motor">MOTOR</span></td><td>TB6612 PWMB</td><td>Motor B (dir.) · LEDC ch1</td></tr>
+            <tr><td class="g">34</td><td>VBAT ADC</td><td><span class="chip aux">AUX</span></td><td>Divisor 100k/47k</td><td><strong>Input-only</strong> · leitura de bateria</td></tr>
+            <tr><td class="g">36</td><td>ENC-R CH-A (VP)</td><td><span class="chip enc">ENC</span></td><td>Encoder dir. A</td><td><strong>Input-only, sem pull-up interno</strong> · 10 kΩ externo obrigatório</td></tr>
+            <tr><td class="g">39</td><td>ENC-R CH-B (VN)</td><td><span class="chip enc">ENC</span></td><td>Encoder dir. B</td><td><strong>Input-only, sem pull-up interno</strong> · 10 kΩ externo obrigatório</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note-box warn"><span class="lbl">Strap pins</span><p>GPIO 0, 2, 12 e 15 são pinos de boot-strapping do ESP32. Se a placa não inicializar após ligar tudo, desconecte essas linhas e teste — um dispositivo forçando nível errado nesses pinos durante o reset trava o boot. O MCP3008 mantém DOUT em alta impedância enquanto CS está em HIGH, então normalmente convive bem com GPIO12.</p></div>
+    </section>
+
+    <!-- 03 SPI -->
+    <section id="spi">
+      <div class="sec-head"><span class="num">03</span><h2>SPI → MCP3008 → QTR-8A</h2></div>
+      <p class="sec-intro">O MCP3008 lê os 8 sensores analógicos do QTR-8A (single-ended, CH0–CH7) e entrega ao ESP32 por SPI a 1 MHz, modo 0,0, 10 bits (0–1023).</p>
+
+      <h3>MCP3008 → ESP32</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>ESP32</th><th>MCP3008</th><th>Descrição</th></tr></thead>
+        <tbody>
+          <tr><td class="g">GPIO13</td><td>DIN (11)</td><td>MOSI — dados para o ADC</td></tr>
+          <tr><td class="g">GPIO12</td><td>DOUT (12)</td><td>MISO — dados do ADC</td></tr>
+          <tr><td class="g">GPIO14</td><td>CLK (13)</td><td>Clock SPI</td></tr>
+          <tr><td class="g">GPIO15</td><td>CS/SHDN (10)</td><td>Chip select ativo-baixo</td></tr>
+          <tr><td class="g">3V3</td><td>VDD (16) + VREF (15)</td><td>Alimentação e referência</td></tr>
+          <tr><td class="g">GND</td><td>AGND (14) + DGND (9)</td><td>Terra comum</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>QTR-8A → MCP3008</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>QTR-8A</th><th>Liga em</th><th>Notas</th></tr></thead>
+        <tbody>
+          <tr><td class="g">VCC</td><td><span class="mono">3.3 V</span></td><td>Jumper da placa em 3.3 V — casa com o VREF do MCP3008</td></tr>
+          <tr><td class="g">GND</td><td>GND</td><td>Terra comum</td></tr>
+          <tr><td class="g">OUT1–OUT8</td><td>MCP3008 CH0–CH7</td><td>Uma saída analógica por canal</td></tr>
+          <tr><td class="g">LEDON</td><td>(deixar solto)</td><td>Pull-up interno mantém os emissores ligados</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="note-box danger"><span class="lbl">Alimente o QTR-8A em 3.3 V — nunca 5 V</span><p>O MCP3008 opera com VDD/VREF = 3.3 V. A 5 V, as saídas do array chegariam a ~5 V e excederiam a entrada máxima do ADC (VDD + 0,3 V), além de perder faixa útil. Em 3.3 V a saída varia 0–3.3 V → faixa cheia e segura.</p></div>
+      <div class="note-box"><span class="lbl">Polaridade óptica</span><p>Saída <strong>alta</strong> sobre preto (baixa reflexão), <strong>baixa</strong> sobre a linha branca. A classe <code>Calibration</code> aprende min/max por canal, então a polaridade é normalizada automaticamente — não há o que ajustar em hardware.</p></div>
+    </section>
+
+    <!-- 04 MOTOR -->
+    <section id="motor">
+      <div class="sec-head"><span class="num">04</span><h2>Motores → TB6612FNG</h2></div>
+      <p class="sec-intro">Ponte H dupla. PWM gerado por LEDC a 20 kHz, 10 bits (0–1023). VM recebe a bateria direta; VCC é a lógica em 5 V.</p>
+
+      <div class="tablewrap"><table>
+        <thead><tr><th>ESP32 / Fonte</th><th>TB6612FNG</th><th>Descrição</th></tr></thead>
+        <tbody>
+          <tr><td class="g">GPIO25</td><td>PWMA</td><td>PWM motor A (esquerdo) · LEDC ch0</td></tr>
+          <tr><td class="g">GPIO26</td><td>AIN1</td><td>Direção A bit 1</td></tr>
+          <tr><td class="g">GPIO27</td><td>AIN2</td><td>Direção A bit 2</td></tr>
+          <tr><td class="g">GPIO33</td><td>PWMB</td><td>PWM motor B (direito) · LEDC ch1</td></tr>
+          <tr><td class="g">GPIO32</td><td>BIN1</td><td>Direção B bit 1</td></tr>
+          <tr><td class="g">GPIO4</td><td>BIN2</td><td>Direção B bit 2</td></tr>
+          <tr><td class="g">GPIO23</td><td>STBY</td><td>Standby — <strong>HIGH = ativo</strong></td></tr>
+          <tr><td class="g">5 V</td><td>VCC</td><td>Lógica do driver</td></tr>
+          <tr><td class="g">LiPo+ (7.4 V)</td><td>VM</td><td>Alimentação dos motores</td></tr>
+          <tr><td class="g">GND</td><td>GND</td><td>Terra comum com ESP32</td></tr>
+          <tr><td class="g">Motor A ±</td><td>AO1 / AO2</td><td>N20 esquerdo</td></tr>
+          <tr><td class="g">Motor B ±</td><td>BO1 / BO2</td><td>N20 direito</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Tabela-verdade do TB6612</h3>
+      <div class="tablewrap"><table style="min-width:380px">
+        <thead><tr><th>IN1</th><th>IN2</th><th>PWM</th><th>Modo</th></tr></thead>
+        <tbody>
+          <tr><td class="g">H</td><td class="g">L</td><td class="g">PWM</td><td>Frente</td></tr>
+          <tr><td class="g">L</td><td class="g">H</td><td class="g">PWM</td><td>Ré</td></tr>
+          <tr><td class="g">H</td><td class="g">H</td><td class="g">—</td><td>Freio (brake)</td></tr>
+          <tr><td class="g">L</td><td class="g">L</td><td class="g">—</td><td>Livre (coast)</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note-box warn"><span class="lbl">STBY precisa ir a HIGH</span><p>Se o STBY (GPIO23) ficar em LOW ou flutuando, o driver permanece desligado e os motores não giram, mesmo com PWM correto. <code>MotorDriver::begin()</code> puxa STBY para HIGH — confira a solda desse fio se um teste de motor "não faz nada".</p></div>
+    </section>
+
+    <!-- 05 ENCODERS -->
+    <section id="enc">
+      <div class="sec-head"><span class="num">05</span><h2>Encoders Hall — quadratura 4×</h2></div>
+      <p class="sec-intro">A classe <code>Encoder</code> lê os dois canais por interrupção em ambas as bordas (4 transições por período). O lado direito usa GPIO 36/39, que são input-only e <strong>não têm pull-up interno</strong>.</p>
+
+      <div class="tablewrap"><table>
+        <thead><tr><th>Encoder</th><th>ESP32</th><th>Notas</th></tr></thead>
+        <tbody>
+          <tr><td>Esq. CH-A</td><td class="g">GPIO18</td><td>Pull-up interno (INPUT_PULLUP) suficiente</td></tr>
+          <tr><td>Esq. CH-B</td><td class="g">GPIO19</td><td>Pull-up interno suficiente</td></tr>
+          <tr><td>Dir. CH-A</td><td class="g">GPIO36 (VP)</td><td><strong>Input-only</strong> — pull-up 10 kΩ externo obrigatório</td></tr>
+          <tr><td>Dir. CH-B</td><td class="g">GPIO39 (VN)</td><td><strong>Input-only</strong> — pull-up 10 kΩ externo obrigatório</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="note-box danger"><span class="lbl">Pull-up externo obrigatório em GPIO 36 e 39</span><p><code>pinMode(36, INPUT_PULLUP)</code> é <em>silenciosamente ignorado</em> pelo HAL do Arduino-ESP32 nesses pinos RTC input-only. Sem o resistor 10 kΩ físico, os pinos flutuam, o ISR dispara em ruído e o contador "gira sozinho", destruindo a estabilidade do PID interno de RPM. Não pule este resistor.</p></div>
+
+      <div class="cmd">
+        <button class="copy" type="button">copiar</button>
+<pre><span class="c"># Ligação do pull-up (repita para GPIO39)</span>
+3V3 <span class="p">──[ 10 kΩ ]──</span> GPIO36 <span class="p">───</span> Encoder Dir. CH-A
+</pre>
+      </div>
+
+      <div class="note-box"><span class="lbl">Alimentação do encoder</span><p>Os encoders Hall dos N20 são alimentados em <strong>3.3 V</strong> (VCC do encoder no 3V3 do ESP32, GND comum). Os canais A/B são saídas open-collector/Hall — daí a necessidade do pull-up. PPR padrão em <code>config.h</code>: <code>ENCODER_DEFAULT_PPR_X4 = 28</code> (7 PPR × 4). A auto-calibração via BLE sobrescreve e persiste em NVS.</p></div>
+    </section>
+
+    <!-- 06 POWER -->
+    <section id="power">
+      <div class="sec-head"><span class="num">06</span><h2>Alimentação</h2></div>
+      <p class="sec-intro">Uma bateria LiPo 2S alimenta duas trilhas: 7.4 V direto para os motores (VM) e 5 V regulado (MP1584) para a lógica, de onde sai o 3.3 V do próprio ESP32 para sensores e ADC.</p>
+
+      <div class="flow">
+        <div class="node" style="--nc:var(--c-power)">
+          <div class="rail">LiPo 2S · 7.4 V</div>
+          <div class="desc">800 mAh 30C · via chave SPDT no positivo</div>
+          <ul><li>→ MP1584 (buck)</li><li>→ TB6612 VM (direto)</li></ul>
+        </div>
+        <div class="node" style="--nc:var(--c-power)">
+          <div class="rail">MP1584 → 5 V</div>
+          <div class="desc">Regulador buck</div>
+          <ul><li>→ ESP32 VIN</li><li>→ TB6612 VCC (lógica)</li></ul>
+        </div>
+        <div class="node" style="--nc:var(--c-spi)">
+          <div class="rail">ESP32 → 3.3 V</div>
+          <div class="desc">LDO onboard, saída no pino 3V3</div>
+          <ul><li>→ MCP3008 VDD + VREF</li><li>→ QTR-8A VCC</li><li>→ Encoders VCC</li></ul>
+        </div>
+        <div class="node" style="--nc:var(--c-motor)">
+          <div class="rail">7.4 V → Motores</div>
+          <div class="desc">TB6612 VM → AO/BO</div>
+          <ul><li>→ N20 esquerdo</li><li>→ N20 direito</li></ul>
+        </div>
+      </div>
+
+      <div class="note-box"><span class="lbl">Terra comum & desacoplamento</span><p>Todos os GNDs (LiPo, MP1584, ESP32, TB6612, MCP3008, QTR) devem estar no mesmo nó. Capacitores: <strong>100 µF</strong> no VM do TB6612 (perto do driver) e <strong>100 nF</strong> em cada VCC/VDD de CI. A chave SPDT vai <em>em série no positivo do LiPo</em>, antes de qualquer divisão.</p></div>
+
+      <div class="tablewrap"><table style="min-width:360px">
+        <thead><tr><th>Consumo estimado</th><th>Corrente</th></tr></thead>
+        <tbody>
+          <tr><td>ESP32 (WiFi off)</td><td class="g">~80 mA</td></tr>
+          <tr><td>2× N20 em carga</td><td class="g">~400 mA</td></tr>
+          <tr><td>QTR-8A (8 emissores)</td><td class="g">~100 mA</td></tr>
+          <tr><td>MCP3008</td><td class="g">~1 mA</td></tr>
+          <tr><td><strong>Total</strong></td><td class="g"><strong>~600 mA</strong></td></tr>
+        </tbody>
+      </table></div>
+      <p style="color:var(--muted);font-size:.88rem">Autonomia: 800 mAh ÷ 600 mA ≈ <strong>~8 min</strong> de corrida.</p>
+
+      <h3>Divisor de tensão VBAT (GPIO34)</h3>
+      <div class="cmd">
+        <button class="copy" type="button">copiar</button>
+<pre>LiPo+ <span class="p">──[ 100 kΩ ]──</span>┬<span class="p">── GPIO34</span>
+                    │
+              <span class="p">[ 47 kΩ ]</span>
+                    │
+                   GND
+
+<span class="c"># V(GPIO34) = Vbat × 47/(100+47) = Vbat × 0.32</span>
+<span class="c"># 2S cheio 8.4 V → 2.69 V  (< 3.3 V, seguro)</span>
+<span class="c"># 2S vazio 6.0 V → 1.92 V</span>
+</pre>
+      </div>
+    </section>
+
+    <!-- 07 TESTES -->
+    <section id="testes">
+      <div class="sec-head"><span class="num">07</span><h2>Guia de testes de bancada</h2></div>
+      <p class="sec-intro">Bring-up incremental: valide cada subsistema isolado <em>antes</em> de subir o firmware completo. Cada passo corresponde a um sketch em <code>examples/</code>. Rode em ordem — não pule para os motores sem antes ver os sensores respondendo.</p>
+
+      <div class="note-box warn"><span class="lbl">Antes de qualquer teste com motor</span><p>Levante o robô num suporte com as rodas <strong>fora do chão</strong>. Um erro de fiação ou de sinal manda o carro em disparada da bancada.</p></div>
+
+      <div class="steps">
+
+        <div class="step">
+          <span class="idx"></span>
+          <div class="body">
+            <h4>Leitura crua dos sensores</h4>
+            <span class="file">examples/sensor_raw_test.cpp</span>
+            <div class="grid2">
+              <div><div class="sub">O que faz</div><div class="v">Imprime os 8 canais do MCP3008 em CSV (<code class="inline">s0…s7</code>) a cada 50 ms.</div></div>
+              <div><div class="sub">Como observar</div><div class="v">Serial Monitor a 115200. Passe a linha branca sob cada sensor.</div></div>
+            </div>
+            <div class="pass">Cada canal varia claramente entre preto e branco; nenhum fica travado em 0 ou 1023.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="idx"></span>
+          <div class="body">
+            <h4>Calibração & posição</h4>
+            <span class="file">examples/sensor_calibration_test.cpp</span>
+            <div class="grid2">
+              <div><div class="sub">O que faz</div><div class="v">Pressione o botão → varredura de 3 s; depois imprime <code class="inline">pos</code> e <code class="inline">lost</code>.</div></div>
+              <div><div class="sub">Como observar</div><div class="v">Durante a varredura, passe todos os sensores sobre a linha.</div></div>
+            </div>
+            <div class="pass"><code class="inline">pos</code> acompanha a linha (negativo à esquerda, positivo à direita) e <code class="inline">lost=SIM</code> quando o array sai da linha.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="idx"></span>
+          <div class="body">
+            <h4>Fumaça dos motores</h4>
+            <span class="file">examples/motor_smoke_test.cpp</span>
+            <div class="grid2">
+              <div><div class="sub">O que faz</div><div class="v">Roda ao ligar: A frente → A ré → B frente → B ré → ambos frente → stop (1,5 s cada).</div></div>
+              <div><div class="sub">Como observar</div><div class="v">Rodas no ar. Confira que "A" é a roda <strong>esquerda</strong> e "B" a <strong>direita</strong>.</div></div>
+            </div>
+            <div class="pass">Cada motor gira no sentido anunciado no Serial. Se um girar ao contrário, inverta AO1/AO2 (ou BO1/BO2).</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="idx"></span>
+          <div class="body">
+            <h4>Movimentos diferenciais</h4>
+            <span class="file">examples/differential_hw_test.cpp</span>
+            <div class="grid2">
+              <div><div class="sub">O que faz</div><div class="v">Botão inicia: reto → curva dir → curva esq → giro CW → giro CCW → stop.</div></div>
+              <div><div class="sub">Como observar</div><div class="v">Cada movimento deve ser visualmente distinto; imprime L/R no Serial.</div></div>
+            </div>
+            <div class="pass">"Curva dir" reduz a roda direita; giros invertem os sentidos. Combinação correção→PWM coerente.</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="idx"></span>
+          <div class="body">
+            <h4>Sinal dos encoders</h4>
+            <span class="file">examples/encoder_smoke_test.cpp</span>
+            <div class="grid2">
+              <div><div class="sub">O que faz</div><div class="v">Imprime <code class="inline">count,delta,dir</code> de cada encoder a cada 100 ms.</div></div>
+              <div><div class="sub">Como observar</div><div class="v">Gire cada roda com a mão, um sentido de cada vez.</div></div>
+            </div>
+            <div class="pass">Contagem sobe/desce conforme o sentido; <strong>parado, o contador não anda sozinho</strong> (valida o pull-up de GPIO 36/39).</div>
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="idx"></span>
+          <div class="body">
+            <h4>Calibração de PPR & RPM</h4>
+            <span class="file">examples/velocity_calibration_test.cpp</span>
+            <div class="grid2">
+              <div><div class="sub">O que faz</div><div class="v">Gire a roda 10 voltas exatas e envie <code class="inline">f</code> no Serial; repete p/ o outro lado. Salva PPR em NVS.</div></div>
+              <div><div class="sub">Como observar</div><div class="v">Depois da calibração, gire as rodas e veja <code class="inline">rpmL / rpmR</code>.</div></div>
+            </div>
+            <div class="pass">PPR calibrado ≈ 28 (N20 típico) e persiste após reboot; RPM cresce suave com a rotação.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <h3>Teste de lógica sem hardware <span class="tag">host / CI</span></h3>
+      <p>Toda a lógica de controle (PID, cascata, calibração, encoders, velocidade) tem cobertura em testes nativos que rodam no PC, sem ESP32:</p>
+      <div class="cmd">
+        <button class="copy" type="button">copiar</button>
+<pre><span class="p">pio test -e native</span>            <span class="c"># 12 suítes — esperado: 91 test cases succeeded</span>
+<span class="p">pio test -e native -f test_cascade</span>   <span class="c"># uma suíte específica</span>
+</pre>
+      </div>
+    </section>
+
+    <!-- 08 GRAVAR -->
+    <section id="gravar">
+      <div class="sec-head"><span class="num">08</span><h2>Gravação do firmware</h2></div>
+      <p class="sec-intro">Toolchain: PlatformIO. O firmware completo vive em <code>src/</code> e sobe no ambiente <code>esp32dev</code>.</p>
+
+      <h3>1 · Pré-requisitos (uma vez)</h3>
+      <div class="cmd">
+        <button class="copy" type="button">copiar</button>
+<pre><span class="p">pip install platformio</span>
+<span class="p">pio platform install espressif32</span>
+</pre>
+      </div>
+
+      <h3>2 · Compilar e gravar</h3>
+      <div class="cmd">
+        <button class="copy" type="button">copiar</button>
+<pre><span class="c"># conecte o ESP32 por USB e rode:</span>
+<span class="p">pio run -e esp32dev --target upload</span>
+</pre>
+      </div>
+      <p style="color:var(--muted);font-size:.88rem;margin-top:-4px">Upload a 921600 baud (definido em <code class="inline">platformio.ini</code>). Se a gravação falhar, segure <strong>BOOT</strong> no ESP32 durante o início do upload, ou reduza a velocidade.</p>
+
+      <h3>3 · Monitor serial</h3>
+      <div class="cmd">
+        <button class="copy" type="button">copiar</button>
+<pre><span class="p">pio device monitor -b 115200</span>       <span class="c"># abre o Serial a 115200</span>
+<span class="p">pio run -e esp32dev -t upload -t monitor</span>   <span class="c"># grava e já abre o monitor</span>
+</pre>
+      </div>
+
+      <h3>Comandos úteis</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Comando</th><th>Faz</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">pio run -e esp32dev</code></td><td>Só compila (não grava)</td></tr>
+          <tr><td><code class="inline">pio run -e esp32dev -t upload</code></td><td>Compila + grava no ESP32</td></tr>
+          <tr><td><code class="inline">pio run -t clean</code></td><td>Limpa artefatos de build</td></tr>
+          <tr><td><code class="inline">pio device list</code></td><td>Lista portas seriais detectadas</td></tr>
+          <tr><td><code class="inline">pio run -e esp32dev -t erase</code></td><td>Apaga a flash (inclui NVS — perde PPR calibrado)</td></tr>
+          <tr><td><code class="inline">pio test -e native</code></td><td>Roda os testes de lógica no PC</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note-box warn"><span class="lbl">Cuidado com o erase</span><p><code>-t erase</code> apaga a partição NVS, onde fica o PPR auto-calibrado dos encoders. Depois de um erase, refaça a calibração de velocidade (passo 6 dos testes) antes de correr.</p></div>
+    </section>
+
+    <!-- 09 EXEMPLOS -->
+    <section id="exemplos">
+      <div class="sec-head"><span class="num">09</span><h2>Gravar os sketches de bancada</h2></div>
+      <p class="sec-intro">Por padrão o PlatformIO compila apenas <code>src/</code>; os sketches de teste vivem em <code>examples/</code> (fora do build). Como cada um define seu próprio <code>setup()/loop()</code>, só um pode ser gravado por vez. Escolha um método:</p>
+
+      <h3>Método A — ambiente <code>bench</code> dedicado <span class="tag">recomendado · não-destrutivo</span></h3>
+      <p>Adicione um ambiente ao <code>platformio.ini</code> que troca o <code>main.cpp</code> pelo exemplo desejado, mantendo o resto de <code>src/</code>:</p>
+      <div class="cmd">
+        <button class="copy" type="button">copiar</button>
+<pre><span class="c"># platformio.ini — aponte o filtro para o sketch desejado</span>
+<span class="p">[env:bench]</span>
+extends = env:esp32dev
+build_src_filter = <span class="s">-&lt;main.cpp&gt; +&lt;../examples/motor_smoke_test.cpp&gt;</span>
+</pre>
+      </div>
+      <div class="cmd">
+        <button class="copy" type="button">copiar</button>
+<pre><span class="p">pio run -e bench -t upload -t monitor</span>
+</pre>
+      </div>
+      <p style="color:var(--muted);font-size:.88rem;margin-top:-4px">Troque o nome do arquivo no filtro para gravar outro sketch. <code>src/main.cpp</code> permanece intacto.</p>
+
+      <h3>Método B — trocar o <code>main.cpp</code> temporariamente <span class="tag">rápido</span></h3>
+      <div class="cmd">
+        <button class="copy" type="button">copiar</button>
+<pre><span class="c"># guarda o main de produção e coloca o exemplo no lugar</span>
+<span class="p">git stash push -- src/main.cpp</span>
+<span class="p">cp examples/motor_smoke_test.cpp src/main.cpp</span>
+<span class="p">pio run -e esp32dev -t upload -t monitor</span>
+
+<span class="c"># quando terminar, restaura o firmware de produção</span>
+<span class="p">git checkout src/main.cpp</span>
+<span class="p">git stash pop</span>          <span class="c"># se havia alterações locais guardadas</span>
+</pre>
+      </div>
+      <div class="note-box"><span class="lbl">Sketches disponíveis</span><p><code>sensor_raw_test</code> · <code>sensor_calibration_test</code> · <code>motor_smoke_test</code> · <code>differential_hw_test</code> · <code>encoder_smoke_test</code> · <code>velocity_calibration_test</code> — todos em <code>examples/</code>, descritos no passo a passo da seção 07.</p></div>
+    </section>
+
+    <!-- 10 ESTADOS -->
+    <section id="estados">
+      <div class="sec-head"><span class="num">10</span><h2>Máquina de estados & sinais de LED/buzzer</h2></div>
+      <p class="sec-intro">O firmware de produção opera em 5 estados. O botão GPIO0 avança entre eles; o LED (GPIO2) e o buzzer (GPIO22) indicam onde você está — útil para operar o robô na pista sem cabo.</p>
+
+      <div class="states">
+        <span class="state">IDLE</span><span class="arrow">──<b>botão</b>──▶</span>
+        <span class="state">CALIBRATING</span><span class="arrow">──<b>5 s</b>──▶</span>
+        <span class="state">READY</span><span class="arrow">──<b>botão</b>──▶</span>
+        <span class="state run">RUNNING</span><span class="arrow">──<b>botão</b>──▶ READY</span>
+        <span class="arrow"> · loop&gt;4 ms ▶</span><span class="state err">ERROR</span>
+      </div>
+
+      <div class="tablewrap"><table>
+        <thead><tr><th>Estado</th><th>LED (GPIO2)</th><th>Buzzer ao entrar</th><th>Comportamento</th></tr></thead>
+        <tbody>
+          <tr><td class="g">IDLE</td><td>Apagado</td><td>—</td><td>Aguarda botão → inicia calibração dos sensores</td></tr>
+          <tr><td class="g">CALIBRATING</td><td>Piscando (200 ms)</td><td>beep 100 ms</td><td>Varredura de 5 s (<code class="inline">CAL_DURATION_MS</code>); mova o robô sobre a linha</td></tr>
+          <tr><td class="g">READY</td><td>Aceso fixo</td><td>beep 200 ms</td><td>Pronto; botão inicia a corrida (zera PID, arma cronômetro)</td></tr>
+          <tr><td class="g">RUNNING</td><td>—</td><td>beep 50 ms</td><td>Loop de controle a 500 Hz; botão volta para READY (beep 300 ms)</td></tr>
+          <tr><td class="g">ERROR</td><td>Piscando (200 ms)</td><td>—</td><td>Motores parados por loop &gt; 4 ms; botão volta ao IDLE</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note-box"><span class="lbl">Guard de tempo real</span><p>Se um ciclo de controle passar de <strong>4 ms</strong> (<code>loopDurationUs &gt; 4000</code>), o robô corta os motores e entra em ERROR — proteção contra travamento em pista. O período nominal é 2 ms (500 Hz).</p></div>
+    </section>
+
+    <!-- 11 BLE -->
+    <section id="ble">
+      <div class="sec-head"><span class="num">11</span><h2>Comandos BLE (tuning ao vivo)</h2></div>
+      <p class="sec-intro">O robô anuncia como <code>LFR-RACER-01</code>. Comandos são JSON escritos na característica de comando; a telemetria sai por notify. Ajuste ganhos e velocidade sem regravar firmware.</p>
+
+      <div class="tablewrap"><table style="min-width:520px">
+        <thead><tr><th>UUID</th><th>Tipo</th><th>Papel</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">0000abcc-0000-1000-8000-00805f9b34fb</code></td><td>Service</td><td>Serviço LFR</td></tr>
+          <tr><td><code class="inline">0000abcd-…</code></td><td>Notify</td><td>Telemetria (CSV/JSON)</td></tr>
+          <tr><td><code class="inline">0000abce-…</code></td><td>Write</td><td>Comandos (JSON)</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Comandos aceitos</h3>
+      <div class="tablewrap"><table style="min-width:560px">
+        <thead><tr><th>JSON</th><th>Efeito</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">{"t":"pid","kp":..,"ki":..,"kd":..}</code></td><td>PID externo (posição da linha)</td></tr>
+          <tr><td><code class="inline">{"t":"pidv","kp":..,"ki":..,"kd":..}</code></td><td>PID interno de RPM (cascata)</td></tr>
+          <tr><td><code class="inline">{"t":"spd","base":..,"min":..,"max":..,"thrs":..}</code></td><td>Perfil de velocidade em PWM (legado)</td></tr>
+          <tr><td><code class="inline">{"t":"rpm","max":..,"base":..}</code></td><td>Teto e alvo de RPM da cascata</td></tr>
+          <tr><td><code class="inline">{"t":"cal","op":"start|finish","rot":10,"side":"L|R"}</code></td><td>Auto-calibração de PPR do encoder (persistida em NVS)</td></tr>
+          <tr><td><code class="inline">{"t":"start"}</code> / <code class="inline">{"t":"stop"}</code></td><td>Inicia / para a corrida (equivale ao botão em READY/RUNNING)</td></tr>
+          <tr><td><code class="inline">{"t":"reset"}</code></td><td>Volta ao estado IDLE</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note-box"><span class="lbl">Cockpit pronto</span><p>Há um dashboard BLE em <code>docs/dashboard/lfr-cockpit-mock.html</code> (Web Bluetooth) que fala esse protocolo — use-o para sintonizar em vez de montar os JSONs à mão.</p></div>
+    </section>
+
+    <!-- 12 CHECKLIST -->
+    <section id="checklist">
+      <div class="sec-head"><span class="num">12</span><h2>Checklist antes de energizar</h2></div>
+      <p class="sec-intro">Percorra esta lista com a bateria <em>desconectada</em>. É a diferença entre um bring-up tranquilo e fumaça.</p>
+
+      <ul class="plain">
+        <li><strong>Terra comum:</strong> LiPo, MP1584, ESP32, TB6612, MCP3008 e QTR compartilham o mesmo GND.</li>
+        <li><strong>QTR-8A em 3.3 V</strong> — jumper da placa em 3.3 V, nunca 5 V.</li>
+        <li><strong>MCP3008 VDD e VREF em 3.3 V</strong>, ambos ligados.</li>
+        <li><strong>Pull-up 10 kΩ</strong> em GPIO36 <em>e</em> GPIO39 para 3.3 V (encoder direito).</li>
+        <li><strong>TB6612 VM</strong> na bateria (7.4 V) e <strong>VCC</strong> nos 5 V — não troque.</li>
+        <li><strong>STBY (GPIO23)</strong> ligado; sem ele os motores ficam mudos.</li>
+        <li><strong>Divisor VBAT</strong> conferido (100k/47k) — no máx ~2.7 V em GPIO34.</li>
+        <li><strong>Capacitores:</strong> 100 µF no VM, 100 nF em cada VCC/VDD de CI.</li>
+        <li><strong>Chave SPDT</strong> em série no positivo do LiPo, acessível no chassi.</li>
+        <li><strong>Motor A = esquerda, Motor B = direita</strong> — confirmado no smoke test.</li>
+        <li><strong>Rodas no ar</strong> em todo teste que aciona motor.</li>
+        <li><strong>Strap pins</strong> (0/2/12/15): se não bootar, isole e reteste.</li>
+      </ul>
+
+      <div class="note-box ok"><span class="lbl">Ordem recomendada de bring-up</span><p>Sensores crus → calibração/posição → smoke dos motores (no ar) → diferencial → encoders → calibração de RPM → firmware completo → tuning BLE na pista. Nunca pule direto para o firmware completo sem os testes de bancada.</p></div>
+    </section>
+
+    <footer class="foot">
+      <p class="src">Gerado a partir de: <code>src/config.h</code> · <code>src/main.cpp</code> · <code>src/comm/BLETuner.*</code> · <code>examples/*.cpp</code> · <code>platformio.ini</code> · <code>docs/WIRING.md</code></p>
+      <p>Projeto LFR — ESP32 DevKit V1 · branch <code>feat/timing-crossing-fixes</code>. Confira a serigrafia da sua placa: nem toda "DevKit V1" tem o mesmo arranjo físico de pinos.</p>
+    </footer>
+
+  </main>
+</div>
+</div>
+
+<script>
+  // ---- Tema ----
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById('themeBtn');
+    var icon = document.getElementById('themeIcon');
+    var label = document.getElementById('themeLabel');
+    function apply(t) {
+      if (t === 'light' || t === 'dark') { root.setAttribute('data-theme', t); }
+      else { root.removeAttribute('data-theme'); }
+      var dark = t === 'dark' || (t !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      icon.textContent = dark ? '☀' : '☾';
+      label.textContent = dark ? 'Claro' : 'Escuro';
+    }
+    var saved = null;
+    try { saved = localStorage.getItem('lfr-theme'); } catch (e) {}
+    apply(saved || 'auto');
+    btn.addEventListener('click', function () {
+      var cur = root.getAttribute('data-theme');
+      var dark = cur ? cur === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var next = dark ? 'light' : 'dark';
+      try { localStorage.setItem('lfr-theme', next); } catch (e) {}
+      apply(next);
+    });
+  })();
+
+  // ---- Copiar blocos ----
+  document.querySelectorAll('.cmd .copy').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var pre = b.parentElement.querySelector('pre');
+      var text = pre.innerText.replace(/ /g, ' ');
+      navigator.clipboard.writeText(text).then(function () {
+        var old = b.textContent; b.textContent = 'copiado ✓'; b.classList.add('done');
+        setTimeout(function () { b.textContent = old; b.classList.remove('done'); }, 1400);
+      }).catch(function () {});
+    });
+  });
+
+  // ---- TOC ativo por scroll ----
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+    var map = {};
+    links.forEach(function (a) { var id = a.getAttribute('href').slice(1); map[id] = a; });
+    var targets = Object.keys(map).map(function (id) { return document.getElementById(id); }).filter(Boolean);
+    if (!('IntersectionObserver' in window) || !targets.length) return;
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          links.forEach(function (l) { l.classList.remove('active'); });
+          var a = map[e.target.id]; if (a) a.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+    targets.forEach(function (t) { io.observe(t); });
+  })();
+</script>
+</body>
+</html>
