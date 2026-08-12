@@ -11,14 +11,14 @@ Firmware completo em C++17 para robô seguidor de linha baseado em ESP32, desenv
 | Componente | Especificação |
 |-----------|--------------|
 | MCU | ESP32 DevKit V1 — dual-core 240 MHz |
-| Sensores | 8× TCRT5000 via MCP3008 SPI (10-bit) |
+| Sensores | Pololu QTR-8A — 8 canais via MCP3008 SPI (10-bit) |
 | Motores | 2× N20 600 RPM com encoder Hall |
 | Driver | TB6612FNG dual H-bridge |
 | Bateria | LiPo 2S 7.4V 800 mAh 30C |
 | Chassis | PETG impresso 3D, formato F1 |
 | Regulador | MP1584 buck → 5V |
 
-Custo estimado: **~R$ 423**. BOM completa em [`docs/RELATORIO_FINAL.md`](docs/RELATORIO_FINAL.md).
+Custo estimado: **~R$ 383** mais o QTR-8A (US$ 12,95 na Pololu, importado). BOM completa em [`hardware/bom.csv`](hardware/bom.csv).
 
 ---
 

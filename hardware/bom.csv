@@ -1,7 +1,7 @@
 qty,component,description,package,supplier,sku,price_brl,link,notes
 1,ESP32 DevKit V1,MCU dual-core 240 MHz WiFi/BT,DIP-38,Mercado Livre / AliExpress,ESP32-DEVKITV1,45.00,https://www.mercadolivre.com.br/placa-de-desenvolvimento-esp32-devkit-v1/p/MLB26003803,Clone WROOM-32 funciona igual
 1,MCP3008,ADC SPI 8 canais 10-bit,DIP-16,Mercado Livre / Robocore,MCP3008-I/P,25.00,https://www.robocore.net/microcontroladores/conversor-adc-mcp3008-10-bits-8-canais,1 MHz @ 5V; usar divisor de tensão MISO → 3.3V
-1,TCRT5000 array 8 canais,Sensor IR linha 8× TCRT5000 com ajuste,PCB módulo,Mercado Livre / AliExpress,TCRT5000-8CH,40.00,,Espaçamento ~10 mm; verificar tensão de operação 5V
+1,QTR-8A Reflectance Sensor Array,Array IR refletivo 8 canais com saída analógica,PCB 74.93×12.70×3.18 mm,Pololu,960,,https://www.pololu.com/product/960,US$ 12.95 na Pololu; passo 9.525 mm; 3.3–5.0 V; 100 mA; 3.09 g. PREÇO BRL A CONFIRMAR — sem revenda nacional localizada; depende de frete e tributação de importação
 2,N20 600RPM c/ encoder,Motor DC metal-gear 6V com encoder Hall 7 PPR,N20 3×10mm shaft,Pololu / AliExpress,3081 (Pololu),80.00,https://www.pololu.com/product/3081,Par engrenado; obrigatório com encoder para odometria futura
 1,TB6612FNG módulo,Driver dual H-bridge 1.2A cont / 3.2A pico,módulo PCB,Sparkfun / Mercado Livre,ROB-14450,18.00,https://www.sparkfun.com/products/14450,Eficiência 95%; STBY com pull-down
 1,LiPo 2S 800mAh 30C,Bateria 7.4V 30C conector JST XT30,pouch cell,Hobbyking / Mercado Livre,HXT 2S 800-30C,55.00,,Checar dimensões: máx 65×35×12 mm para encaixar no chassi
@@ -30,4 +30,4 @@ qty,component,description,package,supplier,sku,price_brl,link,notes
 1,Fita dupla-face 3M VHB,Fixação bateria e PCB,—,,,,8.00,,Alternativa: velcro para trocar bateria rápido
 1,Kit O-rings silicone 34mm,Pneu extra para rodas (reserva),—,,,,5.00,,Espessura ~2 mm; comprar 2 extras
 ,,,,,,,,,
-,TOTAL ESTIMADO (R$),,,,,,423.00,,
+,TOTAL ESTIMADO (R$),,,,,383.00,,NÃO inclui o QTR-8A (importado — preço a confirmar)

@@ -17,7 +17,7 @@ Robô seguidor de linha competitivo, otimizado para **velocidade máxima com pre
 | Linguagem | C++ (C++17) |
 | Testes | Unity Test Framework (PlatformIO native) |
 | Build | PlatformIO CLI |
-| Sensores | 8× TCRT5000/QRE1113 analógico via MCP3008 (SPI) |
+| Sensores | Pololu QTR-8A — 8 canais IR refletivo analógico via MCP3008 (SPI) |
 | Motores | 2× N20 600RPM 6V com encoder Hall |
 | Driver | TB6612FNG dual H-bridge |
 | Bateria | LiPo 2S 7.4V 800mAh 30C |
@@ -181,13 +181,13 @@ Fase 4: Tuning (na pista)
 
 ---
 
-## BOM Resumida (R$423 estimado)
+## BOM Resumida (R$383 estimado + QTR-8A importado)
 
 | Componente | Preço |
 |-----------|-------|
 | ESP32 DevKit V1 | R$45 |
 | MCP3008 ADC | R$25 |
-| 8ch TCRT5000 array | R$40 |
+| QTR-8A array 8ch (Pololu #960) | US$12.95 + importação |
 | 2× N20 600RPM encoder | R$80 |
 | TB6612FNG módulo | R$18 |
 | LiPo 2S 800mAh | R$55 |
@@ -202,7 +202,7 @@ Fase 4: Tuning (na pista)
 | Chave SPDT | R$3 |
 | Perfboard 5×7 | R$6 |
 | Diversos | R$15 |
-| **TOTAL** | **~R$423** |
+| **TOTAL** | **~R$383 + QTR-8A** |
 
 ---
 
