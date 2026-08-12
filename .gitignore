@@ -17,3 +17,4 @@ graphify-out/
 
 # Vector DB
 ruvector.db
+build/
