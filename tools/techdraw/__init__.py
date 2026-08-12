@@ -24,3 +24,9 @@ __all__ += ["View", "DASH_HIDDEN", "DASH_CENTER"]
 from .dims import dim_h, dim_v, dim_diam, dim_rad, fmt_valor
 
 __all__ += ["dim_h", "dim_v", "dim_diam", "dim_rad", "fmt_valor"]
+
+from .annot import (ISO_COS, ISO_SIN, PartItem, balloon, iso_box, iso_cyl,
+                    note, parts_list)
+
+__all__ += ["ISO_COS", "ISO_SIN", "PartItem", "balloon", "iso_box",
+            "iso_cyl", "note", "parts_list"]
