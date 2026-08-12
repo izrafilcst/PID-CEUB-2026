@@ -16,3 +16,7 @@ __all__ = [
     "W_VISIBLE", "W_HIDDEN", "W_THIN",
     "H_DIM", "H_LABEL", "H_TITLE",
 ]
+
+from .geom import View, DASH_HIDDEN, DASH_CENTER
+
+__all__ += ["View", "DASH_HIDDEN", "DASH_CENTER"]
