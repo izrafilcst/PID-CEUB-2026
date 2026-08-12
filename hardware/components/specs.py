@@ -71,7 +71,7 @@ COMPONENTES: dict[str, Componente] = {
     "esp32": Componente(
         num="01",
         nome="ESP32 DevKit V1 (30 pinos)",
-        fabricante="DOIT (clone) / módulo Espressif",
+        fabricante="DOIT (clone) / Espressif",
         codigo="ESP32-DEVKITV1",
         fornecedor="Mercado Livre / AliExpress",
         preco="R$ 45,00",
@@ -266,8 +266,8 @@ COMPONENTES: dict[str, Componente] = {
     "n20": Componente(
         num="04",
         nome="Micro metal gearmotor N20 com encoder 12 CPR",
-        fabricante="Pololu (forma) / genérico (unidade adquirida)",
-        codigo="a confirmar — ver notas",
+        fabricante="Pololu (forma) / genérico",
+        codigo="a confirmar",
         fornecedor="Pololu / AliExpress",
         preco="R$ 80,00 (par)",
         url_datasheet=U_N20,
@@ -371,7 +371,7 @@ COMPONENTES: dict[str, Componente] = {
     "tb6612": Componente(
         num="05",
         nome="Driver de motor dual TB6612FNG",
-        fabricante="SparkFun Electronics (placa) / Toshiba (CI)",
+        fabricante="SparkFun (placa) / Toshiba (CI)",
         codigo="ROB-14451",
         fornecedor="SparkFun / Mercado Livre",
         preco="R$ 18,00",
@@ -479,7 +479,7 @@ COMPONENTES: dict[str, Componente] = {
     "mp1584": Componente(
         num="07",
         nome="Regulador buck MP1584EN (módulo mini)",
-        fabricante="Monolithic Power Systems (CI) / genérico (módulo)",
+        fabricante="MPS (CI) / módulo genérico",
         codigo="MP1584EN",
         fornecedor="Mercado Livre / AliExpress",
         preco="R$ 8,00",
@@ -562,8 +562,10 @@ COMPONENTES: dict[str, Componente] = {
             "profundidade_furo_eixo": Medida(
                 10.0, Prov.TIPICO,
                 f"{SCAD_RODA} — AXLE_DEPTH = 10",
-                nota="Igual ao comprimento útil do eixo do N20 (10 mm). "
-                     "A roda encosta no colar de ⌀4,0 mm."),
+                nota="CONFLITO: 10 mm de profundidade num cubo de 8 mm de "
+                     "largura não fecha. Ou o cubo ganha um ressalto de "
+                     "2 mm, ou a profundidade cai para 8 mm e o eixo do N20 "
+                     "não entra inteiro (ver docs/DIVERGENCIAS.md, D9)."),
             "diametro_canal_oring": Medida(
                 30.0, Prov.TIPICO,
                 f"{SCAD_RODA} — ORING_GROOVE_D = 30 (fundo do canal)"),
@@ -590,6 +592,10 @@ COMPONENTES: dict[str, Componente] = {
             "tolerância de 0,2 mm (TOL no wheel_hub.scad) e ajustar.",
             "Altura do eixo motriz ao solo = ⌀34/2 = 17 mm. O ball caster "
             "(ficha 09) tem que ser regulado para essa mesma altura.",
+            "D9 — O wheel_hub.scad pede furo de eixo de 10 mm de "
+            "profundidade num cubo de 8 mm de largura. Resolver antes de "
+            "imprimir: ressalto de 2 mm na face interna é a saída que "
+            "mantém o eixo do N20 (10 mm úteis) totalmente encaixado.",
             "MASSA ESTIMADA (6,0 g por roda, cubo PETG + O-ring) — PESAR. "
             "São duas rodas no cálculo de CG (A1).",
             "Comprar O-rings de reserva: o silicone é o item de desgaste.",
@@ -599,8 +605,8 @@ COMPONENTES: dict[str, Componente] = {
     "caster": Componente(
         num="09",
         nome="Ball caster com esfera de ½ pol",
-        fabricante="Genérico (Robocore) / referência Pololu",
-        codigo="ROB-09259 (a confirmar — ver notas)",
+        fabricante="Genérico (Robocore)",
+        codigo="ROB-09259 (a confirmar)",
         fornecedor="Robocore / Mercado Livre",
         preco="R$ 8,00",
         url_datasheet=U_CASTER,

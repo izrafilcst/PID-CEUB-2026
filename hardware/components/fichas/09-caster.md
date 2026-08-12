@@ -8,8 +8,8 @@
 | Campo | Valor |
 |-------|-------|
 | Denominação | Ball caster com esfera de ½ pol |
-| Fabricante | Genérico (Robocore) / referência Pololu |
-| Código | ROB-09259 (a confirmar — ver notas) |
+| Fabricante | Genérico (Robocore) |
+| Código | ROB-09259 (a confirmar) |
 | Fornecedor | Robocore / Mercado Livre |
 | Preço | R$ 8,00 |
 | Massa | 2 g |

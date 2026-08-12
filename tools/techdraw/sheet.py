@@ -140,7 +140,16 @@ class Sheet:
         # Título longo em 5 mm estoura a largura da legenda; cai para 3,5 mm.
         h_titulo = H_TITLE if len(self.title) <= 26 else H_LABEL
         p.append(txt(x + 2, y + 5.5, self.title, h_titulo, weight="bold"))
-        p.append(txt(x + 2, y + 13, f"{self.maker} — {self.code}", H_DIM))
+        # Fabricante e código dividem 62 mm com a coluna da escala. Em 2,5 mm
+        # cabem ~43 caracteres e em 2,0 mm ~54 antes de invadir a célula da
+        # escala; passando disso, trunca — legenda invadida é ilegível.
+        fabricante = f"{self.maker} — {self.code}"
+        h_fab, limite = H_DIM, 43
+        if len(fabricante) > limite:
+            h_fab, limite = 2.0, 54
+        if len(fabricante) > limite:
+            fabricante = fabricante[:limite - 1] + "…"
+        p.append(txt(x + 2, y + 13, fabricante, h_fab))
         p.append(txt(x + 2, y + 21, f"Autor: {self.author}", H_DIM))
         p.append(txt(x + 2, y + 29, f"Data: {self.date}", H_DIM))
 

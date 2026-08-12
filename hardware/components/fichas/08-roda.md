@@ -23,7 +23,7 @@
 | largura | 8 mm | ○ TIPICO | hardware/chassis/wheel_hub.scad (projeto próprio) — WHEEL_WIDTH = 8 |
 | diametro furo eixo | 3 mm | ● OFICIAL | https://www.pololu.com/file/0J949/micro-metal-gearmotor-dimensions.pdf — vista lateral: ⌀3,0 mm [0.12 in]<br>Tem que casar com o eixo do N20 (ficha 04). |
 | achatado furo eixo | 2,50 mm | ● OFICIAL | https://www.pololu.com/file/0J949/micro-metal-gearmotor-dimensions.pdf — vista lateral: 2,5 mm [0.10 in] entre faces<br>Rebaixo em D do furo, cópia do achatado do eixo. É o que impede a roda de patinar no eixo. |
-| profundidade furo eixo | 10 mm | ○ TIPICO | hardware/chassis/wheel_hub.scad (projeto próprio) — AXLE_DEPTH = 10<br>Igual ao comprimento útil do eixo do N20 (10 mm). A roda encosta no colar de ⌀4,0 mm. |
+| profundidade furo eixo | 10 mm | ○ TIPICO | hardware/chassis/wheel_hub.scad (projeto próprio) — AXLE_DEPTH = 10<br>CONFLITO: 10 mm de profundidade num cubo de 8 mm de largura não fecha. Ou o cubo ganha um ressalto de 2 mm, ou a profundidade cai para 8 mm e o eixo do N20 não entra inteiro (ver docs/DIVERGENCIAS.md, D9). |
 | diametro canal oring | 30 mm | ○ TIPICO | hardware/chassis/wheel_hub.scad (projeto próprio) — ORING_GROOVE_D = 30 (fundo do canal) |
 | largura canal oring | 3,50 mm | ○ TIPICO | hardware/chassis/wheel_hub.scad (projeto próprio) — ORING_GROOVE_W = 3.5 |
 | secao oring | 3 mm | ○ TIPICO | hardware/chassis/wheel_hub.scad (projeto próprio) — ORING_GROOVE_D_ORING = 3<br>34 - 30 = 4 mm de diâmetro sobrando para um O-ring de 3 mm de seção: ele sobressai 0,5 mm de cada lado quando assentado. |
@@ -37,6 +37,7 @@
 
 - O furo do eixo é a interface crítica: ⌀3,0 mm com achatado de 2,5 mm entre faces, copiado da ficha 04. Imprimir com tolerância de 0,2 mm (TOL no wheel_hub.scad) e ajustar.
 - Altura do eixo motriz ao solo = ⌀34/2 = 17 mm. O ball caster (ficha 09) tem que ser regulado para essa mesma altura.
+- D9 — O wheel_hub.scad pede furo de eixo de 10 mm de profundidade num cubo de 8 mm de largura. Resolver antes de imprimir: ressalto de 2 mm na face interna é a saída que mantém o eixo do N20 (10 mm úteis) totalmente encaixado.
 - MASSA ESTIMADA (6,0 g por roda, cubo PETG + O-ring) — PESAR. São duas rodas no cálculo de CG (A1).
 - Comprar O-rings de reserva: o silicone é o item de desgaste.
 
