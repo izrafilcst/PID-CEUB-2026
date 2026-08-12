@@ -58,6 +58,12 @@ U_MCP = "https://ww1.microchip.com/downloads/en/DeviceDoc/21295d.pdf"
 U_QTR = "https://www.pololu.com/product/960"
 U_N20 = "https://www.pololu.com/file/0J949/micro-metal-gearmotor-dimensions.pdf"
 U_TB = "https://www.sparkfun.com/sparkfun-motor-driver-dual-tb6612fng-1a.html"
+U_MP = "https://www.makerfabs.com/adjustable-mini-dc-dc-module-mp1584en.html"
+U_MPS = "https://www.monolithicpower.com/en/mp1584.html"
+U_CASTER = ("https://www.robocore.net/robotica/"
+            "bola-de-rodinha-metalica-1-2-polegada")
+U_CASTER_REF = "https://www.pololu.com/product/952"
+SCAD_RODA = "hardware/chassis/wheel_hub.scad (projeto próprio)"
 
 
 COMPONENTES: dict[str, Componente] = {
@@ -304,7 +310,9 @@ COMPONENTES: dict[str, Componente] = {
             "achatado_eixo": Medida(
                 2.5, Prov.OFICIAL,
                 f"{U_N20} — vista lateral: 2,5 mm [0.10 in]",
-                nota="Comprimento do rebaixo em D no eixo de saída."),
+                nota="Cota entre faces do rebaixo em D: o eixo de ⌀3,0 mm "
+                     "fica com 2,5 mm de altura no trecho achatado. É a "
+                     "cota que o cubo da roda (ficha 08) tem que copiar."),
             "comprimento_caixa_reducao": Medida(
                 9.0, Prov.OFICIAL,
                 f"{U_N20} — tabela: L = 9 mm [0.35 in] para todas as "
@@ -414,6 +422,282 @@ COMPONENTES: dict[str, Componente] = {
             "Capacitor de 100 µF na entrada VM, junto à placa, além do "
             "100 nF de desacoplamento.",
             "MASSA ESTIMADA (2,5 g) — PESAR. Entra no cálculo de CG (A1).",
+        ],
+    ),
+    # ═══════════════════════════════════════════════════════════════════
+    "lipo": Componente(
+        num="06",
+        nome="Bateria LiPo 2S 800 mAh 30C",
+        fabricante="Genérico",
+        codigo="—",
+        fornecedor="Mercado Livre / Hobbyking",
+        preco="R$ 55,00",
+        url_datasheet="",
+        ref_abnt="",
+        massa_g=48.0,
+        medidas={
+            "comprimento": Medida(
+                58.0, Prov.MEDIR,
+                "valor de projeto do bom.csv",
+                nota="MEDIR o pack adquirido. A designação '2S 800 mAh 30C' "
+                     "não define geometria; packs comerciais variam de "
+                     "aproximadamente 50 a 65 mm. Limite do projeto: 65 mm."),
+            "largura": Medida(
+                32.0, Prov.MEDIR, "valor de projeto do bom.csv",
+                nota="MEDIR. Limite do projeto: 35 mm."),
+            "altura": Medida(
+                12.0, Prov.MEDIR, "valor de projeto do bom.csv",
+                nota="MEDIR. Limite do projeto: 12 mm."),
+            "comprimento_chicote": Medida(
+                100.0, Prov.MEDIR, "valor de projeto",
+                nota="MEDIR. Chicote de força mais o conector de "
+                     "balanceamento; define o raio de manobra do pack "
+                     "dentro do chassi."),
+        },
+        eletrico={
+            "tensão nominal": "7,4 V (2 células)",
+            "tensão plena": "8,4 V",
+            "tensão mínima segura": "6,0 V (3,0 V/célula)",
+            "capacidade": "800 mAh",
+            "descarga contínua": "30C = 24 A",
+        },
+        notas_montagem=[
+            "MEDIR o pack antes de modelar o alojamento. Todas as cotas aqui "
+            "são de projeto, não do fornecedor.",
+            "MASSA ESTIMADA (48 g) — é a massa nominal de um pack 2S "
+            "800 mAh equivalente, NÃO a do pack adquirido. PESAR. É a maior "
+            "massa isolada do robô e domina o CG da prancha A1 "
+            "(ver docs/DIVERGENCIAS.md, D7).",
+            "Posicionar atrás do eixo motriz para manter o CG dentro do "
+            "triângulo de apoio (ver prancha A1).",
+            "Prever acesso ao conector de balanceamento sem desmontar o chassi.",
+            "Não descarregar abaixo de 3,0 V/célula. O divisor 100k+47k no "
+            "GPIO 34 monitora VBAT (ver docs/WIRING.md).",
+        ],
+    ),
+    # ═══════════════════════════════════════════════════════════════════
+    "mp1584": Componente(
+        num="07",
+        nome="Regulador buck MP1584EN (módulo mini)",
+        fabricante="Monolithic Power Systems (CI) / genérico (módulo)",
+        codigo="MP1584EN",
+        fornecedor="Mercado Livre / AliExpress",
+        preco="R$ 8,00",
+        url_datasheet=U_MPS,
+        ref_abnt=(
+            "MONOLITHIC POWER SYSTEMS. MP1584: 3A, 1.5MHz, 28V step-down "
+            "converter. Kirkland, 2026. Disponível em: "
+            f"{U_MPS}. Acesso em: 12 ago. 2026."
+        ),
+        massa_g=1.8,
+        medidas={
+            "comprimento": Medida(
+                22.0, Prov.TIPICO,
+                f"{U_MP} — módulo mini genérico, 22 x 17 x 4 mm",
+                nota="Módulo sem fabricante único. MEDIR o exemplar "
+                     "adquirido antes de fechar o alojamento."),
+            "largura": Medida(
+                17.0, Prov.TIPICO,
+                f"{U_MP} — módulo mini genérico, 22 x 17 x 4 mm"),
+            "altura_com_indutor": Medida(
+                4.0, Prov.TIPICO,
+                f"{U_MP} — módulo mini genérico, altura total 4 mm",
+                nota="Altura sobre a face superior da PCB, com o indutor. "
+                     "O trimpot de ajuste é o ponto mais alto em alguns "
+                     "lotes — MEDIR."),
+            "espessura_pcb": Medida(
+                1.0, Prov.MEDIR, f"{U_MP} — não publicado",
+                nota="MEDIR. Os módulos mini costumam usar FR4 de 1,0 mm, "
+                     "mais fino que o 1,6 mm padrão."),
+        },
+        eletrico={
+            "tensão de entrada": "4,5 – 28 V",
+            "tensão de saída": "0,8 – 20 V, ajustável por trimpot",
+            "corrente de saída": "3 A máx. (usar até 1,5 A com folga térmica)",
+            "frequência de chaveamento": "1,5 MHz (típico 1 MHz)",
+            "eficiência": "até 92 %",
+        },
+        notas_montagem=[
+            "AJUSTAR PARA 5,0 V ANTES DE LIGAR A CARGA. O módulo sai de "
+            "fábrica em tensão arbitrária; ligar o ESP32 sem ajustar "
+            "queima a placa.",
+            "O módulo mini normalmente NÃO tem furos de fixação — prever "
+            "fita dupla-face VHB ou berço impresso. CONFERIR o exemplar.",
+            "Entrada vem direto do LiPo 2S (6,0 – 8,4 V), dentro da faixa "
+            "de 4,5 – 28 V.",
+            "Conferir o ripple na saída antes de alimentar o ESP32; "
+            "chaveamento a 1,5 MHz acopla ruído no ADC se a massa for longa.",
+            "MASSA ESTIMADA (1,8 g) — PESAR. Entra no cálculo de CG (A1).",
+        ],
+    ),
+    # ═══════════════════════════════════════════════════════════════════
+    "roda": Componente(
+        num="08",
+        nome="Roda ⌀34 mm com pneu O-ring de silicone",
+        fabricante="Genérico / cubo impresso em PETG",
+        codigo="—",
+        fornecedor="AliExpress / Mercado Livre + impressão 3D",
+        preco="R$ 20,00 (par)",
+        url_datasheet="",
+        ref_abnt="",
+        massa_g=6.0,
+        medidas={
+            "diametro_externo": Medida(
+                34.0, Prov.TIPICO,
+                f"{SCAD_RODA} — WHEEL_OD = 34; bom.csv 'Roda silicone 34mm'",
+                nota="Diâmetro sobre o O-ring montado. Define a altura do "
+                     "eixo motriz ao solo: 17 mm (prancha A1)."),
+            "largura": Medida(
+                8.0, Prov.TIPICO,
+                f"{SCAD_RODA} — WHEEL_WIDTH = 8"),
+            "diametro_furo_eixo": Medida(
+                3.0, Prov.OFICIAL,
+                f"{U_N20} — vista lateral: ⌀3,0 mm [0.12 in]",
+                nota="Tem que casar com o eixo do N20 (ficha 04)."),
+            "achatado_furo_eixo": Medida(
+                2.5, Prov.OFICIAL,
+                f"{U_N20} — vista lateral: 2,5 mm [0.10 in] entre faces",
+                nota="Rebaixo em D do furo, cópia do achatado do eixo. "
+                     "É o que impede a roda de patinar no eixo."),
+            "profundidade_furo_eixo": Medida(
+                10.0, Prov.TIPICO,
+                f"{SCAD_RODA} — AXLE_DEPTH = 10",
+                nota="Igual ao comprimento útil do eixo do N20 (10 mm). "
+                     "A roda encosta no colar de ⌀4,0 mm."),
+            "diametro_canal_oring": Medida(
+                30.0, Prov.TIPICO,
+                f"{SCAD_RODA} — ORING_GROOVE_D = 30 (fundo do canal)"),
+            "largura_canal_oring": Medida(
+                3.5, Prov.TIPICO,
+                f"{SCAD_RODA} — ORING_GROOVE_W = 3.5"),
+            "secao_oring": Medida(
+                3.0, Prov.TIPICO,
+                f"{SCAD_RODA} — ORING_GROOVE_D_ORING = 3",
+                nota="34 - 30 = 4 mm de diâmetro sobrando para um O-ring "
+                     "de 3 mm de seção: ele sobressai 0,5 mm de cada lado "
+                     "quando assentado."),
+            "diametro_cubo": Medida(
+                14.0, Prov.TIPICO, f"{SCAD_RODA} — HUB_D = 14"),
+            "diametro_furo_grub": Medida(
+                3.0, Prov.TIPICO,
+                f"{SCAD_RODA} — GRUB_D = 3.0, parafuso M3 sem cabeça",
+                nota="Trava anti-rotação, radial, contra o achatado do eixo."),
+        },
+        eletrico={},
+        notas_montagem=[
+            "O furo do eixo é a interface crítica: ⌀3,0 mm com achatado de "
+            "2,5 mm entre faces, copiado da ficha 04. Imprimir com "
+            "tolerância de 0,2 mm (TOL no wheel_hub.scad) e ajustar.",
+            "Altura do eixo motriz ao solo = ⌀34/2 = 17 mm. O ball caster "
+            "(ficha 09) tem que ser regulado para essa mesma altura.",
+            "MASSA ESTIMADA (6,0 g por roda, cubo PETG + O-ring) — PESAR. "
+            "São duas rodas no cálculo de CG (A1).",
+            "Comprar O-rings de reserva: o silicone é o item de desgaste.",
+        ],
+    ),
+    # ═══════════════════════════════════════════════════════════════════
+    "caster": Componente(
+        num="09",
+        nome="Ball caster com esfera de ½ pol",
+        fabricante="Genérico (Robocore) / referência Pololu",
+        codigo="ROB-09259 (a confirmar — ver notas)",
+        fornecedor="Robocore / Mercado Livre",
+        preco="R$ 8,00",
+        url_datasheet=U_CASTER,
+        ref_abnt=(
+            "POLOLU CORPORATION. Pololu ball caster with 1/2\" ball. "
+            "Las Vegas, 2026. Disponível em: "
+            f"{U_CASTER_REF}. Acesso em: 12 ago. 2026."
+        ),
+        massa_g=2.0,
+        medidas={
+            "diametro_esfera": Medida(
+                12.7, Prov.OFICIAL,
+                f"{U_CASTER} — 'bola de rodinha metálica 1/2 polegada'; "
+                "½ in = 12,70 mm por definição"),
+            "altura_base": Medida(
+                13.46, Prov.TIPICO,
+                f"{U_CASTER_REF} — ball caster de ½ pol: base 0,53 in "
+                "sem espaçadores",
+                nota="Cota do conjunto Pololu equivalente. O corpo Robocore "
+                     "pode diferir — MEDIR."),
+            "altura_maxima": Medida(
+                20.32, Prov.TIPICO,
+                f"{U_CASTER_REF} — faixa montada 0,5 a 0,8 in "
+                "conforme os espaçadores",
+                nota="A altura de projeto é 17 mm (⌀roda/2), que cai dentro "
+                     "da faixa de regulagem."),
+            "entre_furos": Medida(
+                14.73, Prov.TIPICO,
+                f"{U_CASTER_REF} — 0,58 in entre os furos de fixação",
+                nota="MEDIR antes de furar o chassi."),
+            "diametro_furo_fixacao": Medida(
+                2.2, Prov.TIPICO,
+                f"{U_CASTER_REF} — parafusos #2-56 acompanham o kit",
+                nota="Passagem para M2. A bom.csv prevê espaçadores M3 — "
+                     "conferir (ver docs/DIVERGENCIAS.md, D4)."),
+        },
+        eletrico={},
+        notas_montagem=[
+            "ALTURA É A COTA CRÍTICA: tem que casar com ⌀roda/2 = 17 mm "
+            "para o chassi ficar nivelado e a barra de sensores manter os "
+            "4 mm ao solo. Regular com os espaçadores.",
+            "CONFLITO DE DIÂMETRO: body_f1.scad usa CASTER_D = 15 mm e a "
+            "bom.csv especifica ½ pol = 12,7 mm. Prevalece 12,7 mm, que é "
+            "o produto efetivamente listado "
+            "(ver docs/DIVERGENCIAS.md, D4).",
+            "CÓDIGO A CONFIRMAR: a bom.csv cita ROB-09259, SKU da SparkFun, "
+            "com link para a Robocore. Conferir o que chega.",
+            "Montar atrás do eixo motriz. A posição longitudinal sai do "
+            "balanço de CG da prancha A1.",
+            "MASSA ESTIMADA (2,0 g) — PESAR.",
+        ],
+    ),
+    # ═══════════════════════════════════════════════════════════════════
+    "perfboard": Componente(
+        num="10",
+        nome="Perfboard 50 × 70 mm, passo 2,54 mm",
+        fabricante="Genérico",
+        codigo="—",
+        fornecedor="Mercado Livre / AliExpress",
+        preco="R$ 6,00",
+        url_datasheet="",
+        ref_abnt="",
+        massa_g=12.0,
+        medidas={
+            "comprimento": Medida(
+                70.0, Prov.TIPICO,
+                "bom.csv — 'Perfboard 5×7 cm', formato padrão de mercado",
+                nota="Placa cortável. O contorno final sai do alojamento "
+                     "do chassi, não do fornecedor."),
+            "largura": Medida(
+                50.0, Prov.TIPICO,
+                "bom.csv — 'Perfboard 5×7 cm', formato padrão de mercado"),
+            "espessura": Medida(
+                1.6, Prov.TIPICO,
+                "FR4 de 1,6 mm, espessura padrão de mercado"),
+            "passo_furos": Medida(
+                2.54, Prov.TIPICO,
+                "padrão consolidado de 0,1 in — casa com MCP3008, "
+                "ESP32 DevKit V1 e TB6612FNG"),
+            "diametro_furo": Medida(
+                1.0, Prov.TIPICO,
+                "padrão de mercado para perfboard de 2,54 mm"),
+            "margem_ate_primeiro_furo": Medida(
+                1.5, Prov.MEDIR,
+                "varia por fabricante",
+                nota="MEDIR. Define quantas colunas sobram depois do corte."),
+        },
+        eletrico={},
+        notas_montagem=[
+            "Grade útil: 70 / 2,54 ≈ 27 colunas por 50 / 2,54 ≈ 19 linhas, "
+            "descontadas as margens. CONFERIR a contagem na placa em mãos.",
+            "O MCP3008 em PDIP-16 ocupa 8 furos por fileira, com as duas "
+            "fileiras separadas por 3 colunas (7,62 mm).",
+            "Recortar conforme o alojamento do chassi — a placa inteira de "
+            "50 × 70 mm não é obrigatória.",
+            "MASSA ESTIMADA (12,0 g com a placa inteira) — PESAR depois do "
+            "corte, já com os componentes soldados.",
         ],
     ),
 }

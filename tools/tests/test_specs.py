@@ -59,5 +59,32 @@ class TestIntegridade(unittest.TestCase):
                                f"{chave} sem massa — A1 não fecha")
 
 
+class TestComponentes06a10(unittest.TestCase):
+    def test_componentes_06_a_10_presentes(self):
+        for chave in ("lipo", "mp1584", "roda", "caster", "perfboard"):
+            self.assertIn(chave, COMPONENTES)
+
+    def test_lipo_marcado_como_medir(self):
+        # "2S 800 mAh 30C" não define dimensão. Qualquer cota OFICIAL aqui
+        # seria invenção.
+        lipo = COMPONENTES["lipo"]
+        for nome in ("comprimento", "largura", "altura"):
+            self.assertIs(lipo.medidas[nome].prov, Prov.MEDIR,
+                          f"lipo.{nome} não pode ser OFICIAL nem TIPICO")
+
+    def test_perfboard_declara_o_passo_de_2_54(self):
+        self.assertAlmostEqual(
+            COMPONENTES["perfboard"].medidas["passo_furos"].valor, 2.54,
+            places=2)
+
+    def test_roda_declara_diametro_externo_e_largura(self):
+        roda = COMPONENTES["roda"]
+        self.assertIn("diametro_externo", roda.medidas)
+        self.assertIn("largura", roda.medidas)
+
+    def test_sao_dez_componentes(self):
+        self.assertEqual(len(COMPONENTES), 10)
+
+
 if __name__ == "__main__":
     unittest.main()
