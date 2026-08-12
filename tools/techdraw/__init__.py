@@ -20,3 +20,7 @@ __all__ = [
 from .geom import View, DASH_HIDDEN, DASH_CENTER
 
 __all__ += ["View", "DASH_HIDDEN", "DASH_CENTER"]
+
+from .dims import dim_h, dim_v, dim_diam, dim_rad, fmt_valor
+
+__all__ += ["dim_h", "dim_v", "dim_diam", "dim_rad", "fmt_valor"]
