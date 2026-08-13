@@ -17,8 +17,10 @@ sys.path.insert(0, os.path.join(RAIZ, "tools"))
 from layout import (LAYOUT, MASSA_CHASSI_G, massas_do_robo,  # noqa: E402
                     resumo_cg)
 from specs import COMPONENTES  # noqa: E402
-from techdraw import (H_DIM, H_LABEL, W_THIN, W_VISIBLE, Prov,  # noqa: E402
-                      Sheet, View, dim_h, dim_v, fmt_valor, line, note, txt)
+from techdraw import (DASH_CENTER, H_DIM, H_LABEL, ISO_SIN,  # noqa: E402
+                      PartItem, Prov, Sheet, View, W_THIN, W_VISIBLE,
+                      balloon, dim_h, dim_v, fmt_valor, iso_box, iso_cyl,
+                      line, note, parts_list, txt)
 
 DIR_SAIDA = os.path.join(RAIZ, "hardware", "drawings", "assy")
 DATA = "2026-08-12"
@@ -208,8 +210,123 @@ def prancha_a1() -> str:
     return s.render()
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# A2 — vista explodida
+# ═══════════════════════════════════════════════════════════════════════
+ITENS: list[PartItem] = [
+    PartItem(1, 1, "Chassi (a modelar)", "PETG impresso", "—"),
+    PartItem(2, 1, "QTR-8A Reflectance Sensor Array", "Pololu 960", "03"),
+    PartItem(3, 2, "Micro metal gearmotor N20 c/ encoder", "Pololu", "04"),
+    PartItem(4, 2, "Roda silicone ⌀34 mm", "Genérico", "08"),
+    PartItem(5, 1, "Ball caster ½\"", "Robocore / Pololu", "09"),
+    PartItem(6, 1, "ESP32 DevKit V1", "DOIT", "01"),
+    PartItem(7, 1, "Perfboard 50×70 mm", "Genérico", "10"),
+    PartItem(8, 1, "MCP3008 (no perfboard)", "Microchip", "02"),
+    PartItem(9, 1, "TB6612FNG breakout", "SparkFun ROB-14451", "05"),
+    PartItem(10, 1, "MP1584EN buck", "Genérico", "07"),
+    PartItem(11, 1, "Bateria LiPo 2S 800 mAh", "Genérico", "06"),
+]
+
+# Escala dos sólidos isométricos. Não é a escala da folha: a A2 mostra
+# envelopes, e a geometria cotada vive nas pranchas individuais.
+ESC_ISO = 0.25
+
+# View neutra para ancorar balões diretamente em mm de papel.
+_V_PAPEL = View(origin_x=0.0, origin_y=0.0, scale=1.0)
+
+
+def _balao_papel(px: float, py: float, numero: int,
+                 dx: float, dy: float) -> str:
+    """Balão ancorado num ponto dado em mm de papel."""
+    return balloon(_V_PAPEL, px, -py, numero, dx, dy)
+
+
+def _e(v: float) -> float:
+    return v * ESC_ISO
+
+
+def _alt_iso(l: float, w: float, h: float) -> float:
+    """Altura que um prisma isométrico ocupa no papel."""
+    return (l + w) * ISO_SIN + h
+
+
+def prancha_a2() -> str:
+    """Vista explodida: envelopes isométricos, balões e lista de peças."""
+    s = _folha("A2 - Vista explodida do conjunto", "A2", "1:1")
+    m = COMPONENTES
+
+    def env(chave: str, *nomes: str) -> tuple[float, ...]:
+        return tuple(m[chave].medidas[n].valor for n in nomes)
+
+    # (num, ix, iy, desenho, altura isométrica ocupada)
+    itens_desenho: list[tuple[int, float, float, str, float]] = []
+
+    def caixa(num: int, ix: float, iy: float,
+              l: float, w: float, h: float) -> None:
+        l, w, h = _e(l), _e(w), _e(h)
+        itens_desenho.append(
+            (num, ix, iy, iso_box(ix, iy, l, w, h), _alt_iso(l, w, h)))
+
+    def cilindro(num: int, ix: float, iy: float, d: float, h: float,
+                 eixo: str) -> None:
+        d, h = _e(d), _e(h)
+        itens_desenho.append(
+            (num, ix, iy, iso_cyl(ix, iy, d, h, eixo), d + _e(6.0)))
+
+    # ── fila superior: estrutura e tração ──────────────────────────────
+    caixa(1, 44.0, 78.0, 100.0, 60.0, 3.0)          # chassi
+    caixa(2, 96.0, 78.0, *env("qtr8a", "comprimento", "largura",
+                              "espessura"))
+    cilindro(3, 146.0, 74.0, *env("n20", "largura_caixa",
+                                  "comprimento_total"), "x")
+    cilindro(4, 190.0, 74.0, *env("roda", "diametro_externo", "largura"), "y")
+    cilindro(5, 232.0, 74.0, *env("caster", "diametro_esfera",
+                                  "altura_base"), "z")
+
+    # ── fila inferior: eletrônica e energia ────────────────────────────
+    caixa(6, 44.0, 114.0, *env("esp32", "comprimento", "largura",
+                               "espessura_pcb"))
+    caixa(7, 94.0, 114.0, *env("perfboard", "comprimento", "largura",
+                               "espessura"))
+    caixa(8, 140.0, 114.0, *env("mcp3008", "comprimento", "largura_corpo",
+                                "altura_corpo"))
+    caixa(9, 172.0, 114.0, *env("tb6612", "comprimento", "largura",
+                                "espessura_pcb"))
+    caixa(10, 206.0, 114.0, *env("mp1584", "comprimento", "largura",
+                                 "altura_com_indutor"))
+    caixa(11, 240.0, 114.0, *env("lipo", "comprimento", "largura", "altura"))
+
+    # trajetórias de montagem em traço-ponto, ligando os itens de cada fila
+    for iy, faixa in ((78.0, (44.0, 232.0)), (114.0, (44.0, 240.0))):
+        s.add(line(faixa[0] - 6.0, iy + 4.0, faixa[1] + 22.0, iy + 4.0,
+                   W_THIN, DASH_CENTER))
+
+    for num, ix, iy, svg, alt in itens_desenho:
+        s.add(svg)
+        s.add(_balao_papel(ix + 4.0, iy - alt, num,
+                           dx=2.0, dy=-9.0))
+
+    # ── lista de peças ─────────────────────────────────────────────────
+    s.add(parts_list(27.0, 196.0, ITENS))
+
+    s.add(txt(27.0, 34.0, "VISTA EXPLODIDA - envelopes dimensionais",
+              H_LABEL, weight="bold"))
+    s.add(_bloco_texto(180.0, 133.0, [
+        ("Componentes em representacao simplificada (envelopes", False),
+        ("dimensionais). Geometria detalhada nas pranchas", False),
+        ("individuais indicadas na coluna PRANCHA.", False),
+        ("", False),
+        ("Fila de cima: estrutura e tracao. Fila de baixo:", False),
+        ("eletronica e energia. As trajetorias em traco-ponto", False),
+        ("indicam a ordem de montagem, nao a posicao final —", False),
+        ("essa esta na prancha A1.", False),
+    ], h=2.2, passo=3.2))
+    return s.render()
+
+
 PRANCHAS = {
     "A1-layout-funcional": prancha_a1,
+    "A2-vista-explodida": prancha_a2,
 }
 
 
