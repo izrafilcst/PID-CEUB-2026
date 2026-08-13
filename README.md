@@ -232,6 +232,45 @@ Imprimir em PETG. Configurações recomendadas em cada arquivo `.scad`.
 
 ---
 
+## Pacote dimensional dos componentes
+
+Tudo que é preciso para modelar o robô em CAD sem consultar mais nada.
+
+| Onde | O quê |
+|------|-------|
+| `hardware/components/fichas/` | 10 fichas dimensionais em Markdown, uma por componente comprado |
+| `hardware/drawings/comp/` | 10 pranchas SVG cotadas (A4 paisagem, normas ABNT) |
+| `hardware/drawings/assy/` | A1 — layout funcional e balanço de CG · A2 — vista explodida |
+| `docs/DIVERGENCIAS.md` | Registro das inconsistências entre BOM, firmware e modelos 3D |
+
+**Toda cota carrega proveniência**: ● `OFICIAL` (datasheet do fabricante, com
+URL) · ○ `TIPICO` (módulo genérico, valor de consenso) · △ `MEDIR` (varia por
+lote — medir a peça em mãos). Nenhum valor foi estimado em silêncio.
+
+As fichas e as pranchas são **artefatos gerados** — não edite os `.md` nem os
+`.svg`. A fonte única é `hardware/components/specs.py`; altere lá e regenere:
+
+```bash
+cd tools
+python3 gen_fichas.py              # 10 fichas Markdown
+python3 gen_component_drawings.py  # 10 pranchas de componente
+python3 gen_assembly_drawings.py   # pranchas A1 e A2
+python3 verify_drawings.py         # rasteriza em build/drawings/ para inspeção
+python3 layout.py                  # imprime o balanço de massas e o CG
+```
+
+Os testes das ferramentas de desenho rodam com `unittest` da stdlib:
+
+```bash
+cd tools && python3 -m unittest discover -s tests
+```
+
+> As massas ainda são estimativas na maioria dos itens (D7 em
+> `docs/DIVERGENCIAS.md`). O CG da prancha A1 é indicativo até que as peças
+> sejam pesadas.
+
+---
+
 ## Calibração e Tuning
 
 ### Calibração de sensores
