@@ -124,6 +124,8 @@ só com a fiação (instâncias, tasks e chamadas aos drivers).
 | `sensors/Calibration` (alterado) | Polaridade da linha, sem overflow, validação de faixa por canal, carga/salvamento | Sim |
 | `sensors/VelocityEstimator` (alterado) | `update(dtUs)` com dt em microssegundos | Sim |
 | `strategy/LineFollower` (alterado) | Não reseta mais a calibração; linha perdida satura para o último lado | Sim |
+| `motors/DifferentialDrive` (removido) | Substituído pelo `ControlLoop` + `OutputStage`; a mistura base ± correção passa a preservar a autoridade de direção quando satura | — |
+| `comm/CommandQueue` (novo) | Fila de comandos recebidos pelo BLE, entre o callback NimBLE e a task `comm` | Sim |
 | `storage/IPersistentStore` (alterado) | Ganha `getBlob`/`putBlob` | Sim (fake) |
 
 O `VelocityProfile` (predição de curvatura) **não** é integrado nesta versão; o relatório
@@ -142,6 +144,7 @@ um jeito de correr e existe em 3 perfis. A chave BLE é única entre as duas.
 | `swap` | Troca os canais A/B do TB6612 entre esquerdo e direito | — | 0 | {0, 1} |
 | `einvL` / `einvR` | Inverte o sentido de contagem do encoder | — | 0 | {0, 1} |
 | `pol` | Polaridade da linha: 0 = linha preta, 1 = linha branca | — | 1 | {0, 1} |
+| `sinv` | Inverte a ordem dos sensores (barra montada espelhada) | — | 0 | {0, 1} |
 | `chem` | Química da bateria (curva de %): 0 = LiPo, 1 = Li-ion | — | 1 | {0, 1} |
 | `vcut` | Tensão de corte (abaixo dela por 1 s: não dá start / para) | V | 6,4 | 5,6–7,6 |
 | `vbk` | Fator de correção da leitura de tensão (ajuste com multímetro) | — | 1,000 | 0,800–1,200 |
@@ -214,11 +217,14 @@ Mesmo serviço e características de hoje (`0xABCC`/`0xABCD`/`0xABCE`). Comandos
   `pid`/`pidv` passam a ser interpretados nas unidades novas (§4.3). `spd` converte de 0–255
   para fração (`v/255`); seu campo `base` é ignorado (F-15). `rpm` mapeia `max` → `rpmMax`.
 - Chaves de `HardwareConfig` e `mode` só são aceitas fora de RUNNING/ARMED (`err:"running"`).
-- Cada notificação cabe em 180 bytes. O relatório (§4.1) verifica o MTU negociado e o tamanho
-  real da telemetria.
-- Telemetria `tel` mantém os campos atuais e ganha: `st` (estado), `err` (código de erro),
-  `vb` (V_bat em V), `lost` (0/1), `prof` (perfil ativo), `dirty` (0/1), `ovr` (maior tempo de
-  execução do laço na janela, µs). `corr` passa a ser a saída do PID externo em fração.
+- Cada notificação cabe em 180 bytes. O relatório (§4.1) verifica o MTU negociado.
+- A telemetria atual já passa de 180 bytes, então é dividida em dois frames:
+  - `tel` a 30 Hz: `pos` (erro normalizado), `corr` (saída do PID externo em fração), `vL`,
+    `vR` (duty), `dt` (µs), `rpmL`, `rpmR`, `spL`, `spR` (inteiros), `s` (8 sensores em %),
+    `st` (estado), `lost` (0/1);
+  - `sta` a 2 Hz: `bat` (%), `vb` (V), `lap`, `laps`, `err` (código), `prof`, `dirty` (0/1),
+    `ovr` (maior tempo de execução do laço na janela, µs).
+  `bat`, `lap` e `laps` saem do `tel` e passam para o `sta`.
 - `info` passa a enviar `"fw":"4.0.0"` e `"cfgerr"`.
 
 ### 4.6 Estados, botão e sinalização
@@ -308,7 +314,8 @@ se ele deve ser removido ou atualizado.
 - `test_control_loop` cobre, sem hardware, os cenários de F-01, F-03, F-05, F-06, F-08 e F-14.
 - `pio test -e native`: tudo passando.
 - `pio run -e esp32dev`: compila, **sem warnings vindos de `src/`** com `-Wall -Wextra`.
-- `examples/*.cpp` atualizados às interfaces novas e compilando para `esp32dev`.
+- `examples/*.cpp` atualizados às interfaces novas, cada um com um ambiente `bench_*` no
+  `platformio.ini` (`pio run -e bench_motor`, etc.), todos compilando.
 - README e `docs/TUNING.md` atualizados com o protocolo e os parâmetros novos.
 
 ---
