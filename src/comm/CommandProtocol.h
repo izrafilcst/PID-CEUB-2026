@@ -38,7 +38,9 @@ bool formatAck(char* buf, size_t n, const char* key, SetResult result, float app
 bool formatAckSimple(char* buf, size_t n, const char* what, bool ok, const char* err);
 bool formatCfgGroup(char* buf, size_t n, const RobotConfig& cfg, const char* group);
 bool formatCfgMeta(char* buf, size_t n, uint8_t profile, bool dirty, const char* fw);
-bool formatInfo(char* buf, size_t n, const char* name, const char* fw, bool cfgErr);
+/** `stkControl`/`stkComm`: lowest free stack of each task since boot, bytes (spec §4.5, E-2). */
+bool formatInfo(char* buf, size_t n, const char* name, const char* fw, bool cfgErr,
+                uint32_t stkControl, uint32_t stkComm);
 bool formatCalResult(char* buf, size_t n, const CalReport& report);
 bool formatEncCal(char* buf, size_t n, const CalReport& report);
 bool formatTelemetry(char* buf, size_t n, const TelemetryFrame& f);

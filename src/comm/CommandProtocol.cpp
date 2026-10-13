@@ -234,10 +234,13 @@ bool formatCfgMeta(char* buf, size_t n, uint8_t profile, bool dirty, const char*
     return w.ok();
 }
 
-bool formatInfo(char* buf, size_t n, const char* name, const char* fw, bool cfgErr) {
+bool formatInfo(char* buf, size_t n, const char* name, const char* fw, bool cfgErr,
+                uint32_t stkControl, uint32_t stkComm) {
     Writer w(buf, n);
-    w.add("{\"t\":\"info\",\"name\":\"%s\",\"fw\":\"%s\",\"mode\":\"RUN\",\"cfgerr\":%u}",
+    w.add("{\"t\":\"info\",\"name\":\"%s\",\"fw\":\"%s\",\"mode\":\"RUN\",\"cfgerr\":%u,",
           name, fw, cfgErr ? 1u : 0u);
+    w.add("\"stk\":[%lu,%lu]}", static_cast<unsigned long>(stkControl),
+          static_cast<unsigned long>(stkComm));
     return w.ok();
 }
 

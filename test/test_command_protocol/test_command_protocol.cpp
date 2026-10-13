@@ -157,10 +157,20 @@ void test_command_protocol_format_meta_and_info() {
     formatCfgMeta(buf, sizeof buf, 1, true, "4.0.0");
     TEST_ASSERT_EQUAL_STRING(
         "{\"t\":\"cfg\",\"g\":\"meta\",\"prof\":1,\"dirty\":1,\"fw\":\"4.0.0\"}", buf);
-    formatInfo(buf, sizeof buf, "LFR-RACER-01", "4.0.0", true);
+    formatInfo(buf, sizeof buf, "LFR-RACER-01", "4.0.0", true, 3120, 4870);
     TEST_ASSERT_EQUAL_STRING(
         "{\"t\":\"info\",\"name\":\"LFR-RACER-01\",\"fw\":\"4.0.0\",\"mode\":\"RUN\","
-        "\"cfgerr\":1}", buf);
+        "\"cfgerr\":1,\"stk\":[3120,4870]}", buf);
+}
+
+// E-2: menor folga de pilha das tasks control e comm, em bytes
+void test_command_protocol_info_with_stack_fits_180_bytes() {
+    char buf[256];
+    const char* name = "LFR-RACER-0123456789-ABCDEFGHIJ";  // 31 caracteres
+    TEST_ASSERT_EQUAL_UINT32(31, std::strlen(name));
+    TEST_ASSERT_TRUE(formatInfo(buf, sizeof buf, name, "4.0.0", true, 65535, 65535));
+    TEST_ASSERT_TRUE(std::strlen(buf) <= BLE_MAX_MSG);
+    TEST_ASSERT_NOT_NULL(std::strstr(buf, "\"stk\":[65535,65535]}"));
 }
 
 void test_command_protocol_format_calibration_results() {
@@ -264,6 +274,7 @@ int main() {
     RUN_TEST(test_command_protocol_format_cfg_group_pid);
     RUN_TEST(test_command_protocol_cfg_groups_fit_ble_limit);
     RUN_TEST(test_command_protocol_format_meta_and_info);
+    RUN_TEST(test_command_protocol_info_with_stack_fits_180_bytes);
     RUN_TEST(test_command_protocol_format_calibration_results);
     RUN_TEST(test_command_protocol_worst_case_telemetry_fits);
     RUN_TEST(test_command_protocol_worst_case_status_fits);
