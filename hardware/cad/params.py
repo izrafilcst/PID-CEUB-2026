@@ -86,7 +86,10 @@ class Params:
     oring_cs: float = 3.0
     oring_estiramento: float = 0.03
     oring_massa: float = 0.5
-    roda_aro_w: float = 8.5
+    # Aro de 8,2 (não 8,5): a face interna do aro fica a eixo_l − aro_w = 1,8 mm da face da
+    # caixa do N20; menos a parede de batente (1,2) sobram 0,6 mm ≥ 0,5 de folga de peça
+    # girando para a aba da base sob o motor. Com 8,5 sobravam 0,3 mm.
+    roda_aro_w: float = 8.2
     roda_cubo_d: float = 10.0
     # ── Layout (spec §5.4) ─────────────────────────────────────────────────
     lookahead: float = 85.0

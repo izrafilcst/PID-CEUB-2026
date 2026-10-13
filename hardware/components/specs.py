@@ -553,7 +553,7 @@ COMPONENTES: dict[str, Componente] = {
                      "eixo motriz ao solo (≈ 20,5 mm). Faixa de projeto: "
                      "38–44 mm (spec 2026-10-13, §5.4)."),
             "largura": Medida(
-                8.5, Prov.TIPICO,
+                8.2, Prov.TIPICO,
                 f"{CAD_PARAMS} — Params.roda_aro_w (largura do aro)"),
             "diametro_furo_eixo": Medida(
                 3.05, Prov.TIPICO,

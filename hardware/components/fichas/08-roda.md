@@ -20,7 +20,7 @@
 | Medida | Valor | Proveniência | Fonte |
 |--------|-------|--------------|-------|
 | diametro externo | 40,90 mm | ○ TIPICO | hardware/cad/parts/wheel.py — O-ring 34 × 3 com 3 % de estiramento<br>Diâmetro sobre o O-ring montado. Define a altura do eixo motriz ao solo (≈ 20,5 mm). Faixa de projeto: 38–44 mm (spec 2026-10-13, §5.4). |
-| largura | 8,50 mm | ○ TIPICO | hardware/cad/params.py — Params.roda_aro_w (largura do aro) |
+| largura | 8,20 mm | ○ TIPICO | hardware/cad/params.py — Params.roda_aro_w (largura do aro) |
 | diametro furo eixo | 3,05 mm | ○ TIPICO | hardware/cad/params.py — Tolerancias.eixo_d<br>Eixo do N20 de ⌀3,0 mm (ficha 04) com folga de PETG. Ajustar pelo cupom de tolerância (medidas.toml). |
 | achatado furo eixo | 2,55 mm | ○ TIPICO | hardware/cad/params.py — Tolerancias.eixo_achatado<br>Rebaixo em D do furo, cópia do achatado de 2,5 mm do eixo. É o que impede a roda de patinar no eixo. |
 | profundidade furo eixo | 9,40 mm | ○ TIPICO | hardware/cad/params.py — Params.roda_cubo_l<br>Cubo de 9,4 mm: engata o eixo de 10 mm com 0,6 mm de folga para o colar (resolve D9). |

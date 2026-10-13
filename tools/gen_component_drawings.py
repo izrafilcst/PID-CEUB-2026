@@ -558,7 +558,7 @@ def prancha_roda(c: Componente) -> str:
         s.add(lat.rect_part((LG.valor - LCA.valor) / 2.0, base,
                             LCA.valor, (DE.valor - DCA.valor) / 2.0))
     # Cubo: passa da largura do aro quando o furo do eixo é mais fundo que
-    # o aro (roda v2: cubo de 9,4 mm, aro de 8,5 mm — D9 resolvido).
+    # o aro (roda v2: cubo de 9,4 mm, aro de 8,2 mm — D9 resolvido).
     prof = PF.valor
     if PF.valor > LG.valor:
         s.add(lat.rect_part(LG.valor, DE.valor / 2.0 - DCU.valor / 2.0,
