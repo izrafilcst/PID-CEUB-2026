@@ -44,11 +44,12 @@
 #define SENSOR_HEIGHT_MM      4
 #define LOOKAHEAD_MM         70
 
-// ═══ ENCODER / VELOCITY (Fase B) ═══════════════════════════════════════════
-// PPR_X4 default = 4 × PPR motor. N20 com encoder Hall típico = 7 PPR → 28 X4.
-// Auto-calibração via BLE sobrescreve esse valor e salva em NVS.
-#define ENCODER_DEFAULT_PPR_X4   28.0f
-#define VELOCITY_FILTER_ALPHA    0.3f  // 0 ≤ α ≤ 1 — menor = mais suave, mais delay (α=0 congela)
+// ═══ ENCODER / VELOCITY ═══════════════════════════════════════════════════
+// Contagens ×4 por volta do EIXO DE SAÍDA. 600 = encoder de 12 CPR no eixo do motor ×
+// redução 50:1 (N20 de 600 RPM). PROVISÓRIO: a auto-calibração por BLE ({"t":"cal"}) é
+// obrigatória antes de usar o modo cascata (F-17).
+#define ENCODER_DEFAULT_PPR_X4   600.0f
+#define VELOCITY_FILTER_ALPHA    0.3f  // 0 ≤ α ≤ 1 — menor = mais suave, mais atraso
 
 // ═══ CASCADE PID (Fase C — controle interno de velocidade) ═════════════════
 // Ganhos INICIAIS conservadores; sintonizar via BLE em pista.
