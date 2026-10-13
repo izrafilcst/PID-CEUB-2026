@@ -27,8 +27,8 @@ void CascadeController::compute(float correction, float targetBaseRpm,
     setpointR = _clampF(setpointR, -_maxRpm, +_maxRpm);
 
     // 3. PID interno: erro = setpoint − measurement → saída em PWM.
-    float outL = _pidL.compute(setpointL, actualRpmL);
-    float outR = _pidR.compute(setpointR, actualRpmR);
+    float outL = _pidL.compute(setpointL, actualRpmL, 0.002f);  // Tarefa 7 passa o dt real
+    float outR = _pidR.compute(setpointR, actualRpmR, 0.002f);  // Tarefa 7 passa o dt real
 
     // 4. Saturação final em PWM (já vem clamped pelo PIDController, mas garantimos
     //    cast seguro para int e respeito ao limite externo se setMaxPwm() mudou).

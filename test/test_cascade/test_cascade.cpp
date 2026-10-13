@@ -10,8 +10,8 @@ static PIDController* innerR = nullptr;
 static CascadeController* cc = nullptr;
 
 void setUp() {
-    innerL = new PIDController(1.0f, 0.0f, 0.0f, -1000.0f, 1000.0f, 0.01f);
-    innerR = new PIDController(1.0f, 0.0f, 0.0f, -1000.0f, 1000.0f, 0.01f);
+    innerL = new PIDController(1.0f, 0.0f, 0.0f, -1000.0f, 1000.0f);
+    innerR = new PIDController(1.0f, 0.0f, 0.0f, -1000.0f, 1000.0f);
     // maxRpm=1000, maxPwm=1023 (10-bit LEDC do ESP32)
     cc = new CascadeController(*innerL, *innerR, 1000.0f, 1023);
 }
@@ -80,8 +80,8 @@ void test_cascade_negative_setpoint_drives_reverse() {
 // ─── 7. PWM saturado em ±maxPwm quando erro extremo ──────────────────────
 void test_cascade_pwm_clamped_to_max() {
     // PID interno com Kp=10 — erro=200 → output 2000, clamp em 1023
-    PIDController bigL(10.0f, 0.0f, 0.0f, -1023.0f, 1023.0f, 0.01f);
-    PIDController bigR(10.0f, 0.0f, 0.0f, -1023.0f, 1023.0f, 0.01f);
+    PIDController bigL(10.0f, 0.0f, 0.0f, -1023.0f, 1023.0f);
+    PIDController bigR(10.0f, 0.0f, 0.0f, -1023.0f, 1023.0f);
     CascadeController bigCC(bigL, bigR, 1000.0f, 1023);
     int pwmL = 0, pwmR = 0;
     bigCC.compute(0.0f, 200.0f, 0.0f, 0.0f, pwmL, pwmR);
