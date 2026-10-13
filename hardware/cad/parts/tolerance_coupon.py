@@ -67,5 +67,9 @@ def fazer(p: Params) -> Part:
 
 
 def chave_teste() -> Part:
-    """Quadrado de 10 × 10 × 2 mm, impresso junto, para testar os bolsões."""
-    return caixa(10.0, 10.0, 2.0)
+    """Quadrado de 10 × 10 × 2 mm, impresso junto, para testar os bolsões.
+
+    O furo central de ⌀3 serve para empurrar a chave para fora de um bolsão justo com a
+    ponta de uma chave de fenda (o bolsão tem fundo).
+    """
+    return caixa(10.0, 10.0, 2.0) - cil_z(3.0, 4.0, 0, 0, -1)
