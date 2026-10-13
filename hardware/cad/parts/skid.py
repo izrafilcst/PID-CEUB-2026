@@ -31,4 +31,10 @@ def calco(p: Params) -> Part:
 
 
 def paredes(p: Params) -> dict[str, float]:
-    return {"patim_ao_furo": (PATIM_Y - p.tol.autoatarraxante_m2) / 2, "calco": 0.5}
+    return {"patim_ao_furo": (PATIM_Y - p.tol.autoatarraxante_m2) / 2,
+            "calota_sob_furo": barra_z0(p) - p.tol.autoatarraxante_prof}
+
+
+def paredes_calco(p: Params) -> dict[str, float]:
+    """Calços (patim e língua): 0,5 mm por definição — exceção declarada em printability."""
+    return {"calco": 0.5}
