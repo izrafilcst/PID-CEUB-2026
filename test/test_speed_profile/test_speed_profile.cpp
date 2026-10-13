@@ -1,60 +1,69 @@
 #include <unity.h>
+#include <cmath>
 #include "control/SpeedProfile.h"
 
-void setUp() {}
+static SpeedProfile sp;
+
+void setUp() {
+    sp = SpeedProfile();
+    sp.setParams(0.25f, 0.5f, 0.6f, 2.0f);
+    sp.reset(0.0f);
+}
 void tearDown() {}
 
-void test_zero_error_max_speed() {
-    SpeedProfile sp(60, 160, 230, 0.6f);
-    TEST_ASSERT_EQUAL(230, sp.compute(0.0f));
+void test_speed_profile_zero_error_returns_vmax() {
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 0.5f, sp.target(0.0f));
 }
 
-void test_large_error_min_speed() {
-    SpeedProfile sp(60, 160, 230, 0.6f);
-    TEST_ASSERT_EQUAL(60, sp.compute(1.0f));
-    TEST_ASSERT_EQUAL(60, sp.compute(-1.0f));
-    TEST_ASSERT_EQUAL(60, sp.compute(2.0f));
+void test_speed_profile_error_at_threshold_returns_vmin() {
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 0.25f, sp.target(0.6f));
 }
 
-void test_threshold_boundary() {
-    SpeedProfile sp(60, 160, 230, 0.6f);
-    int below = sp.compute(0.59f);
-    int above = sp.compute(0.61f);
-    TEST_ASSERT_TRUE(below > above);
+void test_speed_profile_error_beyond_threshold_returns_vmin() {
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 0.25f, sp.target(1.0f));
 }
 
-void test_symmetry_positive_negative() {
-    SpeedProfile sp(60, 160, 230, 0.6f);
-    TEST_ASSERT_EQUAL(sp.compute(0.3f), sp.compute(-0.3f));
+void test_speed_profile_midpoint_interpolates() {
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 0.375f, sp.target(0.3f));
 }
 
-void test_clamps_to_bounds() {
-    SpeedProfile sp(60, 160, 230, 0.6f);
-    TEST_ASSERT_TRUE(sp.compute(0.0f) <= 230);
-    TEST_ASSERT_TRUE(sp.compute(1.0f) >= 60);
+void test_speed_profile_negative_error_uses_magnitude() {
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 0.375f, sp.target(-0.3f));
 }
 
-void test_params_updateable_runtime() {
-    SpeedProfile sp(60, 160, 230, 0.6f);
-    sp.setParams(80, 150, 200, 0.5f);
-    TEST_ASSERT_EQUAL(200, sp.compute(0.0f));
-    TEST_ASSERT_EQUAL(80, sp.compute(1.0f));
+void test_speed_profile_nan_error_returns_vmin() {
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 0.25f, sp.target(NAN));
 }
 
-void test_linear_interpolation() {
-    SpeedProfile sp(60, 160, 230, 0.6f);
-    int mid = sp.compute(0.3f);
-    TEST_ASSERT_TRUE(mid > 60 && mid < 230);
+void test_speed_profile_ramp_limits_rise() {
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 0.2f, sp.step(0.0f, 0.1f));  // 2,0/s × 0,1 s
+}
+
+void test_speed_profile_ramp_reaches_target_and_holds() {
+    for (int i = 0; i < 10; i++) sp.step(0.0f, 0.1f);
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 0.5f, sp.current());
+}
+
+void test_speed_profile_fall_is_immediate() {
+    sp.reset(0.5f);
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 0.25f, sp.step(0.6f, 0.002f));
+}
+
+void test_speed_profile_zero_dt_does_not_rise() {
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 0.0f, sp.step(0.0f, 0.0f));
 }
 
 int main() {
     UNITY_BEGIN();
-    RUN_TEST(test_zero_error_max_speed);
-    RUN_TEST(test_large_error_min_speed);
-    RUN_TEST(test_threshold_boundary);
-    RUN_TEST(test_symmetry_positive_negative);
-    RUN_TEST(test_clamps_to_bounds);
-    RUN_TEST(test_params_updateable_runtime);
-    RUN_TEST(test_linear_interpolation);
+    RUN_TEST(test_speed_profile_zero_error_returns_vmax);
+    RUN_TEST(test_speed_profile_error_at_threshold_returns_vmin);
+    RUN_TEST(test_speed_profile_error_beyond_threshold_returns_vmin);
+    RUN_TEST(test_speed_profile_midpoint_interpolates);
+    RUN_TEST(test_speed_profile_negative_error_uses_magnitude);
+    RUN_TEST(test_speed_profile_nan_error_returns_vmin);
+    RUN_TEST(test_speed_profile_ramp_limits_rise);
+    RUN_TEST(test_speed_profile_ramp_reaches_target_and_holds);
+    RUN_TEST(test_speed_profile_fall_is_immediate);
+    RUN_TEST(test_speed_profile_zero_dt_does_not_rise);
     return UNITY_END();
 }
