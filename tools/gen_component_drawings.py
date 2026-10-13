@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.join(RAIZ, "tools"))
 from specs import COMPONENTES, Componente  # noqa: E402
 from techdraw import (H_LABEL, MARGIN_LEFT, MARGIN_OTHER, SHEET_H,  # noqa: E402
                       SHEET_W, Prov, Sheet, View, dim_diam, dim_h, dim_v,
-                      note, txt)
+                      fmt_valor, note, txt)
 
 DIR_SAIDA = os.path.join(RAIZ, "hardware", "drawings", "comp")
 DATA = "2026-08-12"
@@ -505,7 +505,7 @@ def prancha_mp1584(c: Componente) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# 08 — Roda ⌀34
+# 08 — Roda impressa com O-ring (hardware/cad/parts/wheel.py)
 # ═══════════════════════════════════════════════════════════════════════
 def prancha_roda(c: Componente) -> str:
     """Roda: vista frontal (circular) e vista lateral cortada."""
@@ -546,7 +546,7 @@ def prancha_roda(c: Componente) -> str:
     s.add(_rotulo_vista(cx - 26.0, cy + DE.valor * fator / 2.0 + 12.0,
                         "VISTA FRONTAL"))
     s.add(_nota(front, 0.0, meia,
-                "achatado em D: 2,5 mm (casa com a ficha 04)",
+                f"achatado em D: {fmt_valor(ACH.valor)} mm (eixo da ficha 04)",
                 dx=20.0, dy=42.0))
 
     # ── vista lateral ──────────────────────────────────────────────────
@@ -557,10 +557,12 @@ def prancha_roda(c: Componente) -> str:
     for base in (0.0, DE.valor - (DE.valor - DCA.valor) / 2.0):
         s.add(lat.rect_part((LG.valor - LCA.valor) / 2.0, base,
                             LCA.valor, (DE.valor - DCA.valor) / 2.0))
-    # Furo do eixo, oculto. Desenhado só até a largura da roda: o
-    # wheel_hub.scad declara 10 mm de profundidade num cubo de 8 mm de
-    # largura, o que não fecha (ver docs/DIVERGENCIAS.md, D9).
-    prof = min(PF.valor, LG.valor)
+    # Cubo: passa da largura do aro quando o furo do eixo é mais fundo que
+    # o aro (roda v2: cubo de 9,4 mm, aro de 8,5 mm — D9 resolvido).
+    prof = PF.valor
+    if PF.valor > LG.valor:
+        s.add(lat.rect_part(LG.valor, DE.valor / 2.0 - DCU.valor / 2.0,
+                            PF.valor - LG.valor, DCU.valor))
     s.add(lat.hidden([(0.0, DE.valor / 2.0 - DF.valor / 2.0),
                       (prof, DE.valor / 2.0 - DF.valor / 2.0)]))
     s.add(lat.hidden([(0.0, DE.valor / 2.0 + DF.valor / 2.0),
@@ -572,12 +574,13 @@ def prancha_roda(c: Componente) -> str:
     s.add(_rotulo_vista(lx - 6.0, ly + DE.valor * fator / 2.0 + 26.0,
                         "VISTA LATERAL"))
     s.add(_nota(lat, LG.valor, DE.valor * 0.9,
-                "canal do O-ring de 3 mm de secao", dx=16.0, dy=6.0))
+                f"canal do O-ring de {fmt_valor(m['secao_oring'].valor)} mm de secao",
+                dx=16.0, dy=6.0))
     s.add(_nota(lat, LG.valor, DE.valor / 2.0,
-                f"furo grub M3 radial (⌀{DGR.valor:.0f} mm)",
+                f"furo radial p/ M2 autoatarraxante (⌀{fmt_valor(DGR.valor)} mm)",
                 dx=18.0, dy=14.0))
     s.add(_nota(lat, LG.valor / 2.0, 0.0,
-                "furo do eixo: 10 mm no SCAD contra 8 mm de largura - D9",
+                f"furo em D: {fmt_valor(PF.valor)} mm no cubo (D9 resolvido)",
                 dx=14.0, dy=30.0))
     return s.render()
 

@@ -46,6 +46,14 @@ class TestRenderFicha(unittest.TestCase):
         self.assertIn(Prov.MEDIR.value, md)
         self.assertIn("MEDIR", md)
 
+    def test_ficha_obsoleta_traz_aviso(self):
+        md = render_ficha(COMPONENTES["caster"])
+        self.assertIn("OBSOLETO", md)
+
+    def test_ficha_sem_prancha_aponta_para_o_cad(self):
+        md = render_ficha(COMPONENTES["suporte18650"])
+        self.assertIn("hardware/cad/", md)
+
 
 if __name__ == "__main__":
     unittest.main()

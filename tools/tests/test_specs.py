@@ -82,8 +82,32 @@ class TestComponentes06a10(unittest.TestCase):
         self.assertIn("diametro_externo", roda.medidas)
         self.assertIn("largura", roda.medidas)
 
-    def test_sao_dez_componentes(self):
-        self.assertEqual(len(COMPONENTES), 10)
+    def test_sao_treze_componentes(self):
+        self.assertEqual(len(COMPONENTES), 13)
+
+
+class TestComponentes11a13(unittest.TestCase):
+    def test_novos_componentes_presentes(self):
+        for chave, num in (("celula18650", "11"), ("suporte18650", "12"), ("oring", "13")):
+            self.assertIn(chave, COMPONENTES)
+            self.assertEqual(COMPONENTES[chave].num, num)
+
+    def test_suporte_marcado_como_medir(self):
+        s = COMPONENTES["suporte18650"]
+        for nome in ("comprimento", "largura", "altura"):
+            self.assertIs(s.medidas[nome].prov, Prov.MEDIR, nome)
+
+    def test_obsoletos_declaram_motivo(self):
+        for chave in ("lipo", "caster"):
+            self.assertTrue(COMPONENTES[chave].obsoleto.strip(), chave)
+        for chave in ("celula18650", "suporte18650", "oring", "roda", "n20"):
+            self.assertEqual(COMPONENTES[chave].obsoleto, "", chave)
+
+    def test_roda_descreve_a_roda_impressa(self):
+        roda = COMPONENTES["roda"]
+        self.assertIn("impressa", roda.nome.lower())
+        self.assertTrue(38.0 <= roda.medidas["diametro_externo"].valor <= 44.0)
+        self.assertGreaterEqual(roda.medidas["profundidade_furo_eixo"].valor, 9.0)
 
 
 if __name__ == "__main__":

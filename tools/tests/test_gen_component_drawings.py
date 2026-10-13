@@ -23,7 +23,10 @@ class TestEscolhaDeEscala(unittest.TestCase):
 
 class TestPranchas(unittest.TestCase):
     def test_existe_uma_prancha_por_componente(self):
-        self.assertEqual(set(PRANCHAS), set(COMPONENTES))
+        # Componentes 11–13 (v2) não ganham prancha: a geometria está no CAD
+        # (spec 2026-10-13, §5.2).
+        com_prancha = {k for k, c in COMPONENTES.items() if int(c.num) <= 10}
+        self.assertEqual(set(PRANCHAS), com_prancha)
 
     def test_toda_prancha_e_svg_valido_com_fundo_branco(self):
         for chave, fn in PRANCHAS.items():
