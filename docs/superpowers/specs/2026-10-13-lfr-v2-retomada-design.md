@@ -146,6 +146,7 @@ um jeito de correr e existe em 3 perfis. A chave BLE é única entre as duas.
 | `pol` | Polaridade da linha: 0 = linha preta, 1 = linha branca | — | 1 | {0, 1} |
 | `sinv` | Inverte a ordem dos sensores (barra montada espelhada) | — | 0 | {0, 1} |
 | `chem` | Química da bateria (curva de %): 0 = LiPo, 1 = Li-ion | — | 1 | {0, 1} |
+| `lock` | Modo competição: 1 = recusa todo comando BLE em ARMED/RUNNING (§4.5, E-1) | — | 0 | {0, 1} |
 | `vcut` | Tensão de corte (abaixo dela por 1 s: não dá start / para) | V | 6,4 | 5,6–7,6 |
 | `vbk` | Fator de correção da leitura de tensão (ajuste com multímetro) | — | 1,000 | 0,800–1,200 |
 | `pprL` / `pprR` | Pulsos ×4 por volta do **eixo de saída** (também pela auto-calibração `cal`) | — | 600 | 1–10000 |
@@ -217,6 +218,10 @@ Mesmo serviço e características de hoje (`0xABCC`/`0xABCD`/`0xABCE`). Comandos
   `pid`/`pidv` passam a ser interpretados nas unidades novas (§4.3). `spd` converte de 0–255
   para fração (`v/255`); seu campo `base` é ignorado (F-15). `rpm` mapeia `max` → `rpmMax`.
 - Chaves de `HardwareConfig` e `mode` só são aceitas fora de RUNNING/ARMED (`err:"running"`).
+- **Modo competição** (`lock` = 1, E-1): em ARMED ou RUNNING, **todo** comando recebido pelo
+  BLE é recusado com `{"t":"ack","k":<comando ou chave>,"ok":0,"err":"locked"}`, inclusive
+  `stop`, `set` e `get`. A telemetria continua saindo. Fora desses estados, nada muda (`start`
+  em READY continua aceito). O botão continua parando o carro. Atende a regra RoboCore 5.9.
 - Cada notificação cabe em 180 bytes. O relatório (§4.1) verifica o MTU negociado.
 - A telemetria atual já passa de 180 bytes, então é dividida em dois frames:
   - `tel` a 30 Hz: `pos` (erro normalizado), `corr` (saída do PID externo em fração), `vL`,
@@ -225,7 +230,8 @@ Mesmo serviço e características de hoje (`0xABCC`/`0xABCD`/`0xABCE`). Comandos
   - `sta` a 2 Hz: `bat` (%), `vb` (V), `lap`, `laps`, `err` (código), `prof`, `dirty` (0/1),
     `ovr` (maior tempo de execução do laço na janela, µs).
   `bat`, `lap` e `laps` saem do `tel` e passam para o `sta`.
-- `info` passa a enviar `"fw":"4.0.0"` e `"cfgerr"`.
+- `info` passa a enviar `"fw":"4.0.0"` e `"cfgerr"`, e também `"stk":[<control>,<comm>]`:
+  a menor folga de pilha de cada task desde o boot, em bytes (E-2).
 
 ### 4.6 Estados, botão e sinalização
 
@@ -586,3 +592,17 @@ estão fora do escopo (§9).
 | Ganhos de fábrica não servirem na pista | Perfil "seguro" com velocidade baixa; roteiro de sintonia no manual do operador |
 | Mudanças não testadas em hardware | Testes de bancada em `examples/` e checklist de primeira energização no manual |
 | Inversão de polaridade ao trocar células | Fusível obrigatório, P-MOSFET recomendado, marcação no berço, item no checklist |
+
+---
+
+## 11. Emendas
+
+Decididas pelo usuário em 2026-10-13, depois do relatório de revisão (`docs/REVISAO_FIRMWARE.md`).
+
+| # | Origem | Emenda | Onde |
+|---|--------|--------|------|
+| E-1 | F-33 (regra RoboCore 5.9) | Chave `lock` em `HardwareConfig` (fábrica 0). Com 1, todo comando BLE em ARMED/RUNNING é recusado com `err:"locked"` | §4.3, §4.5; plano WP1, Tarefa 22 |
+| E-2 | Revisão, item 3 (pilha das tasks) | `info` leva `stk` com a menor folga de pilha das tasks `control` e `comm` | §4.5; plano WP1, adendo à Tarefa 18 |
+
+Também acrescentados ao plano WP1, sem mudar esta spec: pull-up interno nos GPIO 18/19 do
+encoder esquerdo (F-24) e versões fixas da plataforma e do NimBLE-Arduino (F-30).

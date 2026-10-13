@@ -6952,3 +6952,160 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 `mcp__claude-flow__memory_store` (`lfr-2026`, `wp1/status`): "WP1 concluído: <hash>; testes
 <N>/<N>; esp32dev SUCCESS". `mcp__claude-flow__task_complete` na tarefa do WP1.
+
+---
+
+## Adendo da revisão (2026-10-13)
+
+Decidido pelo usuário depois do relatório `docs/REVISAO_FIRMWARE.md` (spec §11, emendas E-1 e
+E-2). Os itens das Tarefas 18 e 19 entram junto com elas. A Tarefa 22 roda por último, e o
+Step 4 da Tarefa 21 (registro do fim do WP1 no ruflo) passa para o fim da Tarefa 22.
+
+### Adendo às Tarefas 18 e 19
+
+- **Tarefa 18 — F-24 (pull-up do encoder esquerdo):** os GPIO 18/19 passam a `INPUT_PULLUP`
+  onde o `Encoder` configura os pinos (`src/sensors/Encoder.cpp`), como já diz o
+  `docs/WIRING.md`. Os GPIO 36/39 não têm pull-up interno e continuam com o resistor externo.
+  Commit próprio: `fix(encoder): internal pull-up on left encoder pins (F-24)`.
+- **Tarefa 18 — E-2 (pilha das tasks):** `formatInfo` ganha `uint32_t stkControl, uint32_t
+  stkComm` e escreve `"stk":[<control>,<comm>]`. O `main.cpp` passa
+  `uxTaskGetStackHighWaterMark(handle)` das duas tasks (no ESP-IDF o valor já sai em bytes).
+  Atualizar o teste do `formatInfo` da Tarefa 10 e acrescentar
+  `test_command_protocol_info_with_stack_fits_180_bytes` (nome do dispositivo de 31
+  caracteres, `stk` = 65535 nas duas posições).
+- **Tarefa 19 — F-30 (versões fixas):** fixar `platform = espressif32@<versão>` e
+  `h2zero/NimBLE-Arduino@<versão>` em todos os ambientes (`esp32dev` e `bench_*`), com as
+  versões que compilaram (`pio pkg list`). Usar NimBLE-Arduino ≥ 2.5.0 se compilar com o core
+  instalado. Se não compilar, usar a mais nova que compile e conferir que todo `setValue` usa
+  `(ptr, len)` (F-22). As versões vão na mensagem do commit.
+- **Tarefa 19 — F-24:** conferir que o `bench_encoder` usa a mesma classe `Encoder` e, com
+  isso, herda o pull-up.
+
+### Task 22: Modo competição — chave `lock` (F-33, emenda E-1)
+
+Implementa a linha `lock` da spec §4.3 e a regra de modo competição da §4.5.
+
+**Files:**
+- Modify: `src/config/RobotConfig.h`, `src/config/RobotConfig.cpp`,
+  `src/comm/CommandHandler.h`, `src/comm/CommandHandler.cpp`, `docs/dashboard/lfr_sim.py`,
+  `docs/dashboard/lfr-cockpit-mock.html`, e `README.md`/`docs/TUNING.md` se a Tarefa 21 listou
+  as chaves
+- Test: `test/test_robot_config/test_robot_config.cpp`,
+  `test/test_command_handler/test_command_handler.cpp`, `docs/dashboard/test_lfr_sim.py`
+
+**Interfaces:**
+- Consumes: `HardwareConfig`, `robotcfg::*` (8), `formatAckSimple` (10),
+  `CommandHandler::handle` (17).
+- Produces: `HardwareConfig::lock` (`uint8_t`, fábrica 0); chave `lock` no grupo `hw`, faixa
+  {0, 1}, `hardware = true` (por isso já é recusada em ARMED/RUNNING, como toda chave de
+  hardware: ninguém desliga o modo competição durante a corrida).
+
+- [ ] **Step 1: Escrever os testes**
+
+Em `test/test_robot_config/test_robot_config.cpp`, trocar `TEST_ASSERT_EQUAL_UINT32(29, n)`
+por `30` e acrescentar:
+
+```cpp
+void test_robot_config_lock_defaults_off_and_is_hardware_key() {
+    TEST_ASSERT_EQUAL_UINT8(0, robotcfg::factoryHardware().lock);
+    const robotcfg::KeyInfo* k = robotcfg::findKey("lock");
+    TEST_ASSERT_NOT_NULL(k);
+    TEST_ASSERT_TRUE(k->hardware);
+    TEST_ASSERT_EQUAL_STRING("hw", k->group);
+    TEST_ASSERT_EQUAL(SetResult::OK, robotcfg::set(cfg, "lock", 1.0f, false));
+    TEST_ASSERT_EQUAL_UINT8(1, cfg.hw.lock);
+    TEST_ASSERT_EQUAL(SetResult::OUT_OF_RANGE, robotcfg::set(cfg, "lock", 2.0f, false));
+    TEST_ASSERT_EQUAL(SetResult::LOCKED_WHILE_RUNNING, robotcfg::set(cfg, "lock", 0.0f, true));
+}
+```
+
+Em `test/test_command_handler/test_command_handler.cpp` (ajustar aos helpers reais do arquivo:
+`send`, `sendForMsg`, `sink`, `h`):
+
+```cpp
+static void lockOn() {
+    send("{\"t\":\"set\",\"k\":\"lock\",\"v\":1}");
+    sink.msgs.clear();
+}
+
+void test_command_handler_lock_refuses_everything_while_running() {
+    lockOn();
+    const char* cmds[] = {
+        "{\"t\":\"stop\"}", "{\"t\":\"start\"}", "{\"t\":\"reset\"}", "{\"t\":\"get\"}",
+        "{\"t\":\"scal\"}", "{\"t\":\"save\"}", "{\"t\":\"prof\",\"n\":1}",
+        "{\"t\":\"set\",\"k\":\"kp\",\"v\":2}", "{\"t\":\"pid\",\"kp\":2,\"ki\":0,\"kd\":0}"};
+    for (const char* c : cmds) {
+        sink.msgs.clear();
+        const ControlMsg m = sendForMsg(c, true);
+        TEST_ASSERT_EQUAL_MESSAGE(ControlRequest::NONE, m.req, c);
+        TEST_ASSERT_TRUE_MESSAGE(sink.contains("\"ok\":0,\"err\":\"locked\""), c);
+    }
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 1.0f, h->live().tune.kp);
+}
+
+void test_command_handler_lock_keeps_commands_outside_run() {
+    lockOn();
+    const ControlMsg m = sendForMsg("{\"t\":\"start\"}", false);
+    TEST_ASSERT_EQUAL(ControlRequest::START, m.req);
+    send("{\"t\":\"set\",\"k\":\"kp\",\"v\":2}", false);
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 2.0f, h->live().tune.kp);
+}
+
+void test_command_handler_unlocked_stop_still_works_while_running() {
+    const ControlMsg m = sendForMsg("{\"t\":\"stop\"}", true);
+    TEST_ASSERT_EQUAL(ControlRequest::STOP, m.req);
+}
+```
+
+Em `docs/dashboard/test_lfr_sim.py`: um teste que liga `lock` no simulador, leva o carro a
+RUNNING e confere que `stop` e `set` voltam com `"err":"locked"` sem efeito.
+
+- [ ] **Step 2: Rodar e ver falhar**
+
+Run: `pio test -e native -f test_robot_config -f test_command_handler`
+Expected: FAIL (`HardwareConfig` não tem `lock`).
+
+- [ ] **Step 3: Implementar**
+
+- `HardwareConfig`: `uint8_t lock = 0;  ///< modo competição (regra RoboCore 5.9)`, depois de
+  `chem`. Na tabela `KEYS`: `HW_KEY(lock, FT::U8, 0.0f, 1.0f)`. O blob `hw` muda de tamanho;
+  o `ConfigStore` já trata o blob antigo como inválido (fábrica + `cfgerr`, Review Focus 3).
+- `CommandHandler::handle`, logo depois de `msg = ControlMsg{};`:
+
+```cpp
+    // Modo competição (spec §4.5, regra 5.9): em ARMED/RUNNING nada do BLE tem efeito
+    if (running && _live.hw.lock) {
+        _refuseLocked(cmd, sink);
+        return;
+    }
+```
+
+  `_refuseLocked` manda um `formatAckSimple(buf, n, <chave>, false, "locked")` por item quando
+  o comando é `SET` (inclusive os legados que viram `SET`), e um com o nome do comando (`get`,
+  `save`, `load`, `defaults`, `prof`, `scal`, `start`, `stop`, `reset`, `cal`) nos demais.
+  `CmdType::NONE` continua sem resposta.
+- O frame `cfg` do grupo `hw` cresce 9 bytes (`,"lock":0`). Conferir que o teste de tamanho dos
+  frames `cfg` da Tarefa 10 continua passando com os valores máximos.
+- `lfr_sim.py`: a chave na tabela que espelha o `RobotConfig.cpp` e o mesmo comportamento.
+  `lfr-cockpit-mock.html`: um interruptor "Modo competição" no grupo hw e um selo visível
+  quando `lock` = 1.
+- Se a Tarefa 21 listou as chaves no `README.md` ou no `docs/TUNING.md`, acrescentar `lock`
+  com a explicação da regra 5.9.
+
+- [ ] **Step 4: Rodar e ver passar**
+
+Run: `pio test -e native 2>&1 | tail -3 && pio run -e esp32dev 2>&1 | tail -3 && (cd docs/dashboard && python3 -m unittest test_lfr_sim 2>&1 | tail -2)`
+Expected: testes todos PASSED, `SUCCESS` e `OK`.
+
+- [ ] **Step 5: Commitar**
+
+```bash
+git add src/config/RobotConfig.h src/config/RobotConfig.cpp src/comm/CommandHandler.h \
+  src/comm/CommandHandler.cpp test/test_robot_config test/test_command_handler docs/dashboard
+git add README.md docs/TUNING.md   # se mudaram
+git commit -m "feat(config): competition lock refuses BLE commands while armed or running (F-33)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+- [ ] **Step 6: Registrar o fim do WP1 no ruflo** — o Step 4 da Tarefa 21, feito aqui.
