@@ -1,0 +1,29 @@
+# Medidas tiradas das peças em mãos e offsets do cupom de tolerância.
+# Linha comentada = vale o valor típico do params.py. Depois de editar: python build.py
+# Toda chave aqui tem que existir no params.py; valor zero ou negativo é recusado.
+
+[medidas]
+# suporte_l = 77.0          # suporte 2×18650: comprimento ao longo das células (paquímetro)
+# suporte_w = 41.0          # largura (as duas células lado a lado)
+# suporte_h = 20.5          # altura sem as células
+# celula_d = 18.4           # diâmetro da célula 18650 com o termo-retrátil
+# n20_altura = 10.0         # seção da caixa de redução na vertical (Pololu: 10 × 12)
+# n20_conector_l = 5.0      # quanto o conector JST-SH passa do fundo do encoder
+# qtr_furos_dist = 69.85    # entre centros dos dois furos de fixação do QTR-8A
+# perf_furo_canto = 3.5     # centro do furo de fixação até as bordas do perfboard
+# interruptor_l = 8.5       # chave liga/desliga: comprimento do corpo
+# interruptor_h = 3.6       # chave liga/desliga: altura do corpo
+# oring_id = 34.0           # O-ring comprado: diâmetro interno
+# oring_cs = 3.0            # O-ring comprado: seção (espessura do cordão)
+# fios_parafusos_massa = 10.0  # g — pesar o carro pronto e ajustar
+
+[tolerancias]
+# Preencher com o resultado do cupom de tolerância (manual de montagem, seção "Cupom")
+# furo_m3 = 3.4
+# furo_m2 = 2.4
+# autoatarraxante_m2 = 1.7
+# inserto_m3_d = 4.0
+# eixo_d = 3.05
+# eixo_achatado = 2.55
+# deslizante = 0.30
+# pcb = 0.20
