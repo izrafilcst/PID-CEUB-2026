@@ -18,6 +18,8 @@ public:
     float getFloat(const char* key, float defaultValue) override;
     bool  exists(const char* key) const override;
     void  clear() override;
+    bool   putBlob(const char* key, const void* data, size_t len) override;
+    size_t getBlob(const char* key, void* out, size_t maxLen) override;
 
 private:
 #ifndef NATIVE_BUILD
