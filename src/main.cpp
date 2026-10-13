@@ -1,58 +1,46 @@
-// orquestração principal LFR — Line Follower Racer
-// Core 0: controle (sensor→PID→motor, < 2ms)
-// Core 1: comunicação (BLE + telemetria JSON @ 30 Hz)
+// main.cpp — LFR v2: fiação dos módulos e tasks. Nenhuma regra de negócio aqui.
+// Core 1: task "control" a 500 Hz (sensor → PID → motor), prioridade alta.
+// Core 0: task "comm" a 100 Hz (BLE, comandos, telemetria), junto da pilha NimBLE.
 #ifndef NATIVE_BUILD
 
 #include <Arduino.h>
 #include <SPI.h>
 #include <atomic>
+#include <algorithm>
+#include <cmath>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
 
 #include "config.h"
-#include "sensors/Calibration.h"
-#include "sensors/SensorArray.h"
-#include "control/PIDController.h"
-#include "control/SpeedProfile.h"
-#include "motors/MotorDriver.h"
-#include "motors/DifferentialDrive.h"
-#include "strategy/LineFollower.h"
-#include "strategy/LapTimer.h"
+#include "comm/Annunciator.h"
 #include "comm/BLETuner.h"
-#include "comm/Logger.h"
+#include "comm/CommandHandler.h"
+#include "comm/CommandProtocol.h"
+#include "comm/Mailbox.h"
+#include "comm/Telemetry.h"
+#include "config/ConfigStore.h"
+#include "config/RobotConfig.h"
+#include "motors/MotorDriver.h"
+#include "sensors/BatteryMonitor.h"
+#include "sensors/ButtonInput.h"
+#include "sensors/Calibration.h"
 #include "sensors/Encoder.h"
+#include "sensors/SensorArray.h"
 #include "sensors/VelocityEstimator.h"
 #include "storage/NvsStore.h"
-#include "control/CascadeController.h"
+#include "strategy/ControlLoop.h"
+#include "strategy/RobotStateMachine.h"
 
-// ═══ Estado da máquina ═════════════════════════════════════════════════════
-enum class RobotState : uint8_t { IDLE, CALIBRATING, READY, RUNNING, ERROR };
+static constexpr const char* DEVICE_NAME = "LFR-RACER-01";
+static constexpr const char* FW_VERSION  = "4.0.0";
+static constexpr int      OVERRUN_LIMIT  = 5;     // ciclos seguidos acima do período
+static constexpr int      BATTERY_EVERY  = 50;    // 50 × 2 ms = 100 ms
+static constexpr int      STATUS_EVERY   = 250;   // 250 × 2 ms = 500 ms
+static constexpr uint32_t TELEMETRY_MS   = 33;    // ~30 Hz
 
-// ═══ Módulos — Dependency Injection no construtor ══════════════════════════
+// ── Hardware ───────────────────────────────────────────────────────────────
 static Calibration calibration(SENSOR_COUNT);
-
-static SensorArray sensors(
-    PIN_SPI_CS,
-    SPI_FREQ,
-    SENSOR_COUNT,
-    calibration
-);
-
-static PIDController pid(
-    KP_DEFAULT, KI_DEFAULT, KD_DEFAULT,
-    -static_cast<float>(PWM_MAX),
-    +static_cast<float>(PWM_MAX)
-);
-
-static SpeedProfile speedProfile(
-    MIN_SPEED, BASE_SPEED_DEFAULT, MAX_SPEED, ERROR_THRESHOLD
-);
-
-static DifferentialDrive drive(PWM_MAX);
-static LineFollower lineFollower(calibration, pid, speedProfile, drive);
-static LapTimer lapTimer;
-
-static BLETuner ble;
-static Logger   logger;
-
+static SensorArray sensors(PIN_SPI_CS, SPI_FREQ, SENSOR_COUNT, calibration);
 static MotorDriver::Config cfgA = {
     PIN_MOTOR_A_PWM, PIN_MOTOR_A_IN1, PIN_MOTOR_A_IN2, 0, PWM_FREQ, PWM_RESOLUTION
 };
@@ -60,426 +48,330 @@ static MotorDriver::Config cfgB = {
     PIN_MOTOR_B_PWM, PIN_MOTOR_B_IN1, PIN_MOTOR_B_IN2, 1, PWM_FREQ, PWM_RESOLUTION
 };
 static MotorDriver motors(cfgA, cfgB, PIN_MOTOR_STBY);
-
-// ═══ Cascade PID — Fase C ════════════════════════════════════════════════════
-static Encoder encL(PIN_ENC_LEFT_A,  PIN_ENC_LEFT_B);
+static Encoder encL(PIN_ENC_LEFT_A, PIN_ENC_LEFT_B);
 static Encoder encR(PIN_ENC_RIGHT_A, PIN_ENC_RIGHT_B);
-
 static NvsStore nvs;
 static VelocityEstimator velL(encL, nvs, "left");
 static VelocityEstimator velR(encR, nvs, "right");
 
-static PIDController pidVelL(
-    KP_VEL_DEFAULT, KI_VEL_DEFAULT, KD_VEL_DEFAULT,
-    -static_cast<float>(PWM_MAX), +static_cast<float>(PWM_MAX), 0.002f);
-static PIDController pidVelR(
-    KP_VEL_DEFAULT, KI_VEL_DEFAULT, KD_VEL_DEFAULT,
-    -static_cast<float>(PWM_MAX), +static_cast<float>(PWM_MAX), 0.002f);
+// ── Lógica ─────────────────────────────────────────────────────────────────
+static ConfigStore    configStore(nvs);
+static ControlLoop    control(calibration, PWM_MAX);
+static BatteryMonitor battery(VBAT_DIVIDER_RATIO);
+static ButtonInput    button;
+static Annunciator    annunciator;
+static BLETuner       ble;
+static RobotConfig    g_liveCfg;          // dono: task comm (depois do setup)
 
-static CascadeController cascade(pidVelL, pidVelR, MAX_RPM_DEFAULT, PWM_MAX);
+// ── Canais entre núcleos ───────────────────────────────────────────────────
+static Mailbox<RobotConfig>    g_cfgBox;  // comm → control
+static Mailbox<TelemetryFrame> g_telBox;  // control → comm
+static Mailbox<StatusFrame>    g_staBox;  // control → comm
+static Mailbox<CalReport>      g_calBox;  // control → comm
+static QueueHandle_t           g_ctlQueue = nullptr;  // comm → control (ControlMsg)
+static std::atomic<uint8_t>    g_state{0};
+static bool g_cfgErr = false;
+static bool g_calValidAtBoot = false;
+// Handles para medir a folga de pilha (info "stk", E-2). Gravados por xTaskCreatePinnedToCore
+// antes de a task comm existir; depois só lidos.
+static TaskHandle_t g_controlTask = nullptr;
+static TaskHandle_t g_commTask = nullptr;
 
-// ═══ Estado compartilhado Core 0 → Core 1 ══════════════════════════════════
-struct TelemetrySnapshot {
-    float    pos       = 0.0f;
-    float    corr      = 0.0f;
-    int      vL        = 0;
-    int      vR        = 0;
-    uint32_t dtUs      = 0;
-    float    rpmL      = 0.0f;
-    float    rpmR      = 0.0f;
-    float    setpointL = 0.0f;
-    float    setpointR = 0.0f;
-    float    sensorsPct[SENSOR_COUNT] = {};  // [0–100]
-};
-
-static TelemetrySnapshot   g_snap;
-static portMUX_TYPE        g_snapMux        = portMUX_INITIALIZER_UNLOCKED;
-static volatile float      g_baseRpm        = BASE_RPM_DEFAULT;  // mutável via BLE
-static std::atomic<RobotState> robotState{RobotState::IDLE};
-static portMUX_TYPE        lineFollowerMux  = portMUX_INITIALIZER_UNLOCKED;
-static uint32_t            calStart         = 0;
-static constexpr uint32_t  CAL_DURATION_MS  = 5000;
-
-// Estado do cascade — escopo de arquivo p/ permitir reset em transições READY→RUNNING.
-// M-1 (Reviewer) + MS-1 (Security): stale prevLoopStart causa dt fora de escala
-// no 1º tick após re-entry; encoders acumulam pulsos durante IDLE/READY.
-static uint32_t g_prevLoopStart = 0;
-
-static void resetCascadeState() {
-    g_prevLoopStart = 0;
-    velL.update(0);   // Fase B: update(0) drena delta sem atualizar IIR
-    velR.update(0);
-}
-
-// ═══ Bateria ════════════════════════════════════════════════════════════════
-// Divisor: 100 kΩ / 47 kΩ → Vout = Vin × 47/147. LiPo 2S: 6.4–8.4 V.
-static float readBatteryPct() {
-    const int   raw  = analogRead(PIN_VBAT_ADC);
-    const float vout = (raw / 4095.0f) * 3.3f;
-    const float vin  = vout * (100.0f + 47.0f) / 47.0f;
-    const float pct  = (vin - 6.4f) / (8.4f - 6.4f) * 100.0f;
-    return std::max(0.0f, std::min(100.0f, pct));
-}
-
-// ═══ Helpers de hardware ════════════════════════════════════════════════════
-static void beep(uint32_t ms) {
-    digitalWrite(PIN_BUZZER, HIGH);
-    uint32_t t = millis();
-    while (millis() - t < ms) {}
-    digitalWrite(PIN_BUZZER, LOW);
-}
-
-static inline bool btnPressed() {
-    return digitalRead(PIN_BTN_START) == LOW;
-}
-
-// ═══ Task Core 1 — BLE + Telemetria JSON ════════════════════════════════════
-static void taskComm(void* /*pvParameters*/) {
-    ble.begin("LFR-RACER-01");
-
-    int   telTick = 0;
-    int   batTick = 0;
-    float batPct  = 100.0f;
-    float bestLap = 0.0f;
-    bool  hasLap  = false;
-    float laps[5] = {};
-    int   nLaps   = 0;
-
-    uint32_t lastLapMs = 0;  // detecta quando LapTimer registra uma nova volta
-
-    for (;;) {
-        ble.update();
-
-        // Envia frame de identificação ao cliente recém-conectado
-        if (ble.consumeNewConnection()) {
-            ble.notifyInfo("LFR-RACER-01", "v3.1.0", "RUN");
-        }
-
-        // Aplica parâmetros PID recebidos via BLE
-        if (ble.hasNewPID()) {
-            PIDParams p = ble.getPID();
-            taskENTER_CRITICAL(&lineFollowerMux);
-            lineFollower.setPID(p.kp, p.ki, p.kd);
-            taskEXIT_CRITICAL(&lineFollowerMux);
-        }
-
-        // Aplica parâmetros de velocidade recebidos via BLE
-        if (ble.hasNewSpeed()) {
-            SpeedParams s = ble.getSpeed();
-            taskENTER_CRITICAL(&lineFollowerMux);
-            lineFollower.setSpeed(s.minSpeed, s.baseSpeed, s.maxSpeed, s.threshold);
-            taskEXIT_CRITICAL(&lineFollowerMux);
-        }
-
-        // Aplica ganhos do PID interno de velocidade
-        if (ble.hasNewVelocityPID()) {
-            VelocityPIDParams p = ble.getVelocityPID();
-            // Hardening (Wave 3): ganho negativo inverte o sinal da malha
-            // (realimentação positiva → descontrole). NaN/Inf → 0. Piso em 0.
-            float kp = (std::isfinite(p.kp) && p.kp >= 0.0f) ? p.kp : 0.0f;
-            float ki = (std::isfinite(p.ki) && p.ki >= 0.0f) ? p.ki : 0.0f;
-            float kd = (std::isfinite(p.kd) && p.kd >= 0.0f) ? p.kd : 0.0f;
-            taskENTER_CRITICAL(&lineFollowerMux);
-            cascade.setInnerGains(kp, ki, kd);
-            taskEXIT_CRITICAL(&lineFollowerMux);
-        }
-
-        // Aplica novo MAX_RPM (clamp do cascade)
-        if (ble.hasNewRpm()) {
-            RpmParams r = ble.getRpm();
-            // Hardening (Wave 3): clampa comandos BLE à faixa física antes de
-            // tocar a malha. max inválido/≤0 → default; base confinada a [0,max].
-            float maxRpm  = (std::isfinite(r.maxRpm) && r.maxRpm > 0.0f)
-                          ? (r.maxRpm < RPM_HARD_CEILING ? r.maxRpm : RPM_HARD_CEILING)
-                          : MAX_RPM_DEFAULT;
-            float baseRpm = (std::isfinite(r.baseRpm) && r.baseRpm >= 0.0f)
-                          ? (r.baseRpm < maxRpm ? r.baseRpm : maxRpm)
-                          : 0.0f;
-            taskENTER_CRITICAL(&lineFollowerMux);
-            cascade.setMaxRpm(maxRpm);
-            g_baseRpm = baseRpm;
-            taskEXIT_CRITICAL(&lineFollowerMux);
-        }
-
-        // Comando de calibração de encoder
-        if (ble.hasNewCalibration()) {
-            CalibrationCmd c = ble.getCalibration();
-            VelocityEstimator& target = c.leftSide ? velL : velR;
-            if (c.op == CalibrationCmd::Op::START) {
-                target.startCalibration();
-                beep(50);
-            } else if (c.op == CalibrationCmd::Op::FINISH) {
-                bool ok = target.finishCalibration(c.rotations);
-                beep(ok ? 200 : 500);
-                char buf[40];
-                snprintf(buf, sizeof(buf), "%.2f", target.getEffectivePPR());
-                // NOTE: notifyInfo(name, fw, mode) — fw/mode fields are repurposed
-                // as status/value for this confirmation message. Tracked as known
-                // deviation; proper fix (new overload) is out of Fase D scope.
-                ble.notifyInfo(c.leftSide ? "CAL_L" : "CAL_R",
-                               ok ? "OK" : "FAIL", buf);
+static void applyRequest(const ControlMsg& msg, RobotStateMachine& sm, const SmInputs& in,
+                         uint32_t nowMs) {
+    switch (msg.req) {
+        case ControlRequest::START:      sm.handle(SmEvent::CMD_START, in, nowMs); break;
+        case ControlRequest::STOP:       sm.handle(SmEvent::CMD_STOP, in, nowMs); break;
+        case ControlRequest::RESET:      sm.handle(SmEvent::CMD_RESET, in, nowMs); break;
+        case ControlRequest::SENSOR_CAL: sm.handle(SmEvent::CMD_SENSOR_CAL, in, nowMs); break;
+        case ControlRequest::ENC_CAL_START:
+            if (!sm.isActive()) {
+                (msg.leftSide ? velL : velR).startCalibration();
+                annunciator.beep(1, 50, 0, nowMs);
             }
-        }
-
-        // Comandos de controle remoto via BLE
-        if (ble.consumeStart() && robotState.load() == RobotState::READY) {
-            pid.reset();
-            lineFollower.reset();
-            resetCascadeState();
-            lapTimer.start(millis());
-            logger.setEnabled(true);
-            robotState.store(RobotState::RUNNING, std::memory_order_release);
-            beep(50);
-        }
-        if (ble.consumeStop() && robotState.load() == RobotState::RUNNING) {
-            motors.stop();
-            logger.setEnabled(false);
-            robotState.store(RobotState::READY, std::memory_order_release);
-            beep(300);
-        }
-        if (ble.consumeReset()) {
-            motors.stop();
-            logger.setEnabled(false);
-            lapTimer.reset();
-            hasLap = false;
-            nLaps  = 0;
-            robotState.store(RobotState::IDLE, std::memory_order_release);
-            beep(100);
-        }
-
-        // Bateria: leitura a cada ~1 s (100 × 10 ms)
-        if (++batTick >= 100) {
-            batTick = 0;
-            batPct  = readBatteryPct();
-        }
-
-        // Telemetria JSON @ 30 Hz (cada 3 ticks de 10 ms)
-        if (++telTick >= 3) {
-            telTick = 0;
-
-            TelemetrySnapshot snap;
-            taskENTER_CRITICAL(&g_snapMux);
-            snap = g_snap;
-            taskEXIT_CRITICAL(&g_snapMux);
-
-            // Sincroniza voltas com LapTimer
-            uint32_t currLapMs = lapTimer.getLastLapMs();
-            if (currLapMs > 0 && currLapMs != lastLapMs) {
-                lastLapMs = currLapMs;
-                // Insere no início do histórico (shift right, máx 5 entradas)
-                int shift = (nLaps < 5) ? nLaps : 4;
-                for (int i = shift; i > 0; i--) laps[i] = laps[i - 1];
-                laps[0] = currLapMs / 1000.0f;
-                if (nLaps < 5) nLaps++;
+            break;
+        case ControlRequest::ENC_CAL_FINISH:
+            if (!sm.isActive()) {
+                VelocityEstimator& v = msg.leftSide ? velL : velR;
+                CalReport r;
+                r.kind = CalReport::Kind::ENCODER;
+                r.ok = v.finishCalibration(msg.rotations);
+                r.left = msg.leftSide;
+                r.ppr = v.getEffectivePPR();
+                g_calBox.post(r);
+                annunciator.beep(r.ok ? 1 : 3, r.ok ? 200 : 120, 120, nowMs);
             }
-            uint32_t bestMs = lapTimer.getBestLapMs();
-            if (bestMs > 0) {
-                hasLap  = true;
-                bestLap = bestMs / 1000.0f;
-            }
-
-            ble.notifyTelemetry(
-                snap.pos, snap.corr, snap.vL, snap.vR, snap.dtUs,
-                snap.rpmL, snap.rpmR, snap.setpointL, snap.setpointR,
-                snap.sensorsPct, SENSOR_COUNT,
-                batPct, bestLap, hasLap, laps, nLaps
-            );
-
-            // Buffer CSV de debug (opcional — pode ser redirecionado p/ SPIFFS)
-            logger.drain([](const char* /*csv*/) {});
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(10));  // 100 Hz poll
+            break;
+        case ControlRequest::NONE:
+            break;
     }
 }
 
-// ═══ Setup ══════════════════════════════════════════════════════════════════
+static TelemetryFrame buildTelemetry(const int* raw, const ControlOutputs& out,
+                                     uint32_t execUs, RobotState st, int pwmMax) {
+    TelemetryFrame f;
+    int norm[SENSOR_COUNT];
+    calibration.normalize(raw, norm);
+    for (int i = 0; i < SENSOR_COUNT; i++) f.s[i] = static_cast<uint8_t>(norm[i] / 10);
+    f.pos  = out.error;
+    f.corr = out.u;
+    f.vL   = static_cast<int16_t>(std::lround(out.uL * pwmMax));
+    f.vR   = static_cast<int16_t>(std::lround(out.uR * pwmMax));
+    f.dtUs = static_cast<uint16_t>(std::min<uint32_t>(execUs, 65535));
+    f.rpmL = static_cast<int16_t>(std::lround(velL.getRPM()));
+    f.rpmR = static_cast<int16_t>(std::lround(velR.getRPM()));
+    f.spL  = static_cast<int16_t>(std::lround(out.spL));
+    f.spR  = static_cast<int16_t>(std::lround(out.spR));
+    f.st   = static_cast<uint8_t>(st);
+    f.lost = out.lost ? 1 : 0;
+    return f;
+}
+
+// ═══ Task control — core 1, 500 Hz ═════════════════════════════════════════
+static void taskControl(void*) {
+    RobotConfig cfg;
+    uint32_t cfgSeen = 0;
+    g_cfgBox.fetch(cfg, cfgSeen);
+    control.applyConfig(cfg);
+    velL.setPprX4(cfg.hw.pprL);
+    velR.setPprX4(cfg.hw.pprR);
+
+    RobotStateMachine sm(g_calValidAtBoot, millis());
+    annunciator.onState(sm.state(), sm.error(), millis());
+    if (g_cfgErr) annunciator.beep(3, 60, 60, millis());
+
+    TickType_t lastWake = xTaskGetTickCount();
+    uint32_t prevUs = micros();
+    RobotState prevState = sm.state();
+    ErrorCode prevError = sm.error();
+    int batteryTick = 0;
+    int statusTick = 0;
+    int overruns = 0;
+    uint16_t ovrMax = 0;
+    int raw[SENSOR_COUNT] = {};
+    ControlOutputs out{};
+
+    for (;;) {
+        vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(LOOP_PERIOD_US / 1000));
+        const uint32_t t0 = micros();
+        const uint32_t dtUs = t0 - prevUs;
+        prevUs = t0;
+        const uint32_t nowMs = millis();
+
+        if (g_cfgBox.fetch(cfg, cfgSeen)) {
+            control.applyConfig(cfg);
+            velL.setPprX4(cfg.hw.pprL);
+            velR.setPprX4(cfg.hw.pprR);
+        }
+
+        if (++batteryTick >= BATTERY_EVERY) {
+            batteryTick = 0;
+            battery.update(analogReadMilliVolts(PIN_VBAT_ADC), 0.1f, nowMs, cfg.hw);
+        }
+
+        SmInputs in;
+        in.calibrationValid = calibration.isValid();
+        in.batteryOk = battery.hasReading() && battery.volts() >= cfg.hw.vcut;
+
+        ControlMsg msg;
+        while (xQueueReceive(g_ctlQueue, &msg, 0) == pdTRUE) applyRequest(msg, sm, in, nowMs);
+
+        const ButtonEvent be = button.update(digitalRead(PIN_BTN_START) == LOW, nowMs);
+        if (be == ButtonEvent::SHORT) sm.handle(SmEvent::BTN_SHORT, in, nowMs);
+        if (be == ButtonEvent::LONG) sm.handle(SmEvent::BTN_LONG, in, nowMs);
+
+        sensors.readAll(raw);
+        velL.update(dtUs);  // sempre: drena o delta mesmo parado
+        velR.update(dtUs);
+
+        if (sm.state() == RobotState::CALIBRATING) {
+            if (prevState != RobotState::CALIBRATING) calibration.reset();
+            calibration.update(raw);
+            if (sm.calibrationWindowOver(nowMs)) {
+                CalReport r;
+                int nBad = 0;
+                r.ok = calibration.isValid(r.bad, &nBad);
+                r.nBad = static_cast<uint8_t>(nBad);
+                // motores parados: gravar na NVS aqui não atrapalha o controle
+                if (r.ok) configStore.saveCalibration(calibration.exportData());
+                sm.handle(r.ok ? SmEvent::CAL_DONE_OK : SmEvent::CAL_DONE_FAIL, in, nowMs);
+                g_calBox.post(r);
+            }
+        }
+
+        if (sm.tick(nowMs, cfg.tune.startMs)) {
+            control.start(raw, velL.getRPM(), velR.getRPM());
+        }
+
+        if (sm.state() == RobotState::RUNNING) {
+            ControlInputs ci;
+            ci.raw = raw;
+            ci.rpmL = velL.getRPM();
+            ci.rpmR = velR.getRPM();
+            ci.vbat = battery.volts();
+            ci.dtS = static_cast<float>(dtUs) * 1e-6f;
+            out = control.step(ci);
+            motors.setSpeed(MotorId::A, out.duties.a);
+            motors.setSpeed(MotorId::B, out.duties.b);
+            if (out.lostTimeout) sm.handle(SmEvent::LINE_LOST_TIMEOUT, in, nowMs);
+            if (battery.isLow()) sm.handle(SmEvent::BATTERY_LOW, in, nowMs);
+        } else {
+            out = ControlOutputs{};
+        }
+
+        const uint32_t execUs = micros() - t0;
+        const uint16_t execClamped = static_cast<uint16_t>(std::min<uint32_t>(execUs, 65535));
+        ovrMax = std::max(ovrMax, execClamped);
+        overruns = (execUs > LOOP_PERIOD_US) ? overruns + 1 : 0;
+        if (overruns >= OVERRUN_LIMIT) {
+            sm.handle(SmEvent::LOOP_OVERRUN, in, nowMs);
+            overruns = 0;
+        }
+        if (!sm.motorsEnabled()) motors.stop();
+
+        if (sm.state() != prevState || sm.error() != prevError) {
+            annunciator.onState(sm.state(), sm.error(), nowMs);
+        }
+        const Indication ind = annunciator.update(nowMs);
+        digitalWrite(PIN_LED_STATUS, ind.led ? HIGH : LOW);
+        ledcWrite(BUZZER_LEDC_CHANNEL, ind.buzzer ? 128 : 0);
+
+        g_state.store(static_cast<uint8_t>(sm.state()));
+        g_telBox.post(buildTelemetry(raw, out, execUs, sm.state(), PWM_MAX));
+        if (++statusTick >= STATUS_EVERY) {
+            statusTick = 0;
+            StatusFrame s;
+            s.bat = battery.percent(cfg.hw.chem);
+            s.vb = battery.volts();
+            s.err = static_cast<uint8_t>(sm.error());
+            s.ovr = ovrMax;
+            ovrMax = 0;
+            g_staBox.post(s);
+        }
+        prevState = sm.state();
+        prevError = sm.error();
+    }
+}
+
+// ═══ Task comm — core 0, 100 Hz ════════════════════════════════════════════
+class BleSink : public ResponseSink {
+public:
+    void send(const char* json) override { ble.notify(json); }
+};
+
+static void taskComm(void*) {
+    ble.begin(DEVICE_NAME);
+    BleSink sink;
+    CommandHandler handler(g_liveCfg, configStore, FW_VERSION);
+    char in[CommandQueue::MAX_LEN];
+    char outBuf[192];
+    uint32_t telSeen = 0;
+    uint32_t staSeen = 0;
+    uint32_t calSeen = 0;
+    uint32_t lastTel = 0;
+
+    for (;;) {
+        const uint32_t nowMs = millis();
+
+        if (ble.consumeNewConnection()) {
+            // No ESP-IDF a folga de pilha já sai em bytes
+            const uint32_t stkControl =
+                g_controlTask ? uxTaskGetStackHighWaterMark(g_controlTask) : 0;
+            const uint32_t stkComm = uxTaskGetStackHighWaterMark(g_commTask);
+            if (formatInfo(outBuf, sizeof outBuf, DEVICE_NAME, FW_VERSION, g_cfgErr,
+                           stkControl, stkComm)) {
+                ble.notify(outBuf);
+            }
+            handler.sendConfig(sink);
+        }
+
+        while (ble.popCommand(in, sizeof in)) {
+            Command cmd;
+            if (!parseCommand(in, cmd)) {
+                if (formatAckSimple(outBuf, sizeof outBuf, "?", false, "parse")) {
+                    ble.notify(outBuf);
+                }
+                continue;
+            }
+            ControlMsg msg;
+            handler.handle(cmd, isActiveState(g_state.load()), sink, msg);
+            if (msg.req != ControlRequest::NONE) xQueueSend(g_ctlQueue, &msg, 0);
+            if (handler.consumeConfigChanged()) g_cfgBox.post(handler.live());
+        }
+
+        CalReport cr;
+        if (g_calBox.fetch(cr, calSeen)) {
+            const bool ok = (cr.kind == CalReport::Kind::SENSOR)
+                ? formatCalResult(outBuf, sizeof outBuf, cr)
+                : formatEncCal(outBuf, sizeof outBuf, cr);
+            if (ok) ble.notify(outBuf);
+            if (cr.kind == CalReport::Kind::ENCODER && cr.ok) {
+                // PPR já persistido pelo VelocityEstimator; espelha na config viva sem "dirty"
+                RobotConfig& live = g_liveCfg;
+                (cr.left ? live.hw.pprL : live.hw.pprR) = cr.ppr;
+            }
+        }
+
+        if (nowMs - lastTel >= TELEMETRY_MS) {
+            lastTel = nowMs;
+            TelemetryFrame tf;
+            if (g_telBox.fetch(tf, telSeen) && formatTelemetry(outBuf, sizeof outBuf, tf)) {
+                ble.notify(outBuf);
+            }
+        }
+
+        StatusFrame sf;
+        if (g_staBox.fetch(sf, staSeen)) {
+            sf.prof = handler.live().profile;
+            sf.dirty = handler.dirty() ? 1 : 0;
+            if (formatStatus(outBuf, sizeof outBuf, sf)) ble.notify(outBuf);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+// ═══ Setup ═════════════════════════════════════════════════════════════════
 void setup() {
+    pinMode(PIN_BTN_START, INPUT_PULLUP);
+    pinMode(PIN_LED_STATUS, OUTPUT);
+    digitalWrite(PIN_LED_STATUS, LOW);
+    ledcSetup(BUZZER_LEDC_CHANNEL, BUZZER_FREQ_HZ, 8);
+    ledcAttachPin(PIN_BUZZER, BUZZER_LEDC_CHANNEL);
+    ledcWrite(BUZZER_LEDC_CHANNEL, 0);
+
     SPI.begin(PIN_SPI_CLK, PIN_SPI_MISO, PIN_SPI_MOSI, PIN_SPI_CS);
     sensors.begin();
     motors.begin();
     encL.begin();
     encR.begin();
+    analogReadResolution(12);
+    analogSetPinAttenuation(PIN_VBAT_ADC, ADC_11db);
+
     nvs.begin("lfr");
     velL.begin();
     velR.begin();
-    analogReadResolution(12);
 
-    pinMode(PIN_BTN_START,  INPUT_PULLUP);
-    pinMode(PIN_BUZZER,     OUTPUT);
-    pinMode(PIN_LED_STATUS, OUTPUT);
-    digitalWrite(PIN_BUZZER,     LOW);
-    digitalWrite(PIN_LED_STATUS, LOW);
+    RobotConfig cfg = robotcfg::factoryConfig();
+    const ConfigStore::LoadReport rep = configStore.load(cfg);
+    g_cfgErr = !rep.hardwareOk || !rep.profileOk;
+    g_liveCfg = cfg;
 
-    xTaskCreatePinnedToCore(taskComm, "Comm", 8192, nullptr, 1, nullptr, 1);
+    CalibrationData cal{};
+    if (configStore.loadCalibration(cal)) calibration.importData(cal);
+    g_calValidAtBoot = calibration.isValid();
 
-    robotState.store(RobotState::IDLE, std::memory_order_release);
-    digitalWrite(PIN_LED_STATUS, HIGH);
-    beep(100);
+    g_cfgBox.post(cfg);
+    g_ctlQueue = xQueueCreate(8, sizeof(ControlMsg));
+
+    // control antes de comm: o handle do control já existe quando a comm o lê (E-2)
+    xTaskCreatePinnedToCore(taskControl, "control", 8192, nullptr,
+                            configMAX_PRIORITIES - 2, &g_controlTask, 1);
+    xTaskCreatePinnedToCore(taskComm, "comm", 8192, nullptr, 2, &g_commTask, 0);
 }
 
-// ═══ Loop — Core 0 (controle tempo-real) ════════════════════════════════════
 void loop() {
-    switch (robotState.load(std::memory_order_acquire)) {
-
-        case RobotState::IDLE:
-            if (btnPressed()) {
-                robotState.store(RobotState::CALIBRATING, std::memory_order_release);
-                calStart = millis();
-                calibration.reset();
-                sensors.begin();
-                beep(100);
-                digitalWrite(PIN_LED_STATUS, LOW);
-            }
-            break;
-
-        case RobotState::CALIBRATING: {
-            int raw[SENSOR_COUNT];
-            sensors.readAll(raw);
-            calibration.update(raw);
-            digitalWrite(PIN_LED_STATUS, (millis() / 200) % 2);
-            if (millis() - calStart >= CAL_DURATION_MS) {
-                robotState.store(RobotState::READY, std::memory_order_release);
-                digitalWrite(PIN_LED_STATUS, LOW);
-                beep(200);
-            }
-            break;
-        }
-
-        case RobotState::READY:
-            digitalWrite(PIN_LED_STATUS, HIGH);
-            if (btnPressed()) {
-                pid.reset();
-                lineFollower.reset();
-                resetCascadeState();
-                lapTimer.start(millis());
-                logger.setEnabled(true);
-                robotState.store(RobotState::RUNNING, std::memory_order_release);
-                beep(50);
-            }
-            break;
-
-        case RobotState::RUNNING: {
-            uint32_t loopStart = micros();
-            // MED-1: dt real; M-1: g_prevLoopStart é resetado em resetCascadeState()
-            // a cada re-entry no estado, evitando dt stale após STOP/START.
-            uint32_t dtMs = (g_prevLoopStart == 0) ? 2 : ((loopStart - g_prevLoopStart) / 1000);
-            g_prevLoopStart = loopStart;
-
-            // 1. Atualiza estimadores de velocidade com dt real do loop
-            velL.update(dtMs);
-            velR.update(dtMs);
-
-            // 2. Lê sensores de linha
-            int raw[SENSOR_COUNT];
-            sensors.readAll(raw);
-
-            // 3. PID externo via LineFollower (dentro do mux crítico).
-            //    discardL/R são ignorados — pegamos a correção pura via getLastCorrection().
-            int   discardL = 0;
-            int   discardR = 0;
-            float normErr  = 0.0f;
-
-            taskENTER_CRITICAL(&lineFollowerMux);
-            lineFollower.update(raw, discardL, discardR, &normErr);
-            // HIGH-1: usa getLastCorrection() para evitar perda de informação
-            // quando os PWMs ficam clamped (fórmula (L-R)/2 fica incorreta nesses casos).
-            float correctionPwm = lineFollower.getLastCorrection();
-            taskEXIT_CRITICAL(&lineFollowerMux);
-
-            // 4. Converte correção PWM-scale → RPM-scale para o cascade.
-            // H-1 (Reviewer): correctionPwm tem range [-PWM_MAX, +PWM_MAX]; deve
-            // mapear para [-MAX_RPM, +MAX_RPM] para preservar autoridade total da
-            // malha externa. Usar BASE_RPM aqui comprimia o range em ~50%.
-            float correctionRpm = correctionPwm * (MAX_RPM_DEFAULT / static_cast<float>(PWM_MAX));
-
-            // 5. Valida RPM (NVS pode ter retornado NaN/Inf na primeira leitura).
-            float rpmLActual = velL.getRPM();
-            float rpmRActual = velR.getRPM();
-            if (!std::isfinite(rpmLActual)) rpmLActual = 0.0f;
-            if (!std::isfinite(rpmRActual)) rpmRActual = 0.0f;
-
-            // 6. Cascade: fecha malha de velocidade em ambos os motores.
-            int leftPwm  = 0;
-            int rightPwm = 0;
-            cascade.compute(correctionRpm, g_baseRpm,
-                            rpmLActual, rpmRActual,
-                            leftPwm, rightPwm);
-
-            // 7. Aplica PWM nos motores
-            motors.setSpeed(MotorId::A, leftPwm);
-            motors.setSpeed(MotorId::B, rightPwm);
-
-            uint32_t dtUs = micros() - loopStart;
-
-            // Atualiza snapshot de telemetria para o Core 1
-            {
-                int norm[SENSOR_COUNT];
-                calibration.normalize(raw, norm);
-                taskENTER_CRITICAL(&g_snapMux);
-                g_snap.pos       = normErr * 3500.0f;
-                // M-2 (Reviewer): semântica de `corr` agora é diff dos PWMs internos do
-                // cascade (não mais saída do PID externo). Renomear o campo é Fase D scope;
-                // por ora documentamos. Para correção pura da malha externa, usar telemetry
-                // de getLastCorrection() (a expor) em Fase D.
-                g_snap.corr      = static_cast<float>(leftPwm - rightPwm);
-                g_snap.vL        = leftPwm;
-                g_snap.vR        = rightPwm;
-                g_snap.dtUs      = dtUs;
-                // C-1 (Reviewer): reusa rpmLActual/rpmRActual já validados via isfinite
-                // em vez de chamar getRPM() de novo (TOCTOU defensivo).
-                g_snap.rpmL      = rpmLActual;
-                g_snap.rpmR      = rpmRActual;
-                g_snap.setpointL = g_baseRpm + correctionRpm;
-                g_snap.setpointR = g_baseRpm - correctionRpm;
-                for (int i = 0; i < SENSOR_COUNT; i++)
-                    g_snap.sensorsPct[i] = norm[i] / 10.0f;  // [0–1000] → [0–100]
-                taskEXIT_CRITICAL(&g_snapMux);
-            }
-
-#ifdef DEBUG_LOG
-            if (logger.isEnabled()) {
-                LogEntry entry;
-                entry.ts         = millis();
-                entry.position   = normErr * 3500.0f;
-                entry.error      = normErr;
-                entry.termP      = normErr * pid.getKp();
-                entry.termI      = 0.0f;
-                entry.termD      = 0.0f;
-                entry.correction = static_cast<float>(leftPwm - rightPwm);
-                entry.vLeft      = leftPwm;
-                entry.vRight     = rightPwm;
-                entry.dtUs       = dtUs;
-                logger.push(entry);
-            }
-#else
-            (void)dtUs;
-#endif
-
-            if (btnPressed()) {
-                motors.stop();
-                logger.setEnabled(false);
-                robotState.store(RobotState::READY, std::memory_order_release);
-                beep(300);
-            }
-
-            if (dtUs > 4000) {
-                motors.stop();
-                robotState.store(RobotState::ERROR, std::memory_order_release);
-            }
-            break;
-        }
-
-        case RobotState::ERROR:
-            motors.stop();
-            logger.setEnabled(false);
-            digitalWrite(PIN_LED_STATUS, (millis() / 200) % 2);
-            if (btnPressed()) {
-                robotState.store(RobotState::IDLE, std::memory_order_release);
-                beep(100);
-            }
-            break;
-    }
+    vTaskDelete(nullptr);  // o trabalho está nas tasks
 }
 
 #endif  // NATIVE_BUILD

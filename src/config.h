@@ -27,21 +27,13 @@
 #define PIN_LED_STATUS       2
 #define PIN_VBAT_ADC        34
 
-// ═══ PID DEFAULTS ═══
-#define KP_DEFAULT          3.0f
-#define KI_DEFAULT          0.0f
-#define KD_DEFAULT          12.0f
-
-// ═══ VELOCIDADE ═══
-#define BASE_SPEED_DEFAULT  160
-#define MAX_SPEED           230
-#define MIN_SPEED            60
-#define ERROR_THRESHOLD     0.6f
+// Ganhos, velocidades e demais parâmetros de sintonia: valores de fábrica em
+// src/config/RobotConfig.h, ajustáveis por BLE e persistidos na NVS (spec §4.3).
 
 // ═══ SENSORES ═══
 #define SENSOR_COUNT          8
 #define SENSOR_SPACING_MM    10
-#define SENSOR_HEIGHT_MM      4
+#define SENSOR_HEIGHT_MM      3
 #define LOOKAHEAD_MM         70
 
 // ═══ ENCODER / VELOCITY ═══════════════════════════════════════════════════
@@ -51,21 +43,13 @@
 #define ENCODER_DEFAULT_PPR_X4   600.0f
 #define VELOCITY_FILTER_ALPHA    0.3f  // 0 ≤ α ≤ 1 — menor = mais suave, mais atraso
 
-// ═══ CASCADE PID (Fase C — controle interno de velocidade) ═════════════════
-// Ganhos INICIAIS conservadores; sintonizar via BLE em pista.
-#define KP_VEL_DEFAULT   0.8f
-#define KI_VEL_DEFAULT   0.0f
-#define KD_VEL_DEFAULT   0.05f
+// ═══ BATERIA ═══════════════════════════════════════════════════════════════
+// Divisor 100 kΩ / 47 kΩ → Vadc = Vbat × 47/147. 8,4 V → 2,69 V (dentro do ADC_11db).
+#define VBAT_DIVIDER_RATIO  (147.0f / 47.0f)
 
-// Faixa esperada de RPM no shaft de saída — N20 1500 RPM @ 6V.
-// MAX_RPM é o teto absoluto (clamp); BASE_RPM é o alvo nominal em reta.
-#define MAX_RPM_DEFAULT  1200.0f
-#define BASE_RPM_DEFAULT  600.0f
-
-// Teto físico absoluto p/ comandos de RPM vindos via BLE. Impede que um write
-// malicioso/acidental comande velocidade fora da faixa física do N20
-// (~1500 RPM @ 6V) — evita runaway e overflow do buffer de telemetria.
-#define RPM_HARD_CEILING 2000.0f
+// ═══ BUZZER ════════════════════════════════════════════════════════════════
+#define BUZZER_LEDC_CHANNEL   2      // canais 0 e 1 são dos motores
+#define BUZZER_FREQ_HZ     2500
 
 // ═══ PWM LEDC ═══
 #define PWM_FREQ         20000

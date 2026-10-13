@@ -6,8 +6,8 @@
 /** Spinlock entre núcleos do ESP32 (portMUX). Seções críticas curtas: só cópias. */
 class SpinLock {
 public:
-    void lock() { taskENTER_CRITICAL(&_mux); }
-    void unlock() { taskEXIT_CRITICAL(&_mux); }
+    void lock() { portENTER_CRITICAL(&_mux); }
+    void unlock() { portEXIT_CRITICAL(&_mux); }
 
 private:
     portMUX_TYPE _mux = portMUX_INITIALIZER_UNLOCKED;

@@ -50,7 +50,7 @@ void BLETuner::begin(const char* deviceName) {
     _charCmd = service->createCharacteristic(CHAR_CMD_UUID,
                                              NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR);
     _charCmd->setCallbacks(&_writeCallback);
-    service->start();
+    // NimBLE-Arduino 2.x: o serviço sobe junto com o servidor, que adv->start() inicia
     NimBLEAdvertising* adv = NimBLEDevice::getAdvertising();
     adv->addServiceUUID(SERVICE_UUID);
     adv->start();
