@@ -25,6 +25,7 @@ struct ControlMsg {
  * - set: valida chave a chave; marca "dirty".
  * - save/load/defaults/prof: recusados em ARMED/RUNNING (escrita na flash para o cache).
  * - prof: recusa com "dirty" se houver mudança não salva, a menos que venha f:1.
+ * - lock = 1 (modo competição): em ARMED/RUNNING todo comando é recusado com "locked".
  * Comandos de estado viram ControlMsg para a task control (core 1).
  */
 class CommandHandler {
@@ -40,6 +41,7 @@ public:
 
 private:
     void _handleSet(const Command& cmd, bool running, ResponseSink& sink);
+    void _refuseLocked(const Command& cmd, ResponseSink& sink) const;
     void _ack(ResponseSink& sink, const char* what, bool ok, const char* err) const;
     void _reloadFromStore(uint8_t profile);
 

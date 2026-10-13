@@ -19,6 +19,7 @@ const KeyInfo KEYS[] = {
     HW_KEY(pol,   FT::U8, 0.0f, 1.0f),
     HW_KEY(sinv,  FT::U8, 0.0f, 1.0f),
     HW_KEY(chem,  FT::U8, 0.0f, 1.0f),
+    HW_KEY(lock,  FT::U8, 0.0f, 1.0f),
     HW_KEY(vcut,  FT::F32, 5.6f, 7.6f),
     HW_KEY(vbk,   FT::F32, 0.8f, 1.2f),
     HW_KEY(pprL,  FT::F32, 1.0f, 10000.0f),

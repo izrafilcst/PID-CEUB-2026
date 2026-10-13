@@ -176,6 +176,40 @@ void test_mailbox_delivers_latest_value_once() {
     TEST_ASSERT_FALSE(box.fetch(v, seen));
 }
 
+// E-1 (F-33): modo competição
+static void lockOn() {
+    send("{\"t\":\"set\",\"k\":\"lock\",\"v\":1}");
+    sink.msgs.clear();
+}
+
+void test_command_handler_lock_refuses_everything_while_running() {
+    lockOn();
+    const char* cmds[] = {
+        "{\"t\":\"stop\"}", "{\"t\":\"start\"}", "{\"t\":\"reset\"}", "{\"t\":\"get\"}",
+        "{\"t\":\"scal\"}", "{\"t\":\"save\"}", "{\"t\":\"prof\",\"n\":1}",
+        "{\"t\":\"set\",\"k\":\"kp\",\"v\":2}", "{\"t\":\"pid\",\"kp\":2,\"ki\":0,\"kd\":0}"};
+    for (const char* c : cmds) {
+        sink.msgs.clear();
+        const ControlMsg m = sendForMsg(c, true);
+        TEST_ASSERT_EQUAL_MESSAGE(ControlRequest::NONE, m.req, c);
+        TEST_ASSERT_TRUE_MESSAGE(sink.contains("\"ok\":0,\"err\":\"locked\""), c);
+    }
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 1.0f, h->live().tune.kp);
+}
+
+void test_command_handler_lock_keeps_commands_outside_run() {
+    lockOn();
+    const ControlMsg m = sendForMsg("{\"t\":\"start\"}", false);
+    TEST_ASSERT_EQUAL(ControlRequest::START, m.req);
+    send("{\"t\":\"set\",\"k\":\"kp\",\"v\":2}", false);
+    TEST_ASSERT_FLOAT_WITHIN(1e-6f, 2.0f, h->live().tune.kp);
+}
+
+void test_command_handler_unlocked_stop_still_works_while_running() {
+    const ControlMsg m = sendForMsg("{\"t\":\"stop\"}", true);
+    TEST_ASSERT_EQUAL(ControlRequest::STOP, m.req);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_command_handler_set_applies_and_marks_dirty);
@@ -193,5 +227,8 @@ int main() {
     RUN_TEST(test_command_handler_state_commands_become_control_requests);
     RUN_TEST(test_command_handler_encoder_calibration_request);
     RUN_TEST(test_mailbox_delivers_latest_value_once);
+    RUN_TEST(test_command_handler_lock_refuses_everything_while_running);
+    RUN_TEST(test_command_handler_lock_keeps_commands_outside_run);
+    RUN_TEST(test_command_handler_unlocked_stop_still_works_while_running);
     return UNITY_END();
 }

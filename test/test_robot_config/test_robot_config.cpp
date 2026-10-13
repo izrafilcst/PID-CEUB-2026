@@ -41,7 +41,7 @@ void test_robot_config_factory_profiles_differ_only_in_vmax() {
 void test_robot_config_factory_values_are_inside_ranges() {
     size_t n = 0;
     const robotcfg::KeyInfo* keys = robotcfg::keyTable(n);
-    TEST_ASSERT_EQUAL_UINT32(29, n);
+    TEST_ASSERT_EQUAL_UINT32(30, n);
     for (uint8_t p = 0; p < PROFILE_COUNT; p++) {
         RobotConfig c = robotcfg::factoryConfig();
         c.tune = robotcfg::factoryProfile(p);
@@ -129,6 +129,19 @@ void test_robot_config_validate_detects_bad_values() {
     TEST_ASSERT_FALSE(robotcfg::validate(cfg));
 }
 
+// E-1 (F-33): modo competição, chave de hardware desligada de fábrica
+void test_robot_config_lock_defaults_off_and_is_hardware_key() {
+    TEST_ASSERT_EQUAL_UINT8(0, robotcfg::factoryHardware().lock);
+    const robotcfg::KeyInfo* k = robotcfg::findKey("lock");
+    TEST_ASSERT_NOT_NULL(k);
+    TEST_ASSERT_TRUE(k->hardware);
+    TEST_ASSERT_EQUAL_STRING("hw", k->group);
+    TEST_ASSERT_EQUAL(SetResult::OK, robotcfg::set(cfg, "lock", 1.0f, false));
+    TEST_ASSERT_EQUAL_UINT8(1, cfg.hw.lock);
+    TEST_ASSERT_EQUAL(SetResult::OUT_OF_RANGE, robotcfg::set(cfg, "lock", 2.0f, false));
+    TEST_ASSERT_EQUAL(SetResult::LOCKED_WHILE_RUNNING, robotcfg::set(cfg, "lock", 0.0f, true));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_robot_config_factory_hardware_matches_spec);
@@ -144,5 +157,6 @@ int main() {
     RUN_TEST(test_robot_config_vmin_cannot_exceed_vmax);
     RUN_TEST(test_robot_config_get_unknown_returns_false);
     RUN_TEST(test_robot_config_validate_detects_bad_values);
+    RUN_TEST(test_robot_config_lock_defaults_off_and_is_hardware_key);
     return UNITY_END();
 }

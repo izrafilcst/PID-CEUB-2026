@@ -2,7 +2,7 @@
 
 Firmware completo em C++17 para robô seguidor de linha baseado em ESP32, desenvolvido com TDD estrito (Red → Green → Refactor). Projetado para competições brasileiras (RoboCore, IronCup, Salão de Robótica).
 
-**222 testes nativos em 21 suítes • 0 warnings de `src/` • laço de controle a 500 Hz no core 1 •
+**226 testes nativos em 21 suítes • 0 warnings de `src/` • laço de controle a 500 Hz no core 1 •
 toda a configuração ajustável por BLE e persistida na NVS (firmware 4.0.0)**
 
 ---
@@ -44,7 +44,7 @@ pio run -e esp32dev --target upload
 pio test -e native
 ```
 
-Saída esperada: `222 test cases: 222 succeeded`
+Saída esperada: `226 test cases: 226 succeeded`
 
 ---
 
@@ -255,11 +255,17 @@ e pelo UUID do serviço. MTU preferido 185; **toda notificação cabe em 180 byt
 
 Erros do `ack`: `range` (fora da faixa ou valor não finito), `key` (chave desconhecida),
 `running` (não permitido em ARMED/RUNNING), `dirty` (salve ou descarte antes de trocar de
-perfil), `store` (falha ao gravar), `parse` (JSON inválido; `k:"?"`).
+perfil), `store` (falha ao gravar), `parse` (JSON inválido; `k:"?"`), `locked` (modo
+competição).
 
 Regras: chaves de `HardwareConfig` e `mode`, `save`/`load`/`defaults`/`prof` e `cal` são
 recusados em ARMED/RUNNING (`err:"running"`). Gravar na flash suspende o cache dos dois
 núcleos e atrasaria o laço de controle.
+
+**Modo competição** (`lock` = 1): em ARMED ou RUNNING, **todo** comando recebido pelo BLE é
+recusado com `{"t":"ack","k":<comando ou chave>,"ok":0,"err":"locked"}` — inclusive `stop`,
+`set` e `get` — e nada muda no robô. A telemetria continua saindo. Fora desses estados nada
+muda (`start` em READY continua aceito). O botão continua parando o carro.
 
 **Comandos legados** (continuam aceitos e viram `set`, com a mesma validação):
 `{"t":"pid","kp":…,"ki":…,"kd":…}` → `kp`/`ki`/`kd` nas unidades novas ·
@@ -327,12 +333,18 @@ normalizados: no modo PWM direto, a fração 1,0 = duty 1023; no modo cascata, 1
 | `pol` | Polaridade da linha: 0 = linha preta, 1 = linha branca | — | 1 | {0, 1} |
 | `sinv` | Inverte a ordem dos sensores (barra montada espelhada) | — | 0 | {0, 1} |
 | `chem` | Química da bateria (curva de %): 0 = LiPo, 1 = Li-ion | — | 1 | {0, 1} |
+| `lock` | Modo competição: 1 = recusa todo comando BLE em ARMED/RUNNING | — | 0 | {0, 1} |
 | `vcut` | Tensão de corte (abaixo dela por 1 s: não dá start / para) | V | 6,4 | 5,6–7,6 |
 | `vbk` | Fator de correção da leitura de tensão (ajuste com multímetro) | — | 1,000 | 0,800–1,200 |
 | `pprL` / `pprR` | Pulsos ×4 por volta do eixo de saída (também pela auto-calibração `cal`) | — | 600 | 1–10000 |
 
 `pprL`/`pprR` = 600 é provisório (12 CPR × 50:1): a auto-calibração `cal` é obrigatória antes de
 usar `mode` = 1.
+
+`lock` atende a regra 5.9 do regulamento RoboCore: quem usa comunicação remota tem que
+demonstrar aos juízes que ela não pode parar o robô nem alterar parâmetros durante a tentativa.
+Como toda chave de hardware, `lock` só muda com o carro parado — ninguém desliga o modo
+competição durante a corrida. O botão do robô continua parando o carro.
 
 **`TuningProfile`** (por perfil):
 
@@ -393,7 +405,8 @@ Abrir `docs/dashboard/lfr-cockpit-mock.html` em Chrome/Edge (Web Bluetooth reque
   WebSocket — o mesmo JSON do protocolo v4 nos dois
 - Aba **CONFIG** com todos os parâmetros de runtime agrupados (faixa e unidade), seletor de
   perfil, **Salvar**, **Recarregar**, **Fábrica**, **Calibrar sensores** e indicador
-  **NÃO SALVO**; chaves de hardware travadas com o carro andando
+  **NÃO SALVO**; chaves de hardware travadas com o carro andando; interruptor **Modo
+  competição** (`lock`) e selo visível quando ele está ligado
 - Estado do robô, código de erro e tensão da bateria na tela; aviso quando a configuração salva
   foi descartada (`cfgerr`)
 - Gráfico rolling 5 s: posição, correção, velocidades L/R
@@ -536,7 +549,7 @@ pio test -e esp32dev
 | test_button | 6 | ButtonInput |
 | test_calibration | 18 | Calibration |
 | test_cascade | 12 | CascadeController, Mixer |
-| test_command_handler | 15 | CommandHandler, Mailbox |
+| test_command_handler | 18 | CommandHandler, Mailbox, modo competição |
 | test_command_protocol | 23 | CommandProtocol, CommandQueue |
 | test_config_store | 14 | ConfigStore, InMemoryStore |
 | test_control_loop | 14 | ControlLoop (cenários F-01, F-03, F-05, F-06, F-08, F-14) |
@@ -545,13 +558,13 @@ pio test -e esp32dev
 | test_line_follower | 11 | LineFollower |
 | test_output_stage | 8 | OutputStage |
 | test_pid | 15 | PIDController |
-| test_robot_config | 13 | RobotConfig |
+| test_robot_config | 14 | RobotConfig |
 | test_smoke | 1 | Framework |
 | test_speed_profile | 10 | SpeedProfile |
 | test_state_machine | 15 | RobotStateMachine |
 | test_velocity_estimator | 13 | VelocityEstimator |
 | test_velocity_profile | 4 | VelocityProfile |
-| **Total** | **222** | |
+| **Total** | **226** | |
 
 ---
 

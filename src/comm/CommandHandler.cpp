@@ -57,9 +57,38 @@ void CommandHandler::_handleSet(const Command& cmd, bool running, ResponseSink& 
     }
 }
 
+void CommandHandler::_refuseLocked(const Command& cmd, ResponseSink& sink) const {
+    if (cmd.type == CmdType::SET) {  // inclusive os legados pid/pidv/spd/rpm: um ack por chave
+        for (uint8_t i = 0; i < cmd.count; i++) _ack(sink, cmd.items[i].key, false, "locked");
+        return;
+    }
+    const char* what = nullptr;
+    switch (cmd.type) {
+        case CmdType::GET:            what = "get"; break;
+        case CmdType::SAVE:           what = "save"; break;
+        case CmdType::LOAD:           what = "load"; break;
+        case CmdType::DEFAULTS:       what = "defaults"; break;
+        case CmdType::PROFILE:        what = "prof"; break;
+        case CmdType::SENSOR_CAL:     what = "scal"; break;
+        case CmdType::START:          what = "start"; break;
+        case CmdType::STOP:           what = "stop"; break;
+        case CmdType::RESET:          what = "reset"; break;
+        case CmdType::ENC_CAL_START:
+        case CmdType::ENC_CAL_FINISH: what = "cal"; break;
+        case CmdType::SET:
+        case CmdType::NONE:           break;
+    }
+    if (what) _ack(sink, what, false, "locked");
+}
+
 void CommandHandler::handle(const Command& cmd, bool running, ResponseSink& sink,
                             ControlMsg& msg) {
     msg = ControlMsg{};
+    // Modo competição (spec §4.5, regra 5.9): em ARMED/RUNNING nada do BLE tem efeito
+    if (running && _live.hw.lock) {
+        _refuseLocked(cmd, sink);
+        return;
+    }
     switch (cmd.type) {
         case CmdType::SET:
             _handleSet(cmd, running, sink);

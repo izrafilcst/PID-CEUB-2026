@@ -143,7 +143,14 @@ data,perfil,mode,kp,ki,kd,dlp,vmax,vmin,thr,acc,kpv,kiv,melhor_volta_s,observaco
 - **Tentativa 3**: perfil 2 "corrida", sintonizado em sessão prévia
 
 Ajustes e troca de perfil só **entre** tentativas (regra RoboCore 3.1.1). Durante a tentativa,
-nenhum comando remoto pode parar o robô nem mudar parâmetro (regra 5.9).
+nenhum comando remoto pode parar o robô nem mudar parâmetro (regra 5.9). Para isso:
+
+1. Com o carro parado, ligar o interruptor **Modo competição** na aba CONFIG (`lock` = 1) e
+   **Salvar**. O selo COMPETIÇÃO aparece no dashboard.
+2. Demonstrar aos juízes: com o carro armado ou correndo, `stop`, ajustes e até `get` voltam
+   com `err:"locked"` e não têm efeito. O `start` em PRONTO continua aceito.
+3. O botão do robô continua parando o carro. Para voltar a ajustar entre tentativas, parar o
+   carro (botão) — fora de ARMED/RUNNING os comandos voltam a valer, inclusive desligar `lock`.
 
 ### Emergências
 - **Bateria caindo**: baixar `vmax` 0,1 (ou confiar na compensação `vcomp`)

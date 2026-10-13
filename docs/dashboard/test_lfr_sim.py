@@ -52,6 +52,18 @@ class ConfigModelTest(unittest.TestCase):
         self.assertEqual(self.m.tune["kp"], 2)
         self.assertFalse(self.m.dirty)
 
+    # E-1 (F-33): modo competição — em ARMED/RUNNING nada do BLE tem efeito
+    def test_lock_refuses_commands_while_running(self):
+        r = self.replies({"t": "set", "k": "lock", "v": 1})
+        self.assertEqual(r[0]["ok"], 1)
+        r = self.replies({"t": "stop"}, running=True)
+        self.assertEqual(r, [{"t": "ack", "k": "stop", "ok": 0, "err": "locked"}])
+        r = self.replies({"t": "set", "k": "kp", "v": 2}, running=True)
+        self.assertEqual(r, [{"t": "ack", "k": "kp", "ok": 0, "err": "locked"}])
+        self.assertEqual(self.m.tune["kp"], 1.0)
+        r = self.replies({"t": "start"})
+        self.assertEqual(r[0]["ok"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

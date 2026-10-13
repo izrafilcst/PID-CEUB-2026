@@ -15,6 +15,7 @@ struct HardwareConfig {
     uint8_t pol   = 1;       ///< 0 = linha preta, 1 = linha branca
     uint8_t sinv  = 0;       ///< barra de sensores montada espelhada
     uint8_t chem  = 1;       ///< 0 = LiPo, 1 = Li-ion
+    uint8_t lock  = 0;       ///< modo competição (regra RoboCore 5.9)
     float   vcut  = 6.4f;    ///< V — corte da bateria
     float   vbk   = 1.0f;    ///< correção da leitura de tensão
     float   pprL  = 600.0f;  ///< contagens ×4 por volta do eixo de saída

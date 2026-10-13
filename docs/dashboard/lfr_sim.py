@@ -18,7 +18,9 @@ Protocolo (cada mensagem ≤ 180 bytes)
     {"t":"cfg","g":"hw"|"pid"|"vel"|"spd"|"misc", <chave>:<valor>…}
     {"t":"cfg","g":"meta","prof":n,"dirty":0|1,"fw":"4.0.0-sim"}
     {"t":"ack","k":<chave ou comando>,"ok":1[,"v":valor]}
-    {"t":"ack","k":<chave ou comando>,"ok":0,"err":"range"|"key"|"running"|"dirty"|"parse"}
+    {"t":"ack","k":<chave ou comando>,"ok":0,
+     "err":"range"|"key"|"running"|"dirty"|"parse"|"locked"}
+                                     "locked": lock = 1 e carro em ARMED/RUNNING (regra 5.9)
     {"t":"calres","ok":1}            fim da calibração dos sensores (scal)
     {"t":"ecal","side":"L"|"R","ok":1,"ppr":600.0}   fim da calibração de encoder
 
@@ -63,6 +65,7 @@ KEYS = [
     ("swap", "hw", 0, 1, True, False), ("einvL", "hw", 0, 1, True, False),
     ("einvR", "hw", 0, 1, True, False), ("pol", "hw", 0, 1, True, False),
     ("sinv", "hw", 0, 1, True, False), ("chem", "hw", 0, 1, True, False),
+    ("lock", "hw", 0, 1, True, False),
     ("vcut", "hw", 5.6, 7.6, True, False), ("vbk", "hw", 0.8, 1.2, True, False),
     ("pprL", "hw", 1, 10000, True, False), ("pprR", "hw", 1, 10000, True, False),
     ("kp", "pid", 0, 20, False, True), ("ki", "pid", 0, 50, False, True),
@@ -75,11 +78,17 @@ KEYS = [
     ("vref", "misc", 5.0, 8.4, False, True), ("vcomp", "misc", 0, 1, False, True),
     ("lostMs", "misc", 50, 5000, False, True), ("startMs", "misc", 0, 5000, False, True),
 ]
-INT_KEYS = {"invL", "invR", "swap", "einvL", "einvR", "pol", "sinv", "chem", "mode",
+INT_KEYS = {"invL", "invR", "swap", "einvL", "einvR", "pol", "sinv", "chem", "lock", "mode",
             "vcomp", "lostMs", "startMs"}
 GROUPS = ["hw", "pid", "vel", "spd", "misc"]
 FACTORY_HW = {"invL": 0, "invR": 0, "swap": 0, "einvL": 0, "einvR": 0, "pol": 1, "sinv": 0,
-              "chem": 1, "vcut": 6.4, "vbk": 1.0, "pprL": 600.0, "pprR": 600.0}
+              "chem": 1, "lock": 0, "vcut": 6.4, "vbk": 1.0, "pprL": 600.0, "pprR": 600.0}
+# Chaves que cada comando legado vira (para o ack "locked", um por chave)
+LEGACY_KEYS = {"pid": {"kp": "kp", "ki": "ki", "kd": "kd"},
+               "pidv": {"kp": "kpv", "ki": "kiv", "kd": "kdv"},
+               "spd": {"max": "vmax", "min": "vmin", "thrs": "thr"},
+               "rpm": {"max": "rpmMax"}}
+STATE_KINDS = ("get", "save", "load", "defaults", "prof", "scal", "start", "stop", "reset", "cal")
 FACTORY_TUNE = {"mode": 0, "kp": 1.0, "ki": 0.0, "kd": 0.03, "dlp": 0.5, "kpv": 0.002,
                 "kiv": 0.005, "kdv": 0.0, "vmax": 0.35, "vmin": 0.25, "thr": 0.6, "acc": 2.0,
                 "rpmMax": 700.0, "vref": 7.4, "vcomp": 1, "lostMs": 300, "startMs": 1000}
@@ -183,6 +192,16 @@ class ConfigModel:
                 out.append(self._ack(k, True, v=self.hw.get(k, self.tune.get(k))))
         return out
 
+    def _refuse_locked(self, data):
+        """Modo competição (regra RoboCore 5.9): em ARMED/RUNNING nada do BLE tem efeito."""
+        kind = data.get("t")
+        if kind == "set":
+            return [self._ack(data.get("k", "?"), False, "locked")]
+        if kind in LEGACY_KEYS:
+            keys = [cfg for js, cfg in LEGACY_KEYS[kind].items() if js in data]
+            return [self._ack(k, False, "locked") for k in keys]
+        return [self._ack(kind, False, "locked")]
+
     def _reload(self, n):
         self.hw = dict(self.saved_hw) if self.saved_hw else dict(FACTORY_HW)
         self.tune = dict(self.saved[n]) if n in self.saved else factory_profile(n)
@@ -198,6 +217,9 @@ class ConfigModel:
         if not isinstance(data, dict):
             return [self._ack("?", False, "parse")]
         kind = data.get("t")
+        if running and self.hw.get("lock") and (kind == "set" or kind in LEGACY_KEYS
+                                                 or kind in STATE_KINDS):
+            return self._refuse_locked(data)
         if kind == "set":
             if "v" not in data:
                 return [self._ack("?", False, "parse")]

@@ -277,6 +277,8 @@ input[type=range]:focus-visible { outline:2px solid var(--a1);outline-offset:4px
 .state-badge.live { animation:none; }
 .dirty-badge { display:inline-block;margin-left:8px;padding:1px 6px;font-size:8px;letter-spacing:2px;color:var(--er);border:1px solid rgba(var(--err),.45);background:rgba(var(--err),.08);white-space:nowrap;flex-shrink:0; }
 .dirty-badge[hidden] { display:none; }
+.lock-badge { color:var(--a1);border-color:rgba(var(--a1r),.5);background:rgba(var(--a1r),.1); }
+.cfg-row .toggle { justify-self:start; }
 .bat-v { font-size:10px;color:var(--txd);letter-spacing:1px; }
 .toast { position:fixed;left:50%;bottom:84px;transform:translateX(-50%);max-width:min(92vw,520px);padding:10px 14px;background:var(--nb);border:1px solid var(--cb);color:var(--tx);font-size:12px;letter-spacing:.5px;z-index:300;opacity:0;pointer-events:none;transition:opacity .2s; }
 .toast.show { opacity:1; }
@@ -432,6 +434,7 @@ button,input,[role="switch"] { cursor:pointer; }
   </div>
   <div class="mock-badge state-badge" id="stateBadge" aria-live="polite">◈ MOCKUP</div>
   <span class="dirty-badge hide-sm" id="hdrDirty" hidden>NÃO SALVO</span>
+  <span class="dirty-badge lock-badge hide-sm" id="hdrLock" hidden title="Modo competição: comandos BLE recusados com o carro armado ou correndo">COMPETIÇÃO</span>
   <button class="btn hdr-btn" id="btnBle" aria-label="Conectar ao robô por Bluetooth"><span class="hide-sm">CONECTAR </span>BLE</button>
   <div class="bat-hdr" aria-label="Nível de bateria">
     <svg width="26" height="13" viewBox="0 0 26 13" fill="none" aria-hidden="true">
@@ -539,7 +542,7 @@ button,input,[role="switch"] { cursor:pointer; }
 
     <section class="panel" id="tab-config" role="tabpanel">
       <div class="card">
-        <div class="clabel">CONFIGURAÇÃO <span class="dirty-badge" id="cfgDirty" hidden>NÃO SALVO</span></div>
+        <div class="clabel">CONFIGURAÇÃO <span class="dirty-badge" id="cfgDirty" hidden>NÃO SALVO</span><span class="dirty-badge lock-badge" id="cfgLock" hidden>MODO COMPETIÇÃO</span></div>
         <div class="warn-box" id="cfgWarn" hidden>Configuração salva ausente ou inválida — usando valores de fábrica</div>
         <div class="prof-row" role="group" aria-label="Perfil ativo">
           <button class="theme-btn active" data-prof="0" aria-pressed="true">0 SEGURO</button>
@@ -573,6 +576,7 @@ button,input,[role="switch"] { cursor:pointer; }
         <div class="dev-row"><span class="dk">ERRO</span><span class="dv" id="devErr">--</span></div>
         <div class="dev-row"><span class="dk">TENSÃO</span><span class="dv" id="devVb">--</span></div>
         <div class="dev-row"><span class="dk">PERFIL</span><span class="dv" id="devProf">--</span></div>
+        <div class="dev-row"><span class="dk">MODO COMPETIÇÃO</span><span class="dv" id="devLock">--</span></div>
         <div class="dev-row"><span class="dk">LAÇO MÁX</span><span class="dv" id="devOvr">--</span></div>
         <div class="dev-row"><span class="dk">PILHA LIVRE</span><span class="dv" id="devStk">--</span></div>
         <div class="bat-large" aria-label="Nível de bateria detalhado">
@@ -972,6 +976,7 @@ const CFG_KEYS=[
   ['pol','hw',0,1,true,true,1,'—','Linha: 0 preta, 1 branca'],
   ['sinv','hw',0,1,true,true,1,'—','Inverte a ordem dos sensores'],
   ['chem','hw',0,1,true,true,1,'—','Bateria: 0 LiPo, 1 Li-ion'],
+  ['lock','hw',0,1,true,true,1,'—','Modo competição: recusa todo comando BLE armado/correndo (regra 5.9)'],
   ['vcut','hw',5.6,7.6,false,true,0.1,'V','Tensão de corte'],
   ['vbk','hw',0.8,1.2,false,true,0.001,'—','Correção da leitura de tensão'],
   ['pprL','hw',1,10000,false,true,0.1,'—','Pulsos ×4 por volta, eixo de saída (esq.)'],
@@ -999,7 +1004,8 @@ const ST_NAMES=['IDLE','CALIBRANDO','PRONTO','ARMADO','CORRENDO','ERRO'];
 const ERR_NAMES={0:'—',1:'LAÇO ATRASADO',2:'LINHA PERDIDA',3:'BATERIA BAIXA',4:'CALIBRAÇÃO INVÁLIDA'};
 const PROF_NAMES=['SEGURO','TREINO','CORRIDA'];
 const ACK_ERR={range:'fora da faixa',key:'chave desconhecida',running:'não permitido com o carro andando',
-  dirty:'salve ou descarte antes de trocar de perfil',store:'falha ao gravar',parse:'comando inválido'};
+  dirty:'salve ou descarte antes de trocar de perfil',store:'falha ao gravar',parse:'comando inválido',
+  locked:'modo competição: recusado com o carro armado ou correndo'};
 const R={cfg:{},st:null,err:0,prof:0,dirty:false,lost:false,pendingProf:null};
 
 function setText(id,txt){ const el=document.getElementById(id); if(el) el.textContent=txt; }
@@ -1028,15 +1034,27 @@ function buildConfigPanel(){
       const k=document.createElement('div'); k.className='cfg-key'; k.textContent=key;
       const d=document.createElement('div'); d.className='cfg-desc'; d.textContent=`${desc} (${min}–${max})`;
       txt.appendChild(k); txt.appendChild(d);
-      const inp=document.createElement('input');
-      inp.type='number'; inp.className='cfg-in'; inp.id='cfg-'+key;
-      inp.min=min; inp.max=max; inp.step=step; inp.dataset.key=key;
+      let inp;
+      if(key==='lock'){
+        // interruptor "Modo competição" (E-1); o firmware recusa a troca com o carro andando
+        inp=document.createElement('button');
+        inp.type='button'; inp.className='toggle'; inp.id='cfg-lock';
+        inp.setAttribute('role','switch'); inp.setAttribute('aria-checked','false');
+        inp.setAttribute('aria-label','Modo competição');
+        const th=document.createElement('div'); th.className='thumb'; inp.appendChild(th);
+        inp.addEventListener('click',()=>send({t:'set',k:'lock',v:R.cfg.lock===1?0:1}));
+      } else {
+        inp=document.createElement('input');
+        inp.type='number'; inp.className='cfg-in'; inp.id='cfg-'+key;
+        inp.min=min; inp.max=max; inp.step=step;
+        inp.addEventListener('change',()=>{
+          const v=Number(inp.value);
+          if(inp.value===''||!Number.isFinite(v)){ revertInput(key); return; }
+          send({t:'set',k:key,v:isInt?Math.round(v):v});
+        });
+      }
+      inp.dataset.key=key;
       if(lockRun) inp.dataset.lockRun='1';
-      inp.addEventListener('change',()=>{
-        const v=Number(inp.value);
-        if(inp.value===''||!Number.isFinite(v)){ revertInput(key); return; }
-        send({t:'set',k:key,v:isInt?Math.round(v):v});
-      });
       const u=document.createElement('span'); u.className='cfg-unit'; u.textContent=unit;
       row.appendChild(txt); row.appendChild(inp); row.appendChild(u);
       card.appendChild(row);
@@ -1056,14 +1074,22 @@ function syncSlider(key,v){
   if(key in S.spd) S.spd[key]=scale===100?val:v;
 }
 
+function renderLock(on){
+  const tg=document.getElementById('cfg-lock');
+  if(tg){ tg.classList.toggle('on',on); tg.setAttribute('aria-checked',on); }
+  ['hdrLock','cfgLock'].forEach(id=>{ const el=document.getElementById(id); if(el) el.hidden=!on; });
+  setText('devLock',on?'LIGADO':'DESLIGADO');
+}
 function setCfgValue(key,v){
   if(!cfgSpec(key)) return;
   R.cfg[key]=v;
+  if(key==='lock'){ renderLock(v===1); return; }
   const inp=document.getElementById('cfg-'+key);
   if(inp&&document.activeElement!==inp) inp.value=fmtCfg(v);
   syncSlider(key,v);
 }
 function revertInput(key){
+  if(key==='lock'){ renderLock(R.cfg.lock===1); return; }
   const inp=document.getElementById('cfg-'+key);
   if(inp&&key in R.cfg) inp.value=fmtCfg(R.cfg[key]);
 }
@@ -1075,7 +1101,7 @@ function flashInput(key,ok){
 
 function updateRunLock(){
   const active=R.st===3||R.st===4;  // ARMED ou RUNNING
-  document.querySelectorAll('.cfg-in[data-lock-run]').forEach(i=>{ i.disabled=active; });
+  document.querySelectorAll('[data-lock-run]').forEach(i=>{ i.disabled=active; });
   ['btnSave','btnLoad','btnDefaults'].forEach(id=>{ const b=document.getElementById(id); if(b) b.disabled=active; });
   document.querySelectorAll('[data-prof]').forEach(b=>{ b.disabled=active; });
 }
