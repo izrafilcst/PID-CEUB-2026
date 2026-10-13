@@ -1,2 +1,2 @@
-data,kp,ki,kd,base_speed,max_speed,min_speed,threshold,melhor_volta_s,observacoes
-2026-05-14,3.0,0.0,12.0,160,230,60,0.60,,baseline — parametros iniciais config.h
+data,perfil,mode,kp,ki,kd,dlp,vmax,vmin,thr,acc,kpv,kiv,melhor_volta_s,observacoes
+2026-05-14,,,3.0,0.0,12.0,,0.90,0.24,0.60,,,,,escala antiga (v3): ganhos em posicao ±3500 e PWM e nao comparaveis com a v4; vmax/vmin = max 230 e min 60 de 0-255 divididos por 255; base 160 sem equivalente; baseline — parametros iniciais config.h
