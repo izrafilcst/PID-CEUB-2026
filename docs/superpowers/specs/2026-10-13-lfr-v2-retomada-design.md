@@ -282,7 +282,8 @@ buzzer passivo (o da BOM) quanto com ativo.
   2. Posição ponderada → erro normalizado em [−1, +1]. Linha perdida (soma < limiar): erro =
      ±1 com o sinal do último erro válido, e o temporizador de `lostMs` corre.
   3. PID externo com dt real (s) → `u` em [−1, +1].
-  4. Base: `SpeedProfile(|erro|)` com rampa `acc`.
+  4. Base: `SpeedProfile(|erro|)` com rampa `acc`. Com a linha perdida, o perfil recebe
+     |erro| = 1: o carro procura a linha em `vmin`, mesmo sem histórico de lado.
   5. Modo PWM direto: `uL = base + u`, `uR = base − u`.
      Modo cascata: setpoints `(base ± u) × rpmMax` → cada motor: `ff = sp/rpmMax` + PID(sp − rpm)
      → `uL`/`uR`. Anti-windup condicional quando saturado.
@@ -332,7 +333,7 @@ hardware/cad/
 ├── parts/
 │   ├── base.py             # base principal
 │   ├── motor_clamp.py      # abraçadeira do N20 (×2)
-│   ├── battery_cradle.py   # berço do suporte 2×18650 + cinta
+│   ├── battery_cradle.py   # berço do suporte 2×18650 (feição da base, com abas)
 │   ├── sensor_bar.py       # barra do QTR-8A
 │   ├── skid.py             # patim substituível (×2) + calço de ajuste
 │   ├── wheel.py            # roda com canal de O-ring (×2)
@@ -408,11 +409,14 @@ Origem no centro do eixo motriz, no chão. X para a frente, Y para a esquerda, Z
   Folga para o conector JST-SH traseiro do encoder e para os fios.
 - **Bitola**: resultado do pacote motores + rodas (fecha D10). Envelope total ≤ 250 × 250 ×
   200 mm.
-- **Sensores**: QTR-8A na frente, a `LOOKAHEAD_MM` = 70 mm do eixo (fecha D3), em berço de PCB
-  única (fecha D2). Face dos sensores a **3,0 mm do chão** quando os patins tocam a manta.
-- **Bateria**: berço do suporte 2×18650, baixo e logo à frente do eixo. As células saem **por
-  cima, sem desmontar nada**: nenhuma peça cobre o suporte. Cinta ou trava impede que o
-  suporte salte em impacto.
+- **Sensores**: QTR-8A na frente, em berço de PCB única (fecha D2). Face dos sensores a
+  **3,0 mm do chão** quando os patins tocam a manta. Lookahead de **85 mm** (fecha D3): com
+  70 mm a barra de sensores colide com o berço da bateria e as abraçadeiras dos motores, que
+  ficam logo à frente do eixo. O valor final sai do modelo e vai para o `config.h` no merge.
+- **Bateria**: berço do suporte 2×18650 integrado à base, baixo e logo à frente do eixo. As
+  células saem **por cima, sem desmontar nada**: nenhuma peça cobre o suporte. Quatro abas
+  nos cantos, sobre as paredes de ponta do suporte, impedem que ele salte em impacto; o
+  suporte sai puxando as abas, sem ferramenta.
 - **Eletrônica**: perfboard 50 × 70 mm em espaçadores M3 com insertos térmicos, sem cobrir o
   suporte; USB do ESP32 acessível com o carro montado; chave liga/desliga e porta-fusível
   acessíveis pela lateral.
@@ -421,8 +425,8 @@ Origem no centro do eixo motriz, no chão. X para a frente, Y para a esquerda, Z
   (0,6 por padrão, ajustável). As massas compradas vêm do `specs.py` (ainda estimadas, D7).
   **Meta: 10–20 % do peso sobre os patins** (CG 7–14 mm à frente do eixo com lookahead de
   70 mm) e CG longitudinal ≥ 0,3 × altura do CG à frente do eixo (sem empinar até ~3 m/s²).
-  Se o layout não alcançar a meta com 70 mm, o lookahead pode subir até 100 mm; nesse caso
-  `LOOKAHEAD_MM` no `config.h` é atualizado junto.
+  O lookahead pode ficar entre 70 e 100 mm para fechar essa meta ou evitar colisões; o
+  `LOOKAHEAD_MM` do `config.h` é atualizado no merge.
 
 ### 5.5 Patins
 
@@ -431,12 +435,13 @@ Origem no centro do eixo motriz, no chão. X para a frente, Y para a esquerda, Z
   emendas da manta ou na borda da linha.
 - Cada patim é uma peça própria, fixa por um parafuso M2 — troca em menos de 2 minutos.
 - Calços impressos de 0,5 mm permitem levar a altura do sensor de 3,0 a até 6,0 mm (D8) sem
-  reimprimir a barra.
+  reimprimir a barra. Cada passo usa um calço sob cada patim **e** um sob a língua da barra
+  (onde ela apoia na base), para o chassi continuar nivelado.
 
 ### 5.6 Fixação
 
-- Insertos térmicos M3 em tudo que se desmonta na manutenção (barra de sensores, perfboard,
-  berço da bateria).
+- Insertos térmicos M3 em tudo que se desmonta na manutenção (barra de sensores e
+  perfboard). O berço da bateria é parte da base e não leva parafuso.
 - M2 autoatarraxante nas abraçadeiras dos motores e nos patins.
 - A BOM lista quantidade e comprimento de cada parafuso, inserto e porca.
 
