@@ -1,39 +1,40 @@
 #include "strategy/LineFollower.h"
-#include <cmath>
+#include <algorithm>
 
-LineFollower::LineFollower(Calibration& cal, PIDController& pid,
-                           SpeedProfile& speed, DifferentialDrive& drive)
-    : _cal(cal), _pid(pid), _speed(speed), _drive(drive) {}
+LineFollower::LineFollower(Calibration& cal, PIDController& pid)
+    : _cal(cal), _pid(pid),
+      _positionMax((cal.count() - 1) * Calibration::POSITION_SCALE / 2.0f) {}
 
-void LineFollower::update(const int* rawSensors, int& leftPwm, int& rightPwm,
-                          float* normalizedError) {
+float LineFollower::_errorFrom(const int* rawSensors, bool& lost) {
     _cal.normalize(rawSensors, _normalized);
-    float position = _cal.weightedPosition(_normalized);
-
-    // Normaliza para [-1, +1] com base no range máximo de posição
-    float normErr = position / POSITION_MAX;
-    if (normErr >  1.0f) normErr =  1.0f;
-    if (normErr < -1.0f) normErr = -1.0f;
-
-    if (normalizedError) *normalizedError = normErr;
-
-    // Sinal positivo de correção → virar direita → PID inverte sinal do erro
-    float correction = -_pid.compute(0.0f, position, 0.01f);  // Tarefa 4 reescreve
-    _lastCorrection = correction;  // expose for cascade integration
-    int baseSpeed = _speed.compute(std::abs(normErr));
-    _drive.compute(correction, baseSpeed, leftPwm, rightPwm);
+    const float position = _cal.weightedPosition(_normalized);
+    lost = _cal.isLineLost();
+    if (lost) {
+        if (_lastValidError > 0.0f) return 1.0f;
+        if (_lastValidError < 0.0f) return -1.0f;
+        return 0.0f;
+    }
+    float e = (_positionMax > 0.0f) ? position / _positionMax : 0.0f;
+    if (_sensorInvert) e = -e;
+    e = std::max(-1.0f, std::min(1.0f, e));
+    _lastValidError = e;
+    return e;
 }
 
-void LineFollower::setPID(float kp, float ki, float kd) {
-    _pid.setTunings(kp, ki, kd);
-    _pid.reset();
+LineReading LineFollower::update(const int* rawSensors, float dtS) {
+    bool lost = false;
+    const float e = _errorFrom(rawSensors, lost);
+    // Setpoint 0: o PID devolve -kp·e; o sinal é invertido para que u > 0 vire à direita
+    const float u = -_pid.compute(0.0f, e, dtS);
+    return LineReading{e, u, lost};
 }
 
-void LineFollower::setSpeed(int minSpeed, int baseSpeed, int maxSpeed, float threshold) {
-    _speed.setParams(minSpeed, baseSpeed, maxSpeed, threshold);
+float LineFollower::peekError(const int* rawSensors) {
+    bool lost = false;
+    return _errorFrom(rawSensors, lost);
 }
 
-void LineFollower::reset() {
-    _pid.reset();
-    _cal.reset();
+void LineFollower::reset(float currentError) {
+    _pid.reset(currentError);
+    _lastValidError = currentError;
 }
