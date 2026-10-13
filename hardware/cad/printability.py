@@ -6,7 +6,7 @@ import math
 from build123d import Part, Rot
 
 from params import Params
-from parts import base, motor_clamp, sensor_bar, skid, wheel
+from parts import base, motor_clamp, sensor_bar, skid, tolerance_coupon, wheel
 from parts.common import na_mesa
 
 PECAS = {
@@ -20,6 +20,10 @@ PECAS = {
     "calço língua": (lambda p: sensor_bar.calco_lingua(p), Rot(0, 0, 0),
                      skid.paredes_calco),
     "roda": (lambda p: wheel.fazer_roda(p), wheel.ROT_IMPRESSAO, wheel.paredes),
+    "cupom": (lambda p: tolerance_coupon.fazer(p), tolerance_coupon.ROT_IMPRESSAO,
+              lambda p: {"fundo_bolsao": 1.2}),
+    "cupom chave": (lambda p: tolerance_coupon.chave_teste(), tolerance_coupon.ROT_IMPRESSAO,
+                    lambda p: {"chave": 2.0}),
 }
 
 EXCECOES_PAREDE = {
@@ -37,6 +41,8 @@ LIMITE_BALANCO = {
     "calço": 0.0,
     "calço língua": 0.0,
     "roda": 15.0,        # topo do furo radial M2
+    "cupom": 0.0,        # furos passantes verticais e bolsões abertos para cima
+    "cupom chave": 0.0,
 }
 
 
