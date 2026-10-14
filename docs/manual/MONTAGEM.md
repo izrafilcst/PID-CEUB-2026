@@ -35,7 +35,7 @@ Compras, conforme `hardware/bom.csv`. A coluna "Ficha" aponta para
 | O-ring de silicone 34 × 3 mm | 4 | [13](../../hardware/components/fichas/13-oring.md) | 2 em uso + 2 de reserva |
 | Inserto térmico M3 (OD 4,0 × 5,7 mm) | 10 | — | 6 no carro + 3 no teste do cupom + 1 de reserva |
 | Fusível de lâmina mini 3 A + porta-fusível em linha | 1 | — | Logo depois do suporte |
-| P-MOSFET (ex.: AO3401) + zener 12 V + resistor 10 kΩ | 1 | — | Proteção contra inversão (recomendado) |
+| P-MOSFET (ex.: AO3401) + zener 9,1–10 V + resistor 10 kΩ | 1 | — | Proteção contra inversão (recomendado). Confira o V_GS máximo do MOSFET comprado: o zener fica abaixo dele e acima de 8,4 V |
 | Chave SPDT mini (liga/desliga) | 1 | — | Corpo de 8,5 × 3,6 mm no modelo (MEDIR); de preferência 3 A |
 | Conector da bateria (suporte → placa) | 1 | — | — |
 | Perfboard 5 × 7 cm | 1 | [10](../../hardware/components/fichas/10-perfboard.md) | Furos de fixação feitos pelo montador |

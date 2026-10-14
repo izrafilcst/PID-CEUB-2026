@@ -45,11 +45,16 @@ no suporte, o MOSFET não conduz e nada recebe tensão reversa. Ligação:
 +BAT (suporte, depois do fusível) ── Dreno ┐
                                             P-MOSFET ── Fonte ──► carga (chave → MP1584 e VM)
 GND ── 10 kΩ ── Gate ──────────────────────┘
-               Zener 12 V entre gate e fonte (protege o gate)
+               Zener de 9,1–10 V entre gate e fonte (protege o gate)
 ```
 
-- Dreno no +BAT, fonte na carga, gate no GND por um resistor de 10 kΩ, zener de 12 V entre
-  gate e fonte.
+- Dreno no +BAT, fonte na carga, gate no GND por um resistor de 10 kΩ, zener de **9,1–10 V**
+  entre gate e fonte.
+- Por que 9,1–10 V: o zener tem que ficar acima dos 8,4 V do pack cheio (não conduz em operação
+  normal) e abaixo do V_GS máximo do MOSFET. Um zener de 12 V nunca conduz com o pack e não
+  protege um MOSFET de V_GS máximo ±12 V (avaliação do WP3, A-WP3-12).
+- **Confira o V_GS máximo no datasheet do MOSFET comprado** (o ±12 V do AO3401 do exemplo está a
+  confirmar). Se ele for menor que 10 V, escolha um zener abaixo dele e acima de 8,4 V.
 
 **Chave liga/desliga** em série no positivo, depois do fusível e do MOSFET. Corrente de pelo
 menos 2 A (`hardware/bom.csv`); como os motores travados passam disso, prefira uma chave com a

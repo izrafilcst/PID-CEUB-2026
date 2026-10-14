@@ -11,7 +11,7 @@ qty,component,description,package,supplier,sku,price_brl,link,notes
 4,O-ring silicone 34 × 3 mm,"Pneu da roda impressa, silicone 70 Shore A",—,Lojas de vedação / Mercado Livre,,4.00,,"Ficha 13; 2 em uso + 2 reserva. Preço estimado (≈ R$ 1 cada, ficha 13)"
 10,"Inserto térmico M3 (OD 4,0 × 5,7 mm)",Inserto roscado para prensar a quente no PETG,—,,,,,Colunas do perfboard e língua da barra: 6 no carro (relatório de montagem) + 3 no teste do cupom + 1 reserva. Preço a confirmar
 1,Fusível lâmina mini 3 A + porta-fusível em linha,Proteção da bateria,—,,,,,Logo após o suporte (WIRING.md). Preço a confirmar
-1,P-MOSFET (ex.: AO3401) + zener 12 V + resistor 10 kΩ,Proteção contra inversão de polaridade,—,,,,,Recomendado (WIRING.md). Preço a confirmar
+1,"P-MOSFET (ex.: AO3401) + zener 9,1–10 V + resistor 10 kΩ",Proteção contra inversão de polaridade,—,,,,,"Recomendado (WIRING.md). Zener acima de 8,4 V e abaixo do V_GS máximo do MOSFET: conferir no datasheet do MOSFET comprado. Preço a confirmar"
 1,PETG filamento 100g,Peças impressas do carro e cupom de tolerância (PETG),1.75mm rolo ~100g,Multilaser / Kalatec,,25.00,,Peças do carro ≈ 59 g pelas massas do relatório de montagem (preenchimento 60 %); densidade ~1.27 g/cm³
 1,Capacitor 100µF 16V,Desacoplamento do VM dos motores,radial electrolítico,Qualquer distribuidora,,2.00,,"1× no VM do TB6612, junto à placa"
 5,Capacitor 100nF,Desacoplamento VCC digital e filtro do GPIO 34,cerâmico 0805,,,3.00,,1× por CI (MCP3008 + ESP32 + TB6612FNG + regulador) + 1× no GPIO 34 (F-10). Preço estimado (o valor era dos 4 anteriores)
