@@ -17,6 +17,7 @@
 #include "comm/CommandHandler.h"
 #include "comm/CommandProtocol.h"
 #include "comm/Mailbox.h"
+#include "comm/PeriodicTimer.h"
 #include "comm/Telemetry.h"
 #include "config/ConfigStore.h"
 #include "config/RobotConfig.h"
@@ -279,7 +280,7 @@ static void taskComm(void*) {
     uint32_t telSeen = 0;
     uint32_t staSeen = 0;
     uint32_t calSeen = 0;
-    uint32_t lastTel = 0;
+    PeriodicTimer telTimer(TELEMETRY_MS);  // ~30 Hz sem deriva (A-WP1-06)
 
     for (;;) {
         const uint32_t nowMs = millis();
@@ -316,8 +317,7 @@ static void taskComm(void*) {
             }
         }
 
-        if (nowMs - lastTel >= TELEMETRY_MS) {
-            lastTel = nowMs;
+        if (telTimer.due(nowMs)) {
             TelemetryFrame tf;
             if (g_telBox.fetch(tf, telSeen) && formatTelemetry(outBuf, sizeof outBuf, tf)) {
                 ble.notify(outBuf);
