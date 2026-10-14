@@ -342,8 +342,8 @@ No perfboard:
 
 Faça na ordem, com o multímetro. Não avance com um item fora do esperado.
 
-1. **Continuidade do GND** entre ESP32, MCP3008, TB6612, MP1584 e QTR-8A — esperado: bipe de
-   continuidade em todos os pares.
+1. **Continuidade do GND** entre o pino de GND da barra fêmea do ESP32 (o ESP32 ainda está fora),
+   MCP3008, TB6612, MP1584 e QTR-8A — esperado: bipe de continuidade em todos os pares.
 2. **Sem curto entre +BAT e GND**, com a chave ligada e sem células — esperado: mais de 1 kΩ.
 3. **Fusível de 3 A instalado** no porta-fusível — esperado: continuidade através dele.
 4. **Saída do MP1584 solta** (fio de +5 V sem ligação ao trilho de 5 V) e **ESP32 fora da

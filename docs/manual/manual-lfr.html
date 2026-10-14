@@ -1596,7 +1596,7 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
   <div class="tbl"><table>
     <thead><tr><th>Comando</th><th>Efeito</th><th>Carro andando</th></tr></thead>
     <tbody>
-      <tr><td><code>{"t":"set","k":"kp","v":1.2}</code></td><td>Aplica uma chave ao vivo (não grava); acende o NÃO SALVO</td><td>Só as chaves marcadas "sim"</td></tr>
+      <tr><td><code>{"t":"set","k":"kp","v":1.2}</code></td><td>Aplica uma chave ao vivo (não grava); acende o NÃO SALVO</td><td>Só as chaves marcadas "sim" na tabela de parâmetros; com <code>lock</code> = 1, nenhuma</td></tr>
       <tr><td><code>{"t":"save"}</code></td><td>Grava hardware, perfil ativo e qual perfil está ativo</td><td><code>err:"running"</code></td></tr>
       <tr><td><code>{"t":"load"}</code></td><td>Descarta o que não foi salvo e relê o perfil ativo</td><td><code>err:"running"</code></td></tr>
       <tr><td><code>{"t":"defaults"}</code></td><td>Valores de fábrica do hardware e do perfil ativo, ao vivo; volta o PPR a 600 (A-WP1-04)</td><td><code>err:"running"</code></td></tr>
