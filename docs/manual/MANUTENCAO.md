@@ -123,8 +123,8 @@ Para cada sintoma, faça os testes na ordem. O primeiro "sim" leva à ação.
 2. As células estão na polaridade certa e o pack tem 6,0–8,4 V entre os fios do suporte? **Não**
    → recolocar ou carregar as células.
 3. A chave passa corrente (mesma tensão antes e depois)? **Não** → trocar a chave.
-4. A saída do MP1584 está em 5,0 V? **Não** → reajustar com o ESP32 desconectado (manual de
-   montagem, seção 5).
+4. A saída do MP1584 está em 5,0 V? **Não** → soltar o fio de saída do trilho de 5 V, tirar o
+   ESP32 e reajustar sem carga (manual de montagem, seção 5).
 5. O botão BOOT estava apertado ao ligar? **Sim** → soltar e religar: com o GPIO 0 em nível
    baixo no boot a placa entra em modo de gravação (`docs/REVISAO_FIRMWARE.md`, item 1).
 6. O ESP32 liga pelo USB sozinho (sem o perfboard)? **Sim** → com o perfboard ele não liga:
