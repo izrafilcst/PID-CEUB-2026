@@ -261,25 +261,32 @@ Monte nesta ordem. Um passo = uma ação. Frente do carro = lado da barra de sen
    relatório).
 9. Encaixe um **O-ring** no canal de cada roda, sem torcer o cordão.
 10. Solde a barra de pinos de 2,54 mm **por cima** do QTR-8A (lado oposto aos sensores).
-11. Solde o **chicote de 11 fios AWG 30** (⌀ ≤ 0,6 mm) no conector fêmea. Fio mais grosso não
+11. Una os dois pinos marcados **3.3V BYPASS** do QTR-8A com um pedaço de fio. Os resistores
+    dos LEDs IR são calibrados para 5 V em dois estágios, e o *bypass* de um estágio é o que
+    permite operar em 3,3 V (página do produto, https://www.pololu.com/product/960, e guia da
+    Pololu, https://www.pololu.com/docs/0J12, seção "Vcc, GND, and 3.3V BYPASS"). **Se esquecer
+    este passo**, a 3,3 V os LEDs ficam fracos ou apagam, o contraste entre linha e fundo cai e a
+    calibração pode acabar em ERRO(4). **Nunca** una esses pinos com o QTR em 5 V: os LEDs passam
+    da corrente nominal e podem queimar.
+12. Solde o **chicote de 11 fios AWG 30** (⌀ ≤ 0,6 mm) no conector fêmea. Fio mais grosso não
     cabe numa camada no canal da base (relatório, "Ligação do QTR-8A").
-12. Prenda o **QTR-8A** sob os postes da barra com 2 M2 × 8 cabeça baixa, de baixo para cima,
+13. Prenda o **QTR-8A** sob os postes da barra com 2 M2 × 8 cabeça baixa, de baixo para cima,
     com os sensores para baixo e a borda dos pinos para trás. O conector sai pela janela da
     viga.
-13. Passe o chicote por cima da língua e desça pelo rasgo na ponta de trás da língua (e do
+14. Passe o chicote por cima da língua e desça pelo rasgo na ponta de trás da língua (e do
     calço de língua, se houver).
-14. Ponha cada **patim** (com os calços, se houver) sob a ponta da barra e aperte o M2 × 12 de
+15. Ponha cada **patim** (com os calços, se houver) sob a ponta da barra e aperte o M2 × 12 de
     cima para baixo.
-15. Apoie a **língua** na base (com o calço de língua, se houver) e prenda com 2 M3 ISO 10642 ×
+16. Apoie a **língua** na base (com o calço de língua, se houver) e prenda com 2 M3 ISO 10642 ×
     8, por baixo, no escareado. A cabeça tem que ficar rente à face de baixo.
-16. Deite o chicote no **canal de 7 × 1,8 mm** do topo da base, por baixo do berço, até subir
+17. Deite o chicote no **canal de 7 × 1,8 mm** do topo da base, por baixo do berço, até subir
     entre os conectores dos N20.
-17. Encaixe o **suporte 2×18650** no berço, por baixo das quatro abas dos cantos, sem células.
+18. Encaixe o **suporte 2×18650** no berço, por baixo das quatro abas dos cantos, sem células.
     Ele desliza com folga; as células saem por cima sem soltar nada (ficha 12).
-18. Monte a **chave liga/desliga** no suporte da lateral esquerda da base.
-19. Prenda o **porta-fusível** sob a base com a abraçadeira de nylon, pelos rasgos e pelo
+19. Monte a **chave liga/desliga** no suporte da lateral esquerda da base.
+20. Prenda o **porta-fusível** sob a base com a abraçadeira de nylon, pelos rasgos e pelo
     rebaixo.
-20. Prenda o **perfboard** nas colunas com 4 M3 × 6, com a barra fêmea do ESP32 orientada
+21. Prenda o **perfboard** nas colunas com 4 M3 × 6, com a barra fêmea do ESP32 orientada
     para o USB ficar virado para trás (avaliação do WP2, atividade 12). Não encaixe o ESP32
     ainda: ele só entra depois do ajuste do MP1584 (seção 5).
 
@@ -443,6 +450,7 @@ Ao terminar, grave de novo o firmware principal (`pio run -e esp32dev -t upload`
 - [ ] Peças impressas no perfil de PETG, sem suporte
 - [ ] Insertos rentes; abraçadeiras apertadas até encostar; rodas girando livres
 - [ ] O-rings no canal, sem torção
+- [ ] Pinos 3.3V BYPASS do QTR-8A unidos (o QTR está em 3,3 V)
 - [ ] QTR-8A preso com os sensores para baixo; face dos sensores a 3,0 mm do chão
 - [ ] Parafusos M3 da barra rentes à face de baixo da base
 - [ ] Chicote do QTR no canal, sem fio esmagado

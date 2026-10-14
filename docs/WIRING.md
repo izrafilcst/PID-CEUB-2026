@@ -205,7 +205,7 @@ MCP3008  CH0  CH1  CH2  CH3  CH4  CH5  CH6  CH7
 
 | QTR-8A | Liga em | Notas |
 |--------|---------|-------|
-| VCC | **3.3V** | jumper/seleção da placa em 3.3V — casa com VREF do MCP3008 |
+| VCC | **3.3V** | Casa com o VREF do MCP3008. **Una os dois pinos 3.3V BYPASS** do QTR-8A com um fio: os resistores dos LEDs são calibrados para 5 V em dois estágios e o *bypass* de um deles permite 3,3 V (Pololu 960; guia 0J12, seção "Vcc, GND, and 3.3V BYPASS"). Sem isso os LEDs ficam fracos e o contraste cai. Nunca una com o VCC em 5 V |
 | GND | GND | terra comum |
 | OUT1–OUT8 | MCP3008 CH0–CH7 | uma saída analógica por canal |
 | LEDON | (deixar solto) | pull-up interno mantém os emissores ligados |

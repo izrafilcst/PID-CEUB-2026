@@ -81,9 +81,11 @@ Depois de qualquer troca, faça o teste de bancada indicado e rode uma volta cur
 1. Desligue a chave.
 2. Desconecte o conector do chicote pela janela da barra.
 3. Solte os 2 M2 × 8 cabeça baixa por baixo e tire a placa.
-4. Monte a placa nova com os sensores para baixo e a borda dos pinos para trás.
-5. Rode o `bench_sensor_raw`: os 8 canais têm que responder.
-6. **Recalibre os sensores** no firmware principal (manual do operador, seção 3).
+4. Una os dois pinos **3.3V BYPASS** da placa nova com um pedaço de fio (manual de montagem,
+   seção 3, passo 11). Sem isso, a 3,3 V os LEDs ficam fracos e a calibração pode dar ERRO(4).
+5. Monte a placa nova com os sensores para baixo e a borda dos pinos para trás.
+6. Rode o `bench_sensor_raw`: os 8 canais têm que responder.
+7. **Recalibre os sensores** no firmware principal (manual do operador, seção 3).
 
 ### 2.7 Suporte 2×18650
 
@@ -161,9 +163,11 @@ códigos completa está no manual do operador, seção 11.
 
 #### ERRO(4) — calibração inválida
 
-1. O `calres` lista os mesmos canais toda vez? **Sim** → rodar o `bench_sensor_raw`: canal
+1. No `bench_sensor_raw`, todos os canais variam pouco entre a linha e o fundo? **Sim** →
+   conferir os pinos 3.3V BYPASS do QTR-8A unidos (manual de montagem, seção 3, passo 11).
+2. O `calres` lista os mesmos canais toda vez? **Sim** → rodar o `bench_sensor_raw`: canal
    parado indica solda no MCP3008 ou fio do chicote partido.
-2. **Não** → refazer a varredura passando os 8 sensores pela linha e pelo fundo, com a altura
+3. **Não** → refazer a varredura passando os 8 sensores pela linha e pelo fundo, com a altura
    certa (seção 2.2).
 
 #### ERRO(5) — encoder sem leitura (modo cascata)
