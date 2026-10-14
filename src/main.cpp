@@ -311,10 +311,10 @@ static void taskComm(void*) {
                 : formatEncCal(outBuf, sizeof outBuf, cr);
             if (ok) ble.notify(outBuf);
             if (cr.kind == CalReport::Kind::ENCODER && cr.ok) {
-                // PPR já persistido pelo VelocityEstimator; espelha na config viva sem "dirty"
-                RobotConfig& live = g_liveCfg;
-                (cr.left ? live.hw.pprL : live.hw.pprR) = cr.ppr;
+                // PPR já persistido pelo VelocityEstimator; espelha na config viva e publica
+                handler.applyEncoderCalibration(cr.left, cr.ppr);
             }
+            if (handler.consumeConfigChanged()) g_cfgBox.post(handler.live());
         }
 
         if (telTimer.due(nowMs)) {

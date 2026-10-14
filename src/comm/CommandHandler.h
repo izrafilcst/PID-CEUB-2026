@@ -51,6 +51,13 @@ public:
     /** Where the info values come from (name, cfgerr, stack headroom). Null → defaults. */
     void setInfoSource(DeviceInfoFn fn) { _infoFn = fn; }
 
+    /**
+     * Mirrors an encoder auto-calibration result (already persisted by the estimator) into
+     * the live config without marking it dirty, and flags it for the Mailbox. Values outside
+     * the pprL/pprR range are ignored. Returns true when applied.
+     */
+    bool applyEncoderCalibration(bool left, float pprX4);
+
     bool dirty() const { return _dirty; }
     bool consumeConfigChanged();
     const RobotConfig& live() const { return _live; }

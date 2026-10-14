@@ -1,4 +1,5 @@
 #include "config/RobotConfig.h"
+#include "config.h"
 #include <cmath>
 #include <cstring>
 
@@ -22,8 +23,8 @@ const KeyInfo KEYS[] = {
     HW_KEY(lock,  FT::U8, 0.0f, 1.0f),
     HW_KEY(vcut,  FT::F32, 5.6f, 7.6f),
     HW_KEY(vbk,   FT::F32, 0.8f, 1.2f),
-    HW_KEY(pprL,  FT::F32, 1.0f, 10000.0f),
-    HW_KEY(pprR,  FT::F32, 1.0f, 10000.0f),
+    HW_KEY(pprL,  FT::F32, ENCODER_PPR_X4_MIN, ENCODER_PPR_X4_MAX),
+    HW_KEY(pprR,  FT::F32, ENCODER_PPR_X4_MIN, ENCODER_PPR_X4_MAX),
     TP_KEY(kp,      "pid",  FT::F32, 0.0f,   20.0f,   true),
     TP_KEY(ki,      "pid",  FT::F32, 0.0f,   50.0f,   true),
     TP_KEY(kd,      "pid",  FT::F32, 0.0f,   2.0f,    true),

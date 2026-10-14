@@ -39,6 +39,13 @@ void CommandHandler::sendInfoAndConfig(ResponseSink& sink) const {
     sendConfig(sink);
 }
 
+bool CommandHandler::applyEncoderCalibration(bool left, float pprX4) {
+    // Mesma validação do set (faixa de pprL/pprR); hardware fica de fora do "dirty"
+    if (robotcfg::set(_live, left ? "pprL" : "pprR", pprX4, false) != SetResult::OK) return false;
+    _changed = true;
+    return true;
+}
+
 void CommandHandler::_reloadFromStore(uint8_t profile) {
     _store.loadHardware(_live.hw);
     _store.loadProfile(profile, _live.tune);

@@ -245,6 +245,26 @@ void test_command_handler_info_without_source_has_safe_defaults() {
     TEST_ASSERT_NOT_NULL(std::strstr(sink.msgs[0].c_str(), "\"cfgerr\":0,\"stk\":[0,0]"));
 }
 
+// A-WP1-04 (b): o PPR do ecal entra na config viva (sem "dirty") e vai para a Mailbox
+void test_command_handler_encoder_cal_result_updates_live_ppr() {
+    TEST_ASSERT_TRUE(h->applyEncoderCalibration(true, 612.5f));
+    TEST_ASSERT_FLOAT_WITHIN(1e-3f, 612.5f, live.hw.pprL);
+    TEST_ASSERT_FLOAT_WITHIN(1e-3f, 600.0f, live.hw.pprR);
+    TEST_ASSERT_FALSE(h->dirty());
+    TEST_ASSERT_TRUE(h->consumeConfigChanged());  // a comm publica na Mailbox
+    TEST_ASSERT_TRUE(h->applyEncoderCalibration(false, 590.0f));
+    TEST_ASSERT_FLOAT_WITHIN(1e-3f, 590.0f, live.hw.pprR);
+}
+
+// A-WP1-04 (c): fora de 1–10000 não entra (senão todo save falharia)
+void test_command_handler_encoder_cal_result_out_of_range_is_ignored() {
+    TEST_ASSERT_FALSE(h->applyEncoderCalibration(true, 20000.0f));
+    TEST_ASSERT_FLOAT_WITHIN(1e-3f, 600.0f, live.hw.pprL);
+    TEST_ASSERT_FALSE(h->consumeConfigChanged());
+    send("{\"t\":\"save\"}");
+    TEST_ASSERT_TRUE(sink.contains("\"k\":\"save\",\"ok\":1"));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_command_handler_set_applies_and_marks_dirty);
@@ -268,5 +288,7 @@ int main() {
     RUN_TEST(test_command_handler_get_sends_info_before_config);
     RUN_TEST(test_command_handler_info_and_config_on_subscribe);
     RUN_TEST(test_command_handler_info_without_source_has_safe_defaults);
+    RUN_TEST(test_command_handler_encoder_cal_result_updates_live_ppr);
+    RUN_TEST(test_command_handler_encoder_cal_result_out_of_range_is_ignored);
     return UNITY_END();
 }

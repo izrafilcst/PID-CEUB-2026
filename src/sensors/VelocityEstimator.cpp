@@ -5,9 +5,10 @@
 #include <cmath>
 #include <cstring>
 
-// Sanity range para PPR persistido — rejeita NaN, Inf, ≤0 e valores absurdos.
-static constexpr float PPR_MIN_SANE = 0.5f;
-static constexpr float PPR_MAX_SANE = 100000.0f;
+// Faixa do PPR igual à do RobotConfig (pprL/pprR): rejeita NaN, Inf e valores fora dela.
+// Um PPR fora da faixa faria todo save falhar e seria descartado no boot (A-WP1-04).
+static constexpr float PPR_MIN_SANE = ENCODER_PPR_X4_MIN;
+static constexpr float PPR_MAX_SANE = ENCODER_PPR_X4_MAX;
 
 // dt máximo aceito antes de descartar a janela (jitter, primeira chamada, stall).
 static constexpr uint32_t DT_MAX_US = 500000;
@@ -112,7 +113,14 @@ bool VelocityEstimator::finishCalibration(int rotations) {
     // std::abs(INT32_MIN) é UB em C++ (overflow signed) — cast antes p/ float
     // garante valor absoluto seguro para qualquer entrada de int32_t.
     float absCount = std::fabs(static_cast<float>(count));
-    _pprX4 = absCount / static_cast<float>(rotations);
+    const float ppr = absCount / static_cast<float>(rotations);
+    if (ppr < PPR_MIN_SANE || ppr > PPR_MAX_SANE) {
+        // Fora da faixa: recusa, mantém o PPR atual e não grava nada
+        _calibrating = false;
+        _enc.getDelta();
+        return false;
+    }
+    _pprX4 = ppr;
     _store.putFloat(_key, _pprX4);
     _rpmFiltered = 0.0f;
     _calibrating = false;

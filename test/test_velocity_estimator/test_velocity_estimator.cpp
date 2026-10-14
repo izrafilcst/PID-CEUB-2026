@@ -145,6 +145,41 @@ void test_velocity_set_ppr_validates() {
     TEST_ASSERT_FALSE(store->exists("left_ppr"));  // não persiste
 }
 
+// A-WP1-04 (c): a faixa do PPR é a mesma do RobotConfig (1–10000) em todo caminho
+void test_velocity_finish_calibration_rejects_ppr_above_range() {
+    ve->startCalibration();
+    forwardPeriods(*enc, 2600);  // 10400 contagens numa volta
+    TEST_ASSERT_FALSE(ve->finishCalibration(1));
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 600.0f, ve->getEffectivePPR());
+    TEST_ASSERT_FALSE(store->exists("left_ppr"));
+}
+
+void test_velocity_finish_calibration_rejects_ppr_below_range() {
+    ve->startCalibration();
+    forwardPeriods(*enc, 1);  // 4 contagens em 10 voltas = 0,4
+    TEST_ASSERT_FALSE(ve->finishCalibration(10));
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 600.0f, ve->getEffectivePPR());
+    TEST_ASSERT_FALSE(store->exists("left_ppr"));
+}
+
+void test_velocity_begin_rejects_persisted_ppr_out_of_range() {
+    store->putFloat("left_ppr", 20000.0f);
+    VelocityEstimator high(*enc, *store, "left");
+    high.begin();
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 600.0f, high.getEffectivePPR());
+    store->putFloat("left_ppr", 0.7f);
+    VelocityEstimator low(*enc, *store, "left");
+    low.begin();
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 600.0f, low.getEffectivePPR());
+}
+
+void test_velocity_set_ppr_uses_config_range() {
+    TEST_ASSERT_FALSE(ve->setPprX4(10000.5f));
+    TEST_ASSERT_FALSE(ve->setPprX4(0.9f));
+    TEST_ASSERT_TRUE(ve->setPprX4(10000.0f));
+    TEST_ASSERT_TRUE(ve->setPprX4(1.0f));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_velocity_zero_when_no_pulses);
@@ -160,5 +195,9 @@ int main(int, char**) {
     RUN_TEST(test_velocity_sub_millisecond_dt_updates_rpm);
     RUN_TEST(test_velocity_discards_window_longer_than_limit);
     RUN_TEST(test_velocity_set_ppr_validates);
+    RUN_TEST(test_velocity_finish_calibration_rejects_ppr_above_range);
+    RUN_TEST(test_velocity_finish_calibration_rejects_ppr_below_range);
+    RUN_TEST(test_velocity_begin_rejects_persisted_ppr_out_of_range);
+    RUN_TEST(test_velocity_set_ppr_uses_config_range);
     return UNITY_END();
 }

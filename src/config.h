@@ -41,6 +41,9 @@
 // redução 50:1 (N20 de 600 RPM). PROVISÓRIO: a auto-calibração por BLE ({"t":"cal"}) é
 // obrigatória antes de usar o modo cascata (F-17).
 #define ENCODER_DEFAULT_PPR_X4   600.0f
+// Faixa única do PPR: RobotConfig (pprL/pprR), ConfigStore e VelocityEstimator (A-WP1-04)
+#define ENCODER_PPR_X4_MIN       1.0f
+#define ENCODER_PPR_X4_MAX       10000.0f
 #define VELOCITY_FILTER_ALPHA    0.3f  // 0 ≤ α ≤ 1 — menor = mais suave, mais atraso
 
 // ═══ BATERIA ═══════════════════════════════════════════════════════════════

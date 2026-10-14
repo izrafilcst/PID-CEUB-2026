@@ -1,4 +1,5 @@
 #include "config/ConfigStore.h"
+#include "config.h"
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -13,8 +14,8 @@ constexpr uint16_t CAL_VERSION = 1;
 constexpr size_t HEADER = 6;
 constexpr size_t CRC_LEN = 4;
 constexpr size_t MAX_BLOB = 128;
-constexpr float PPR_MIN = 1.0f;
-constexpr float PPR_MAX = 10000.0f;
+constexpr float PPR_MIN = ENCODER_PPR_X4_MIN;
+constexpr float PPR_MAX = ENCODER_PPR_X4_MAX;
 
 const char* const KEY_HW = "hw";
 const char* const KEY_ACTIVE = "prof_act";
