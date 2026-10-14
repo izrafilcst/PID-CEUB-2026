@@ -5,7 +5,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from check_manuais import codigos_erro, comandos_firmware, verificar  # noqa: E402
+from check_manuais import (  # noqa: E402
+    codigos_erro, comandos_firmware, commit_fonte_html, md_mudados_desde, verificar,
+)
 
 RAIZ = Path(__file__).resolve().parents[2]
 
@@ -76,6 +78,26 @@ class TestVerificador(unittest.TestCase):
     def test_html_com_link_externo_em_texto_passa(self):
         html = '<title>x</title><p><a href="https://www.pololu.com/product/960">Pololu</a></p>'
         self.assertEqual(verificar([_arq(html, "x.html")], RAIZ), [])
+
+    def test_rodape_do_html_sem_commit_fonte_e_acusado(self):
+        problemas = verificar([_arq("<title>x</title><p>sem rodapé</p>", "manual-lfr.html")], RAIZ)
+        self.assertTrue(any("commit-fonte" in p for p in problemas))
+
+    def test_html_com_commit_fonte_inexistente_e_acusado(self):
+        html = "<title>x</title><p>Fonte: docs/manual/*.md — commit 0000000.</p>"
+        problemas = verificar([_arq(html, "manual-lfr.html")], RAIZ)
+        self.assertTrue(any("0000000" in p for p in problemas))
+
+    def test_commit_fonte_lido_do_rodape(self):
+        self.assertEqual(commit_fonte_html("Fonte: docs/manual/*.md — commit f3c31ba. x"),
+                         "f3c31ba")
+        self.assertIsNone(commit_fonte_html("sem rodapé"))
+
+    def test_md_mudados_desde_so_lista_markdown_dos_manuais(self):
+        mudados = md_mudados_desde(RAIZ, "HEAD")
+        if mudados is None:
+            self.skipTest("fora de um repositório git")
+        self.assertTrue(all(m.startswith("docs/manual/") and m.endswith(".md") for m in mudados))
 
     def test_operacao_sem_linha_de_um_codigo_e_acusada(self):
         codigos = sorted(codigos_erro(RAIZ))

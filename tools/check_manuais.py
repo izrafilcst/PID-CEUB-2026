@@ -15,12 +15,15 @@ Regras (plano WP3, Tarefa 1):
    aparece como ERRO(n) no MANUTENCAO.md.
 8. HTML: nenhum recurso externo carregado (src=, <link href=, @import, url()) — o manual
    tem que abrir sem rede.
+9. manual-lfr.html: o rodapé cita o commit-fonte ("Fonte: docs/manual/*.md — commit <hash>") e
+   nenhum docs/manual/*.md mudou desde esse commit (senão o HTML está desatualizado).
 
 Comandos, frames e códigos de erro são lidos do firmware, não fixados aqui.
 """
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -65,6 +68,35 @@ def codigos_erro(raiz: Path) -> dict[int, str]:
 def ambientes(raiz: Path) -> set[str]:
     ini = (raiz / "platformio.ini").read_text(encoding="utf-8")
     return set(re.findall(r"\[env:(bench_\w+)\]", ini))
+
+
+def commit_fonte_html(texto: str) -> str | None:
+    """Hash citado no rodapé do HTML ("Fonte: docs/manual/*.md — commit <hash>")."""
+    m = re.search(r"Fonte: docs/manual/\*\.md — commit ([0-9a-f]{7,40})", texto)
+    return m.group(1) if m else None
+
+
+def md_mudados_desde(raiz: Path, commit: str) -> list[str] | None:
+    """docs/manual/*.md que diferem do commit (árvore de trabalho); None se o git não souber."""
+    try:
+        r = subprocess.run(["git", "-C", str(raiz), "diff", "--name-only", commit, "--",
+                            "docs/manual/*.md"], capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if r.returncode != 0:
+        return None
+    return [linha for linha in r.stdout.splitlines() if linha.strip()]
+
+
+def _html_atualizado(nome: str, texto: str, raiz: Path) -> list[str]:
+    commit = commit_fonte_html(texto)
+    if not commit:
+        return [f'{nome}: rodapé sem o commit-fonte ("Fonte: docs/manual/*.md — commit <hash>")']
+    mudados = md_mudados_desde(raiz, commit)
+    if mudados is None:
+        return [f"{nome}: commit-fonte {commit} desconhecido no repositório"]
+    return [f"{nome}: HTML desatualizado — {m} mudou depois do commit-fonte {commit}"
+            for m in mudados]
 
 
 def _chaves_citadas(texto: str, chaves: set[str], comandos: set[str]) -> list[str]:
@@ -122,6 +154,8 @@ def verificar(arquivos: list[Path], raiz: Path = RAIZ) -> list[str]:
                 if f"ERRO({c})" not in texto:
                     problemas.append(f"{nome}: código de erro {c} ({n}) fora do diagnóstico "
                                      f"(falta ERRO({c}))")
+        if nome == "manual-lfr.html":
+            problemas += _html_atualizado(nome, texto, raiz)
         if nome.endswith(".html"):
             for m in _EXTERNO.finditer(texto):
                 trecho = texto[m.start():m.end() + 30].split("\n")[0]
