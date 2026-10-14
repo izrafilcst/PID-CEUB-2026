@@ -33,6 +33,31 @@ def qtr(p: Params, calcos: int = 0) -> Part:
     return caixa(p.qtr_w, p.qtr_l, p.qtr_t, x=p.lookahead, z=z0)
 
 
+PASSO_PINOS = 2.54
+CONECTOR_H = 16.5   # barra de pinos (2,5 mm de plástico) + conector fêmea tipo Dupont (14 mm)
+
+
+def campo_pinos_qtr(p: Params, calcos: int = 0) -> tuple[float, float, float, float, float]:
+    """(x0, x1, y0, y1, z0) do campo de pinos do QTR-8A (2 fileiras), na montagem.
+
+    O QTR monta com os componentes para cima e a borda dos pinos para trás (−X); a ponta
+    com o furo intermediário fica do lado +Y.
+    """
+    x_borda = p.lookahead - p.qtr_w / 2
+    x0 = x_borda + p.qtr_pinos_borda - PASSO_PINOS / 2
+    x1 = x_borda + p.qtr_pinos_borda + PASSO_PINOS + PASSO_PINOS / 2
+    y1 = p.qtr_l / 2 - p.qtr_pinos_ini
+    y0 = p.qtr_l / 2 - p.qtr_pinos_fim
+    z0 = p.sensor_altura + calcos * CALCO_T + p.qtr_t
+    return x0, x1, y0, y1, z0
+
+
+def conector_qtr(p: Params, calcos: int = 0) -> Part:
+    """Barra de pinos soldada por cima do QTR + conector fêmea: sai pela janela da barra."""
+    x0, x1, y0, y1, z0 = campo_pinos_qtr(p, calcos)
+    return caixa_lim(x0, x1, y0, y1, z0, z0 + CONECTOR_H)
+
+
 def perfboard(p: Params) -> Part:
     """Perfboard + volume dos componentes por cima + 2 mm de terminais por baixo."""
     x1 = p.perf_x_frente

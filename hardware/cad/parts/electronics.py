@@ -40,9 +40,30 @@ def suporte_chave(p: Params) -> Part:
     return aba - janela
 
 
+REBAIXO_ABRACADEIRA = 1.6   # canal sob a placa entre os rasgos (abraçadeira ≤ 1,2 mm)
+ABRACADEIRA_T = 1.2
+ABRACADEIRA_W = 2.5
+
+
+def _centro_rasgos(p: Params) -> tuple[float, float]:
+    return p.perf_x_frente - p.perf_l / 2, -(p.base_meia_largura - 8)
+
+
 def rasgos_abracadeira(p: Params) -> Part:
-    """Dois rasgos 3,5 × 1,5 passantes para prender o porta-fusível com abraçadeira."""
-    x = p.perf_x_frente - p.perf_l / 2
-    y = -(p.base_meia_largura - 8)
-    return (caixa_lim(x - 9, x - 7.5, y - 1.75, y + 1.75, p.base_z - 1, p.base_topo + 1) +
-            caixa_lim(x + 7.5, x + 9, y - 1.75, y + 1.75, p.base_z - 1, p.base_topo + 1))
+    """Dois rasgos 3,5 × 1,5 passantes para prender o porta-fusível com abraçadeira, ligados
+    por um rebaixo na face de baixo: o trecho da abraçadeira que passa por baixo da placa
+    fica dentro da placa, sem invadir o vão livre (A-WP2-04)."""
+    x, y = _centro_rasgos(p)
+    rasgos = (caixa_lim(x - 9, x - 7.5, y - 1.75, y + 1.75, p.base_z - 1, p.base_topo + 1) +
+              caixa_lim(x + 7.5, x + 9, y - 1.75, y + 1.75, p.base_z - 1, p.base_topo + 1))
+    rebaixo = caixa_lim(x - 9, x + 9, y - 1.75, y + 1.75, p.base_z - 1,
+                        p.base_z + REBAIXO_ABRACADEIRA)
+    return rasgos + rebaixo
+
+
+def abracadeira_porta_fusivel(p: Params) -> Part:
+    """Envelope do trecho da abraçadeira sob a placa, puxado contra o teto do rebaixo."""
+    x, y = _centro_rasgos(p)
+    z1 = p.base_z + REBAIXO_ABRACADEIRA
+    return caixa_lim(x - 8.25, x + 8.25, y - ABRACADEIRA_W / 2, y + ABRACADEIRA_W / 2,
+                     z1 - ABRACADEIRA_T, z1)

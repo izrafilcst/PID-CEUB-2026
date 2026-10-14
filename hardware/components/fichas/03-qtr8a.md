@@ -24,6 +24,11 @@
 | espessura | 3,18 mm | ● OFICIAL | https://www.pololu.com/product/960 — Specifications, Size (sem os pinos de header instalados) |
 | passo sensores | 9,53 mm | ● OFICIAL | https://www.pololu.com/product/960 — Sensor pitch: 0.375" |
 | distancia otima leitura | 3 mm | ● OFICIAL | https://www.pololu.com/product/960 — Optimal sensing distance: 0.125" (3 mm)<br>Máxima recomendada: 6 mm. O config.h usa SENSOR_HEIGHT_MM 4 — dentro do limite, mas acima do ótimo (ver docs/DIVERGENCIAS.md, D8). |
+| entre furos | 69,85 mm | ● OFICIAL | https://a.pololu-files.com/picture/0J623.600.jpg (docs/0J12/3) — 2.75" entre os furos de fixação das pontas<br>Furos para parafuso #2 (M2). Há um terceiro furo a 0.55" (13,97 mm) de uma das pontas, usado quando a placa é partida em 6 + 2 sensores. |
+| furo borda | 2,40 mm | △ MEDIR | https://a.pololu-files.com/picture/0J623.600.jpg (docs/0J12/3) — estimado em escala no diagrama (sem cota): o centro dos furos fica junto da borda dos pinos, não no eixo da placa<br>**MEDIR (medidas.toml: qtr_furo_borda). Define a posição dos postes da barra de sensores.** |
+| pinos fileira borda | 1,70 mm | △ MEDIR | https://a.pololu-files.com/picture/0J623.600.jpg (docs/0J12/3) — estimado em escala: centro da fileira de pinos mais próxima da borda; a segunda fica 2,54 mm para dentro<br>**MEDIR (medidas.toml: qtr_pinos_borda). Barra 8×2 ou 11×1 de 2,54 mm (página do produto).** |
+| pinos inicio | 27,20 mm | △ MEDIR | https://a.pololu-files.com/picture/0J623.600.jpg (docs/0J12/3) — estimado em escala: início do campo de pinos, medido da ponta do furo a 0.55"<br>**MEDIR (medidas.toml: qtr_pinos_ini).** |
+| pinos fim | 55,40 mm | △ MEDIR | https://a.pololu-files.com/picture/0J623.600.jpg (docs/0J12/3) — estimado em escala: fim do campo de pinos (GND da fileira de dentro), mesma referência<br>**MEDIR (medidas.toml: qtr_pinos_fim).** |
 
 **Legenda de proveniência**: ● cotas do datasheet do fabricante · ○ módulo genérico — valor típico · △ varia por lote — MEDIR a peça
 

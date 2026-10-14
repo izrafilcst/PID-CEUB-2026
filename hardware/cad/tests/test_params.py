@@ -55,6 +55,12 @@ class TestParams(unittest.TestCase):
         for chave in MEDIR_TOML:
             self.assertIn(f"{chave} =", texto, chave)
 
+    def test_furos_do_qtr_vem_do_specs(self):
+        p = carregar()
+        self.assertAlmostEqual(p.qtr_furos_dist, 69.85, places=2)
+        self.assertGreater(p.qtr_furo_borda, p.qtr_furo_d / 2)
+        self.assertLess(p.qtr_furo_borda, p.qtr_w / 2)
+
     def test_altura_do_eixo_e_metade_da_roda(self):
         p = carregar()
         self.assertAlmostEqual(altura_eixo(p), p.roda_od / 2)

@@ -18,8 +18,11 @@ def fazer(p: Params, lado: int, calcos: int = 0) -> Part:
     y = lado * y_patim(p)
     r = RAIO_CALOTA
     corpo = caixa_lim(x - PATIM_X / 2, x + PATIM_X / 2, y - PATIM_Y / 2, y + PATIM_Y / 2, r, h)
-    calota = Pos(x, y, r) * Sphere(r) & caixa_lim(x - r, x + r, y - PATIM_Y / 2,
-                                                  y + PATIM_Y / 2, 0, r)
+    # Esfera com os polos no eixo Y: a caixa (|y| ≤ PATIM_Y/2 < r) corta os dois polos fora.
+    # Com o polo no ponto de contato (eixo Z), a triangulação deixava um triângulo solto e
+    # degenerado no STL (A-WP2-03).
+    calota = Pos(x, y, r) * Rot(90, 0, 0) * Sphere(r) & \
+        caixa_lim(x - r, x + r, y - PATIM_Y / 2, y + PATIM_Y / 2, 0, r)
     patim = corpo + calota
     return patim - cil_z(p.tol.autoatarraxante_m2, p.tol.autoatarraxante_prof, x, y,
                          h - p.tol.autoatarraxante_prof)

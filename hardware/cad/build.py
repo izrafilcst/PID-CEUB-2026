@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 """Gera hardware/cad/out/: STL (orientação de impressão), STEP (montagem) e relatório.
 
-Uso: .venv/bin/python build.py
+Uso: .venv/bin/python build.py [--medidas outro.toml] [--saida pasta]
+
+Roda as verificações da spec §5.8 (interferência, folga das rodas, carga nos patins, vão
+livre, altura do sensor, envelope) e grava ✔/✘ por item no relatório. Se alguma falhar,
+exporta mesmo assim, para inspeção, põe a faixa "NÃO IMPRIMIR" no relatório e sai com
+código 1. Medida inválida no TOML: mensagem de erro, nada exportado, código 2.
 """
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -13,12 +19,13 @@ from build123d import Compound, export_step, export_stl
 import assembly
 import printability as pr
 from params import CAD_DIR, Params, carregar
-from parts import motor_clamp, tolerance_coupon, wheel
+from parts import chicote, components, fixadores, motor_clamp, tolerance_coupon, wheel
 from parts.common import na_mesa
 
 QUANTIDADE = {"base": 1, "abracadeira_E": 1, "abracadeira_D": 1, "barra_sensores": 1,
               "patim": 2, "calco": 4, "calco_lingua": 2, "roda": 2, "cupom": 1,
               "cupom_chave": 1}
+LIMITE_FOLGAS = 2.0   # mm — pares mais próximos que isto entram na tabela de folgas
 
 
 def _pecas(p: Params) -> dict[str, tuple]:
@@ -43,22 +50,49 @@ def _pecas(p: Params) -> dict[str, tuple]:
     }
 
 
-def _relatorio(p: Params) -> str:
+def _relatorio(p: Params, verifs: list[assembly.Verificacao],
+               folgas: list[tuple[str, str, float]]) -> str:
     total, (x, y, z), itens = assembly.massa_e_cg(p)
     g = wheel.verificar_oring(p)
     rpm = wheel.rpm_sob_carga(p)
+    falhas = [v for v in verifs if not v.ok]
+    faixa = [
+        f"> **NÃO IMPRIMIR** — {len(falhas)} verificação(ões) falharam: "
+        + ", ".join(v.nome for v in falhas) + ". As peças foram exportadas só para "
+        "inspeção. Corrija o `medidas.toml` (ou o modelo) e rode o `build.py` de novo.",
+        "",
+    ] if falhas else []
     linhas = [
         "# Relatório de montagem — LFR v2",
         "",
+    ] + faixa + [
         "Gerado por `hardware/cad/build.py`. Massas impressas estimadas (PETG "
         f"{p.petg_densidade * 1000:.2f} g/cm³, preenchimento {p.preenchimento:.0%}); "
         "massas compradas do `specs.py` (estimadas até a pesagem — D7).",
+        "",
+        "## Verificações",
+        "",
+        "| Verificação | Critério | Valor | Resultado |",
+        "|-------------|----------|-------|-----------|",
+    ] + [f"| {v.nome} | {v.criterio} | {v.valor} | {'✔' if v.ok else '✘'} |"
+         for v in verifs] + [
+        "",
+        f"## Folgas por par (abaixo de {LIMITE_FOLGAS:.0f} mm)",
+        "",
+        "Distância mínima entre cada par de peças impressas, rodas e envelopes dos componentes. "
+        "0,000 = contato de apoio ou encosto previsto (a interferência está nas verificações).",
+        "",
+        "| Peça A | Peça B | Folga (mm) |",
+        "|--------|--------|------------|",
+    ] + [f"| {a} | {b} | {d:.3f} |" for a, b, d in folgas] + [
+        "",
+        "## Números do modelo",
         "",
         "| Grandeza | Valor |",
         "|----------|-------|",
         f"| Massa total | {total:.0f} g |",
         f"| CG (x, y, z) | ({x:.1f}, {y:.1f}, {z:.1f}) mm — origem no eixo motriz, no chão |",
-        f"| Carga nos patins | {assembly.carga_patins(p):.1%} do peso (meta 10–20 %) |",
+        f"| Carga nos patins | {x / p.lookahead:.1%} do peso (meta 10–20 %) |",
         f"| Lookahead (sensores → eixo) | {p.lookahead:.0f} mm |",
         f"| Roda (diâmetro com O-ring) | {p.roda_od:.1f} mm |",
         f"| O-ring | {g.id:.0f} × {g.cs:.1f} mm, fundo do canal ⌀{g.fundo_d:.2f} mm |",
@@ -78,11 +112,35 @@ def _relatorio(p: Params) -> str:
         "",
         "| Arquivo | Quantidade |",
         "|---------|------------|",
-    ] + [f"| `{n}.stl` | {q} |" for n, q in QUANTIDADE.items()]
+    ] + [f"| `{n}.stl` | {q} |" for n, q in QUANTIDADE.items()] + [
+        "",
+        "## Fixadores",
+        "",
+        "Comprimentos conferidos contra os furos do modelo (rosca útil ≥ "
+        f"{fixadores.ENGATE_MIN:.0f} mm, ponta a ≥ {fixadores.FOLGA_PONTA} mm do fundo).",
+        "",
+        "| Qtd. | Item | Onde |",
+        "|------|------|------|",
+    ] + [f"| {q} | {item} | {onde} |" for q, item, onde in fixadores.lista(p)] + [
+        "",
+        "## Ligação do QTR-8A",
+        "",
+        "- Barra de pinos 8×2 ou 11×1 de 2,54 mm soldada **por cima** do QTR, que monta com "
+        "a borda dos pinos para trás. O conector fêmea sai pela janela da viga da barra "
+        f"(envelope de {components.CONECTOR_H:.1f} mm acima da placa, verificado contra "
+        "interferência).",
+        f"- Chicote de 11 fios AWG 30 (⌀ ≤ 0,6 mm, uma camada): volta por cima da língua, "
+        "desce pelo rasgo na ponta de trás da língua (e do calço da língua), corre no canal "
+        f"de {chicote.LARGURA:.0f} × {chicote.CANAL_PROF:.1f} mm no topo da base, por baixo "
+        "do suporte 2×18650 e das paredes do berço, e sobe entre os conectores dos N20 até o "
+        "perfboard.",
+    ]
     return "\n".join(linhas) + "\n"
 
 
-def gerar(destino: Path, p: Params | None = None) -> dict[str, Path]:
+def executar(destino: Path, p: Params | None = None
+             ) -> tuple[dict[str, Path], list[assembly.Verificacao]]:
+    """Exporta tudo para `destino` e devolve (STLs gerados, verificações)."""
     p = p or carregar()
     destino.mkdir(parents=True, exist_ok=True)
     saidas = {}
@@ -92,11 +150,38 @@ def gerar(destino: Path, p: Params | None = None) -> dict[str, Path]:
         saidas[nome] = destino / f"{nome}.stl"
     tudo = {**assembly.pecas_impressas(p), **assembly.rodas(p), **assembly.componentes(p)}
     export_step(Compound(children=list(tudo.values())), str(destino / "assembly.step"))
-    (destino / "relatorio_montagem.md").write_text(_relatorio(p), encoding="utf-8")
-    return saidas
+    verifs = assembly.verificacoes(p)
+    folgas = assembly.folgas_por_par(p, LIMITE_FOLGAS)
+    (destino / "relatorio_montagem.md").write_text(_relatorio(p, verifs, folgas),
+                                                   encoding="utf-8")
+    return saidas, verifs
+
+
+def gerar(destino: Path, p: Params | None = None) -> dict[str, Path]:
+    return executar(destino, p)[0]
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--medidas", type=Path, default=None,
+                    help="TOML de medidas (padrão: hardware/cad/medidas.toml)")
+    ap.add_argument("--saida", type=Path, default=CAD_DIR / "out",
+                    help="pasta de saída (padrão: hardware/cad/out)")
+    args = ap.parse_args(argv)
+    try:
+        p = carregar(args.medidas)
+    except (KeyError, ValueError, OSError) as erro:
+        print(f"ERRO no medidas.toml: {erro}", file=sys.stderr)
+        return 2
+    _, verifs = executar(args.saida, p)
+    print((args.saida / "relatorio_montagem.md").read_text(encoding="utf-8"))
+    falhas = [v for v in verifs if not v.ok]
+    if falhas:
+        print("NÃO IMPRIMIR: " + "; ".join(f"{v.nome} ({v.valor})" for v in falhas),
+              file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    gerar(CAD_DIR / "out")
-    print((CAD_DIR / "out" / "relatorio_montagem.md").read_text())
-    sys.exit(0)
+    sys.exit(main())
