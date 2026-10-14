@@ -330,7 +330,7 @@ vezes. O dashboard mostra o código e o nome em ERRO (aba SISTEMA). **Para sair:
 
 | Código | Nome no dashboard | Sintoma | Causa provável | Ação |
 |--------|-------------------|---------|----------------|------|
-| 1 | LAÇO ATRASADO | Para no meio da corrida; 1 piscada | O laço de controle passou de 2000 µs em 5 ciclos seguidos (`src/main.cpp`) | Anote o LAÇO MÁX (`ovr`) da aba SISTEMA. Toque curto e tente de novo. Se repetir, regrave o firmware e relate ao desenvolvimento (manual de manutenção) |
+| 1 | LAÇO ATRASADO | Para no meio da corrida; 1 piscada | O laço de controle passou de 2000 µs em 5 ciclos seguidos (`src/main.cpp`) | Anote o LAÇO MÁX (`ovr`) da aba SISTEMA. Toque curto e tente de novo. Se repetir, regrave o firmware e relate ao desenvolvimento ([manutenção](MANUTENCAO.md), seção 3.3) |
 | 2 | LINHA PERDIDA | Para ao sair de uma curva ou cruzamento; 2 piscadas | A linha ficou fora dos sensores por mais de `lostMs` | Recoloque o carro na linha e dê toque curto. Baixe `vmax`/`vmin`; recalibre se a luz mudou; suba `lostMs` com cuidado |
 | 3 | BATERIA BAIXA | Não arma, ou para correndo; 3 piscadas | Tensão abaixo de `vcut` por 1 s | Troque por células carregadas. Confira a leitura com o multímetro e afira `vbk` (seção 10) |
 | 4 | CALIBRAÇÃO INVÁLIDA | Fim da calibração com 4 piscadas | Algum canal com faixa menor que 200 contagens; o `calres` lista os canais | Refaça a calibração passando todos os sensores pela linha. Confira a altura do sensor e o canal no `bench_sensor_raw` |
@@ -344,7 +344,7 @@ vezes. O dashboard mostra o código e o nome em ERRO (aba SISTEMA). **Para sair:
 | `err:"key"` | Chave desconhecida | Confira o nome na seção 5 (maiúsculas contam) |
 | `err:"running"` | Não permitido com o carro armado ou correndo | Pare o carro e repita |
 | `err:"dirty"` | Troca de perfil com mudança não salva | Salve ou descarte (seção 6) |
-| `err:"store"` | Falha ao gravar | Repita; se persistir, veja o manual de manutenção |
+| `err:"store"` | Falha ao gravar | Repita; se persistir, veja a [manutenção](MANUTENCAO.md), seção 3.10 |
 | `err:"parse"` | Comando com JSON inválido | Confira aspas e vírgulas |
 | `err:"locked"` | Modo competição: recusado com o carro armado ou correndo | Pare o carro pelo botão (seção 12) |
 | `err:"cal"` | `start` com calibração de encoder aberta | Termine com `cal finish` ou envie `reset` |
