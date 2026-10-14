@@ -3,6 +3,9 @@
 > **Arquivo gerado automaticamente** por `tools/gen_fichas.py` a partir de `hardware/components/specs.py`. Não edite este arquivo — altere o `specs.py` e regenere.
 
 
+> **OBSOLETO** — Removido na v2: o apoio é feito por patins PETG na barra de sensores (DEC-2).
+
+
 ## 1 Identificação
 
 | Campo | Valor |

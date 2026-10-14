@@ -33,7 +33,7 @@ class Medida:
 class Componente:
     """Ficha de um componente comprado."""
 
-    num: str              # "01" .. "10"
+    num: str              # "01" .. "13"
     nome: str
     fabricante: str
     codigo: str
@@ -45,6 +45,7 @@ class Componente:
     medidas: dict[str, Medida]
     eletrico: dict[str, str] = field(default_factory=dict)
     notas_montagem: list[str] = field(default_factory=list)
+    obsoleto: str = ""    # motivo; vazio = em uso
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -56,6 +57,7 @@ U_DEVKIT = ("https://mischianti.org/"
             "doit-esp32-dev-kit-v1-high-resolution-pinout-and-specs/")
 U_MCP = "https://ww1.microchip.com/downloads/en/DeviceDoc/21295d.pdf"
 U_QTR = "https://www.pololu.com/product/960"
+U_QTR_DIM = "https://a.pololu-files.com/picture/0J623.600.jpg (docs/0J12/3)"
 U_N20 = "https://www.pololu.com/file/0J949/micro-metal-gearmotor-dimensions.pdf"
 U_TB = "https://www.sparkfun.com/sparkfun-motor-driver-dual-tb6612fng-1a.html"
 U_MP = "https://www.makerfabs.com/adjustable-mini-dc-dc-module-mp1584en.html"
@@ -63,7 +65,8 @@ U_MPS = "https://www.monolithicpower.com/en/mp1584.html"
 U_CASTER = ("https://www.robocore.net/robotica/"
             "bola-de-rodinha-metalica-1-2-polegada")
 U_CASTER_REF = "https://www.pololu.com/product/952"
-SCAD_RODA = "hardware/chassis/wheel_hub.scad (projeto próprio)"
+CAD_RODA = "hardware/cad/parts/wheel.py"
+CAD_PARAMS = "hardware/cad/params.py"
 
 
 COMPONENTES: dict[str, Componente] = {
@@ -240,6 +243,35 @@ COMPONENTES: dict[str, Componente] = {
                 nota="Máxima recomendada: 6 mm. O config.h usa "
                      "SENSOR_HEIGHT_MM 4 — dentro do limite, mas acima do "
                      "ótimo (ver docs/DIVERGENCIAS.md, D8)."),
+            "entre_furos": Medida(
+                69.85, Prov.OFICIAL,
+                f'{U_QTR_DIM} — 2.75" entre os furos de fixação das pontas',
+                nota="Furos para parafuso #2 (M2). Há um terceiro furo a "
+                     '0.55" (13,97 mm) de uma das pontas, usado quando a placa '
+                     "é partida em 6 + 2 sensores."),
+            "furo_borda": Medida(
+                2.4, Prov.MEDIR,
+                f"{U_QTR_DIM} — estimado em escala no diagrama (sem cota): "
+                "o centro dos furos fica junto da borda dos pinos, não no eixo "
+                "da placa",
+                nota="MEDIR (medidas.toml: qtr_furo_borda). Define a posição "
+                     "dos postes da barra de sensores."),
+            "pinos_fileira_borda": Medida(
+                1.7, Prov.MEDIR,
+                f"{U_QTR_DIM} — estimado em escala: centro da fileira de "
+                "pinos mais próxima da borda; a segunda fica 2,54 mm para dentro",
+                nota="MEDIR (medidas.toml: qtr_pinos_borda). Barra 8×2 ou 11×1 "
+                     "de 2,54 mm (página do produto)."),
+            "pinos_inicio": Medida(
+                27.2, Prov.MEDIR,
+                f"{U_QTR_DIM} — estimado em escala: início do campo de pinos, "
+                'medido da ponta do furo a 0.55"',
+                nota="MEDIR (medidas.toml: qtr_pinos_ini)."),
+            "pinos_fim": Medida(
+                55.4, Prov.MEDIR,
+                f"{U_QTR_DIM} — estimado em escala: fim do campo de pinos "
+                "(GND da fileira de dentro), mesma referência",
+                nota="MEDIR (medidas.toml: qtr_pinos_fim)."),
         },
         eletrico={
             "tensão de operação": "3,3 – 5,0 V",
@@ -474,6 +506,8 @@ COMPONENTES: dict[str, Componente] = {
             "Não descarregar abaixo de 3,0 V/célula. O divisor 100k+47k no "
             "GPIO 34 monitora VBAT (ver docs/WIRING.md).",
         ],
+        obsoleto="Substituída pelo suporte 2×18650 (ficha 12) na v2 — spec 2026-10-13, "
+                 "DEC-1.",
     ),
     # ═══════════════════════════════════════════════════════════════════
     "mp1584": Componente(
@@ -533,72 +567,66 @@ COMPONENTES: dict[str, Componente] = {
     # ═══════════════════════════════════════════════════════════════════
     "roda": Componente(
         num="08",
-        nome="Roda ⌀34 mm com pneu O-ring de silicone",
-        fabricante="Genérico / cubo impresso em PETG",
-        codigo="—",
-        fornecedor="AliExpress / Mercado Livre + impressão 3D",
-        preco="R$ 20,00 (par)",
+        nome="Roda impressa em PETG com pneu O-ring de silicone",
+        fabricante="Projeto próprio",
+        codigo="hardware/cad/parts/wheel.py",
+        fornecedor="Impressão 3D + O-ring (ficha 13)",
+        preco="≈ R$ 2 (PETG) + O-rings",
         url_datasheet="",
         ref_abnt="",
-        massa_g=6.0,
+        massa_g=5.0,
         medidas={
             "diametro_externo": Medida(
-                34.0, Prov.TIPICO,
-                f"{SCAD_RODA} — WHEEL_OD = 34; bom.csv 'Roda silicone 34mm'",
+                40.9, Prov.TIPICO,
+                f"{CAD_RODA} — O-ring 34 × 3 com 3 % de estiramento",
                 nota="Diâmetro sobre o O-ring montado. Define a altura do "
-                     "eixo motriz ao solo: 17 mm (prancha A1)."),
+                     "eixo motriz ao solo (≈ 20,5 mm). Faixa de projeto: "
+                     "38–44 mm (spec 2026-10-13, §5.4)."),
             "largura": Medida(
-                8.0, Prov.TIPICO,
-                f"{SCAD_RODA} — WHEEL_WIDTH = 8"),
+                8.2, Prov.TIPICO,
+                f"{CAD_PARAMS} — Params.roda_aro_w (largura do aro)"),
             "diametro_furo_eixo": Medida(
-                3.0, Prov.OFICIAL,
-                f"{U_N20} — vista lateral: ⌀3,0 mm [0.12 in]",
-                nota="Tem que casar com o eixo do N20 (ficha 04)."),
+                3.05, Prov.TIPICO,
+                f"{CAD_PARAMS} — Tolerancias.eixo_d",
+                nota="Eixo do N20 de ⌀3,0 mm (ficha 04) com folga de PETG. "
+                     "Ajustar pelo cupom de tolerância (medidas.toml)."),
             "achatado_furo_eixo": Medida(
-                2.5, Prov.OFICIAL,
-                f"{U_N20} — vista lateral: 2,5 mm [0.10 in] entre faces",
-                nota="Rebaixo em D do furo, cópia do achatado do eixo. "
-                     "É o que impede a roda de patinar no eixo."),
+                2.55, Prov.TIPICO,
+                f"{CAD_PARAMS} — Tolerancias.eixo_achatado",
+                nota="Rebaixo em D do furo, cópia do achatado de 2,5 mm do "
+                     "eixo. É o que impede a roda de patinar no eixo."),
             "profundidade_furo_eixo": Medida(
-                10.0, Prov.TIPICO,
-                f"{SCAD_RODA} — AXLE_DEPTH = 10",
-                nota="CONFLITO: 10 mm de profundidade num cubo de 8 mm de "
-                     "largura não fecha. Ou o cubo ganha um ressalto de "
-                     "2 mm, ou a profundidade cai para 8 mm e o eixo do N20 "
-                     "não entra inteiro (ver docs/DIVERGENCIAS.md, D9)."),
+                9.4, Prov.TIPICO,
+                f"{CAD_PARAMS} — Params.roda_cubo_l",
+                nota="Cubo de 9,4 mm: engata o eixo de 10 mm com 0,6 mm de "
+                     "folga para o colar (resolve D9)."),
             "diametro_canal_oring": Medida(
-                30.0, Prov.TIPICO,
-                f"{SCAD_RODA} — ORING_GROOVE_D = 30 (fundo do canal)"),
+                35.0, Prov.TIPICO,
+                f"{CAD_RODA} — fundo do canal = ID do O-ring × 1,03"),
             "largura_canal_oring": Medida(
-                3.5, Prov.TIPICO,
-                f"{SCAD_RODA} — ORING_GROOVE_W = 3.5"),
+                3.75, Prov.TIPICO,
+                f"{CAD_RODA} — 1,25 × seção do O-ring"),
             "secao_oring": Medida(
                 3.0, Prov.TIPICO,
-                f"{SCAD_RODA} — ORING_GROOVE_D_ORING = 3",
-                nota="34 - 30 = 4 mm de diâmetro sobrando para um O-ring "
-                     "de 3 mm de seção: ele sobressai 0,5 mm de cada lado "
-                     "quando assentado."),
+                f"{CAD_RODA} — O-ring 34 × 3 (ficha 13)"),
             "diametro_cubo": Medida(
-                14.0, Prov.TIPICO, f"{SCAD_RODA} — HUB_D = 14"),
+                10.0, Prov.TIPICO, f"{CAD_PARAMS} — Params.roda_cubo_d"),
             "diametro_furo_grub": Medida(
-                3.0, Prov.TIPICO,
-                f"{SCAD_RODA} — GRUB_D = 3.0, parafuso M3 sem cabeça",
-                nota="Trava anti-rotação, radial, contra o achatado do eixo."),
+                1.7, Prov.TIPICO,
+                f"{CAD_PARAMS} — Tolerancias.autoatarraxante_m2",
+                nota="Furo radial para M2 autoatarraxante, trava opcional "
+                     "contra o achatado do eixo."),
         },
         eletrico={},
         notas_montagem=[
-            "O furo do eixo é a interface crítica: ⌀3,0 mm com achatado de "
-            "2,5 mm entre faces, copiado da ficha 04. Imprimir com "
-            "tolerância de 0,2 mm (TOL no wheel_hub.scad) e ajustar.",
-            "Altura do eixo motriz ao solo = ⌀34/2 = 17 mm. O ball caster "
-            "(ficha 09) tem que ser regulado para essa mesma altura.",
-            "D9 — O wheel_hub.scad pede furo de eixo de 10 mm de "
-            "profundidade num cubo de 8 mm de largura. Resolver antes de "
-            "imprimir: ressalto de 2 mm na face interna é a saída que "
-            "mantém o eixo do N20 (10 mm úteis) totalmente encaixado.",
-            "MASSA ESTIMADA (6,0 g por roda, cubo PETG + O-ring) — PESAR. "
-            "São duas rodas no cálculo de CG (A1).",
-            "Comprar O-rings de reserva: o silicone é o item de desgaste.",
+            "Imprimir com a face externa na mesa (o canal do O-ring tem o "
+            "teto a 55° e imprime sem suporte).",
+            "Antes de imprimir as rodas, testar o encaixe do eixo nos furos "
+            "em D do cupom de tolerância e preencher eixo_d / eixo_achatado "
+            "no hardware/cad/medidas.toml.",
+            "O O-ring é item de desgaste: trocar quando a superfície ficar "
+            "lisa (ficha 13).",
+            "MASSA ESTIMADA (5,0 g por roda, cubo PETG + O-ring) — PESAR.",
         ],
     ),
     # ═══════════════════════════════════════════════════════════════════
@@ -658,6 +686,8 @@ COMPONENTES: dict[str, Componente] = {
             "balanço de CG da prancha A1.",
             "MASSA ESTIMADA (2,0 g) — PESAR.",
         ],
+        obsoleto="Removido na v2: o apoio é feito por patins PETG na barra de sensores "
+                 "(DEC-2).",
     ),
     # ═══════════════════════════════════════════════════════════════════
     "perfboard": Componente(
@@ -704,6 +734,89 @@ COMPONENTES: dict[str, Componente] = {
             "50 × 70 mm não é obrigatória.",
             "MASSA ESTIMADA (12,0 g com a placa inteira) — PESAR depois do "
             "corte, já com os componentes soldados.",
+        ],
+    ),
+    # ═══════════════════════════════════════════════════════════════════
+    "celula18650": Componente(
+        num="11",
+        nome="Célula Li-ion 18650 high-drain",
+        fabricante="Samsung / LG / Sony (originais)",
+        codigo="ex.: INR18650-25R, HG2, VTC6 — classe ≥ 20 A",
+        fornecedor="Mercado Livre / lojas de baterias",
+        preco="≈ R$ 30–45 cada (estimado)",
+        url_datasheet="",
+        ref_abnt="",
+        massa_g=46.0,
+        medidas={
+            "diametro": Medida(18.4, Prov.TIPICO,
+                               "formato 18650: ⌀18 mm nominal, até 18,6 mm com invólucro",
+                               nota="MEDIR as células compradas (medidas.toml: celula_d)."),
+            "comprimento": Medida(65.2, Prov.TIPICO,
+                                  "formato 18650: 65 mm nominal, topo plano sem proteção",
+                                  nota="Células com placa de proteção chegam a 69 mm e "
+                                       "podem não caber no suporte."),
+        },
+        eletrico={
+            "tensão nominal": "3,6–3,7 V (2S: 7,2–7,4 V)",
+            "tensão máxima": "4,2 V (2S: 8,4 V)",
+            "tensão mínima": "2,5–3,0 V conforme o fabricante (firmware corta em 6,4 V no 2S)",
+            "corrente": "≥ 20 A contínuos (high-drain)",
+        },
+        notas_montagem=[
+            "Usar SEMPRE duas células do mesmo modelo, lote e carga.",
+            "Carregar fora do carro, em carregador próprio de Li-ion.",
+            "Célula com invólucro rasgado ou amassada vai para o descarte.",
+            "MASSA TÍPICA (46 g) — PESAR.",
+        ],
+    ),
+    # ═══════════════════════════════════════════════════════════════════
+    "suporte18650": Componente(
+        num="12",
+        nome="Suporte plástico 2×18650 (série, com fios)",
+        fabricante="Genérico",
+        codigo="—",
+        fornecedor="Mercado Livre / AliExpress",
+        preco="≈ R$ 5 (estimado)",
+        url_datasheet="",
+        ref_abnt="",
+        massa_g=12.0,
+        medidas={
+            "comprimento": Medida(77.0, Prov.MEDIR, "modelos genéricos: 76–80 mm",
+                                  nota="MEDIR (medidas.toml: suporte_l). Define o berço."),
+            "largura": Medida(41.0, Prov.MEDIR, "modelos genéricos: 40–42 mm",
+                              nota="MEDIR (medidas.toml: suporte_w)."),
+            "altura": Medida(20.5, Prov.MEDIR, "modelos genéricos: 19–21 mm",
+                             nota="MEDIR (medidas.toml: suporte_h)."),
+        },
+        eletrico={"ligação": "série (2S), saída por fios vermelho/preto"},
+        notas_montagem=[
+            "Conferir que o suporte é SÉRIE (2S): medir 7–8,4 V entre os fios com as células.",
+            "As molas perdem pressão com o uso — inspecionar na manutenção.",
+            "O berço trava o suporte pelos cantos; as células saem por cima sem soltar nada.",
+        ],
+    ),
+    # ═══════════════════════════════════════════════════════════════════
+    "oring": Componente(
+        num="13",
+        nome="O-ring de silicone 34 × 3 mm (pneu da roda)",
+        fabricante="Genérico (norma métrica)",
+        codigo="34 × 3 silicone 70 Shore A",
+        fornecedor="Lojas de vedação / Mercado Livre",
+        preco="≈ R$ 1 cada (estimado)",
+        url_datasheet="",
+        ref_abnt="",
+        massa_g=0.5,
+        medidas={
+            "diametro_interno": Medida(34.0, Prov.TIPICO, "designação métrica ID × seção",
+                                       nota="MEDIR (medidas.toml: oring_id)."),
+            "secao": Medida(3.0, Prov.TIPICO, "designação métrica ID × seção",
+                            nota="MEDIR (medidas.toml: oring_cs)."),
+        },
+        eletrico={},
+        notas_montagem=[
+            "Comprar 4 (2 em uso + 2 de reserva).",
+            "Estiramento de 3 % no canal: o O-ring não pode sair rolando nem ficar frouxo.",
+            "Silicone resseca e perde aderência — trocar quando a superfície ficar lisa.",
         ],
     ),
 }

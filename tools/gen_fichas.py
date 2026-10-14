@@ -49,6 +49,10 @@ def render_ficha(c: Componente) -> str:
     p: list[str] = [
         f"# Ficha {c.num} — {c.nome}\n",
         AVISO,
+    ]
+    if c.obsoleto:
+        p.append(f"\n> **OBSOLETO** — {c.obsoleto}\n")
+    p += [
         "\n## 1 Identificação\n",
         "| Campo | Valor |",
         "|-------|-------|",
@@ -84,7 +88,11 @@ def render_ficha(c: Componente) -> str:
             p.append(f"- {n}")
 
     p.append("\n## 5 Prancha\n")
-    p.append(f"`hardware/drawings/comp/{c.num}-{chave}.svg`\n")
+    prancha = os.path.join(RAIZ, "hardware", "drawings", "comp", f"{c.num}-{chave}.svg")
+    if os.path.exists(prancha):
+        p.append(f"`hardware/drawings/comp/{c.num}-{chave}.svg`\n")
+    else:
+        p.append("— sem prancha SVG; a geometria está no modelo CAD em `hardware/cad/`.\n")
 
     if c.ref_abnt:
         p.append("\n## 6 Referência (NBR 6023)\n")

@@ -3,6 +3,9 @@
 > **Arquivo gerado automaticamente** por `tools/gen_fichas.py` a partir de `hardware/components/specs.py`. Não edite este arquivo — altere o `specs.py` e regenere.
 
 
+> **OBSOLETO** — Substituída pelo suporte 2×18650 (ficha 12) na v2 — spec 2026-10-13, DEC-1.
+
+
 ## 1 Identificação
 
 | Campo | Valor |

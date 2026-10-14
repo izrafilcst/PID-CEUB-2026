@@ -18,3 +18,4 @@ graphify-out/
 # Vector DB
 ruvector.db
 build/
+hardware/cad/.venv/
