@@ -354,7 +354,7 @@ normalizados: no modo PWM direto, a fração 1,0 = duty 1023; no modo cascata, 1
 | `sinv` | Inverte a ordem dos sensores (barra montada espelhada) | — | 0 | {0, 1} |
 | `chem` | Química da bateria (curva de %): 0 = LiPo, 1 = Li-ion | — | 1 | {0, 1} |
 | `lock` | Modo competição: 1 = recusa todo comando BLE em ARMED/RUNNING | — | 0 | {0, 1} |
-| `vcut` | Tensão de corte (abaixo dela por 1 s: não dá start / para) | V | 6,4 | 5,6–7,6 |
+| `vcut` | Tensão de corte (abaixo dela não dá start; correndo, para depois de 1 s abaixo dela) | V | 6,4 | 5,6–7,6 |
 | `vbk` | Fator de correção da leitura de tensão (ajuste com multímetro) | — | 1,000 | 0,800–1,200 |
 | `pprL` / `pprR` | Pulsos ×4 por volta do eixo de saída (também pela auto-calibração `cal`) | — | 600 | 1–10000 |
 
