@@ -34,7 +34,7 @@
 #define SENSOR_COUNT          8
 #define SENSOR_SPACING_MM    10
 #define SENSOR_HEIGHT_MM      3
-#define LOOKAHEAD_MM         70
+#define LOOKAHEAD_MM         85   // sensores → eixo motriz, modelo v2 (D12)
 
 // ═══ ENCODER / VELOCITY ═══════════════════════════════════════════════════
 // Contagens ×4 por volta do EIXO DE SAÍDA. 600 = encoder de 12 CPR no eixo do motor ×
