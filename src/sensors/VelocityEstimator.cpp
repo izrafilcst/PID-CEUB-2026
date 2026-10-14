@@ -5,13 +5,13 @@
 #include <cmath>
 #include <cstring>
 
-// Sanity range para PPR persistido — rejeita NaN, Inf, ≤0 e valores absurdos.
-static constexpr float PPR_MIN_SANE = 0.5f;
-static constexpr float PPR_MAX_SANE = 100000.0f;
+// Faixa do PPR igual à do RobotConfig (pprL/pprR): rejeita NaN, Inf e valores fora dela.
+// Um PPR fora da faixa faria todo save falhar e seria descartado no boot (A-WP1-04).
+static constexpr float PPR_MIN_SANE = ENCODER_PPR_X4_MIN;
+static constexpr float PPR_MAX_SANE = ENCODER_PPR_X4_MAX;
 
-// dtMs máximo aceito antes de descartar a janela (jitter, scheduler hiccup,
-// primeira chamada). Acima disso o cálculo de RPM perde sentido físico.
-static constexpr uint32_t DT_MAX_MS = 500;
+// dt máximo aceito antes de descartar a janela (jitter, primeira chamada, stall).
+static constexpr uint32_t DT_MAX_US = 500000;
 
 // Limite ESP-IDF NVS: chaves ≤ 15 chars. Reservamos "_ppr" (4) → prefix ≤ 11.
 static constexpr size_t PREFIX_MAX_LEN = 11;
@@ -59,21 +59,23 @@ void VelocityEstimator::begin() {
     _enc.getDelta();
 }
 
-void VelocityEstimator::update(uint32_t dtMs) {
+void VelocityEstimator::update(uint32_t dtUs) {
     // Sempre drena delta — evita acumulação que distorceria a próxima janela.
-    int32_t delta = _enc.getDelta();
+    const int32_t delta = _enc.getDelta();
     // Durante calibração: usuário gira a roda manualmente; suprimir o IIR
     // evita emitir RPM mentiroso para o PID externo (Wave 3 MED-1).
     if (_calibrating) return;
-    if (dtMs == 0 || dtMs > DT_MAX_MS || _pprX4 <= 0.0f) {
-        // dt inválido (jitter, primeira chamada, stall) — descarta janela,
-        // mantém o RPM filtrado anterior.
-        return;
-    }
-    // pulsos/ms → rotações/min: ×60_000 / pprX4
-    float rpmRaw = (static_cast<float>(delta) * 60000.0f)
-                 / (static_cast<float>(dtMs) * _pprX4);
+    if (dtUs == 0 || dtUs > DT_MAX_US || _pprX4 <= 0.0f) return;
+    // contagens/µs → rotações/min: × 60 000 000 / pprX4
+    const float rpmRaw = (static_cast<float>(delta) * 60000000.0f)
+                       / (static_cast<float>(dtUs) * _pprX4);
     _rpmFiltered = _alpha * rpmRaw + (1.0f - _alpha) * _rpmFiltered;
+}
+
+bool VelocityEstimator::setPprX4(float pprX4) {
+    if (!std::isfinite(pprX4) || pprX4 < PPR_MIN_SANE || pprX4 > PPR_MAX_SANE) return false;
+    _pprX4 = pprX4;
+    return true;
 }
 
 float VelocityEstimator::getRPM() const {
@@ -98,6 +100,13 @@ void VelocityEstimator::startCalibration() {
     _calibrating = true;
 }
 
+void VelocityEstimator::cancelCalibration() {
+    if (!_calibrating) return;
+    _calibrating = false;
+    _rpmFiltered = 0.0f;
+    _enc.getDelta();  // as voltas da calibração cancelada não entram no próximo RPM
+}
+
 bool VelocityEstimator::finishCalibration(int rotations) {
     if (rotations <= 0) {
         _calibrating = false;  // ainda libera o flag mesmo em falha
@@ -111,7 +120,14 @@ bool VelocityEstimator::finishCalibration(int rotations) {
     // std::abs(INT32_MIN) é UB em C++ (overflow signed) — cast antes p/ float
     // garante valor absoluto seguro para qualquer entrada de int32_t.
     float absCount = std::fabs(static_cast<float>(count));
-    _pprX4 = absCount / static_cast<float>(rotations);
+    const float ppr = absCount / static_cast<float>(rotations);
+    if (ppr < PPR_MIN_SANE || ppr > PPR_MAX_SANE) {
+        // Fora da faixa: recusa, mantém o PPR atual e não grava nada
+        _calibrating = false;
+        _enc.getDelta();
+        return false;
+    }
+    _pprX4 = ppr;
     _store.putFloat(_key, _pprX4);
     _rpmFiltered = 0.0f;
     _calibrating = false;

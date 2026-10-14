@@ -18,7 +18,7 @@
  *   VelocityEstimator velL(encL, nvs, "left");
  *   velL.begin();             // carrega PPR salvo (ou default ENCODER_DEFAULT_PPR_X4)
  *   ... loop ...
- *   velL.update(dtMs);        // chamar periodicamente (10–20 ms)
+ *   velL.update(dtUs);        // chamar a cada ciclo de controle (dt em µs)
  *   float rpm = velL.getRPM();
  */
 class VelocityEstimator {
@@ -28,8 +28,11 @@ public:
     // Carrega PPR persistido (ou usa default). Chamar uma vez no setup.
     void begin();
 
-    // Atualiza RPM dado intervalo desde última chamada (ms).
-    void update(uint32_t dtMs);
+    // Atualiza o RPM dado o intervalo desde a última chamada, em MICROSSEGUNDOS (F-06).
+    void update(uint32_t dtUs);
+
+    /** Applies a new effective PPR (x4, output shaft). Not persisted. False if insane. */
+    bool setPprX4(float pprX4);
 
     // RPM filtrado (com sinal — negativo = sentido reverso).
     float getRPM() const;
@@ -46,6 +49,9 @@ public:
     // 3. finishCalibration(N) — calcula PPR = count/N e grava no store.
     void startCalibration();
     bool finishCalibration(int rotations);
+    /** Abandons an open calibration (reset): keeps the PPR, writes nothing (E-4). */
+    void cancelCalibration();
+    bool isCalibrating() const { return _calibrating; }
 
 private:
     Encoder&          _enc;

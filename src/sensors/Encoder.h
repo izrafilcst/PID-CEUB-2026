@@ -10,9 +10,9 @@
  * Leitor de encoder em quadratura 4× — máxima resolução por período.
  *
  * Hardware (ESP32): conectar CH-A e CH-B aos pinos passados no construtor.
- * Resistor 10 kΩ externo para VCC nos pinos de entrada
- * (GPIO 36 e 39 são input-only e NÃO têm pull-up interno — pinMode INPUT_PULLUP
- * é silenciosamente ignorado, então usamos INPUT explícito).
+ * Pinos com pull-up interno (ex.: GPIO 18/19) são configurados como INPUT_PULLUP (F-24).
+ * GPIO 34–39 são input-only e NÃO têm pull-up interno: ficam em INPUT e exigem
+ * resistor externo de 10 kΩ para VCC (GPIO 36/39 do encoder direito).
  *
  * Native build: ISRs são suprimidas. Use _simulatePulse(a, b) nos testes para
  * injetar transições determinísticas.

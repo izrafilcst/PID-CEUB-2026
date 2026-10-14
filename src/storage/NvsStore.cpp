@@ -36,6 +36,18 @@ void NvsStore::clear() {
     if (_open) _prefs.clear();
 }
 
+bool NvsStore::putBlob(const char* key, const void* data, size_t len) {
+    if (!_open) return false;
+    return _prefs.putBytes(key, data, len) == len;
+}
+
+size_t NvsStore::getBlob(const char* key, void* out, size_t maxLen) {
+    if (!_open || !_prefs.isKey(key)) return 0;
+    const size_t len = _prefs.getBytesLength(key);
+    if (len > 0 && len <= maxLen) _prefs.getBytes(key, out, len);
+    return len;
+}
+
 #else  // NATIVE_BUILD — stubs (use InMemoryStore nos testes)
 
 bool  NvsStore::begin(const char*) { _open = false; return false; }
@@ -44,5 +56,7 @@ void  NvsStore::putFloat(const char*, float) {}
 float NvsStore::getFloat(const char*, float def) { return def; }
 bool  NvsStore::exists(const char*) const { return false; }
 void  NvsStore::clear() {}
+bool   NvsStore::putBlob(const char*, const void*, size_t) { return false; }
+size_t NvsStore::getBlob(const char*, void*, size_t) { return 0; }
 
 #endif

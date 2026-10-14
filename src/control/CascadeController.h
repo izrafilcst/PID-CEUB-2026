@@ -1,51 +1,39 @@
 #pragma once
 #include "control/PIDController.h"
 
+/** Comando por roda produzido pela cascata. Frações em [-1, +1]; setpoints em RPM. */
+struct WheelCommand {
+    float uL;
+    float uR;
+    float spL;
+    float spR;
+};
+
 /**
- * Controlador em cascata para diferencial duplo:
+ * Malha interna de velocidade, um PID por motor.
  *
- *   correction (do PID externo de posição)
- *        ↓
- *   tradução: setpointL = base + correction,  setpointR = base − correction
- *        ↓
- *   2× PID interno (compute(setpoint, actualRpm)) → PWM L/R
+ *   base, u (fração) → mixSteering → fL, fR → setpoint = f × rpmMax
+ *   saída = feedforward f + PID(setpoint − rpm medido)
  *
- * O cliente é responsável por medir `actualRpmL/R` (ex: VelocityEstimator)
- * e passar via `compute()`. Isso desacopla a classe do hardware e facilita
- * testes determinísticos.
- *
- * Saturação:
- *  - setpoint clamped em [−maxRpm, +maxRpm] antes de entrar no PID interno
- *  - PWM já é clamped pelos limites do PIDController interno
- *
- * Convenções de sinal:
- *  - correction > 0  → curva para a direita (motor L mais rápido que R)
- *  - PWM > 0         → frente; PWM < 0 → ré (MotorDriver decide direção)
+ * O feedforward entrega o duty de regime; o PID só corrige o erro (F-08). Os limites do PID
+ * são deslocados pelo feedforward para o anti-windup enxergar a saturação total.
  */
 class CascadeController {
 public:
-    CascadeController(PIDController& innerLeft, PIDController& innerRight,
-                      float maxRpm, int maxPwm);
+    CascadeController(PIDController& innerLeft, PIDController& innerRight);
 
-    // correction      : saída do PID externo (em unidade de RPM diferencial)
-    // targetBaseRpm   : alvo de velocidade linear do robô (em RPM)
-    // actualRpmL/R    : RPM real medido (ex: VelocityEstimator::getRPM())
-    // pwmL/pwmR       : saídas (referência), com sinal
-    void compute(float correction, float targetBaseRpm,
-                 float actualRpmL, float actualRpmR,
-                 int& pwmL, int& pwmR);
+    WheelCommand compute(float base, float u, float rpmMax,
+                         float rpmL, float rpmR, float dtS);
 
-    // Aplica os mesmos ganhos em ambos os PIDs internos (uso típico via BLE).
     void setInnerGains(float kp, float ki, float kd);
 
-    void setMaxRpm(float maxRpm);
-    void setMaxPwm(int   maxPwm);
+    /** Clears both inner loops, aligning derivative memory to the measured RPMs. */
+    void reset(float rpmL, float rpmR);
 
 private:
+    static float _wheel(PIDController& pid, float f, float rpmMax, float rpm,
+                        float dtS, float& setpoint);
+
     PIDController& _pidL;
     PIDController& _pidR;
-    float _maxRpm;
-    int   _maxPwm;
-
-    float _clampF(float v, float lo, float hi) const;
 };

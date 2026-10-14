@@ -1,5 +1,6 @@
 // src/storage/IPersistentStore.h
 #pragma once
+#include <cstddef>
 #include <cstdint>
 
 /**
@@ -18,4 +19,12 @@ public:
     virtual float getFloat(const char* key, float defaultValue) = 0;
     virtual bool  exists(const char* key) const = 0;
     virtual void  clear() = 0;
+
+    /** Stores a binary blob. Returns false on failure. */
+    virtual bool   putBlob(const char* key, const void* data, size_t len) = 0;
+    /**
+     * Returns the stored blob length (0 if missing). Copies into `out` only when the blob
+     * fits in `maxLen`.
+     */
+    virtual size_t getBlob(const char* key, void* out, size_t maxLen) = 0;
 };

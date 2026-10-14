@@ -1,35 +1,41 @@
 #pragma once
 #include "sensors/Calibration.h"
 #include "control/PIDController.h"
-#include "control/SpeedProfile.h"
-#include "motors/DifferentialDrive.h"
 
+/** Resultado de um ciclo da malha de posição. */
+struct LineReading {
+    float error;  ///< posição normalizada em [-1, +1]; > 0 = linha à direita
+    float u;      ///< saída do PID externo em [-1, +1]; > 0 = virar à direita
+    bool  lost;   ///< nenhum sensor vê a linha
+};
+
+/**
+ * Malha de posição: leitura bruta → erro normalizado → PID externo.
+ *
+ * Não altera a calibração em nenhuma hipótese (F-01). Com a linha perdida, o erro satura
+ * para o lado onde ela foi vista por último (F-14).
+ */
 class LineFollower {
 public:
-    LineFollower(Calibration& cal, PIDController& pid,
-                 SpeedProfile& speed, DifferentialDrive& drive);
+    LineFollower(Calibration& cal, PIDController& pid);
 
-    // Executa um ciclo completo: raw → pwm L/R
-    // normalizedError retorna erro em [-1, +1] para diagnóstico
-    void update(const int* rawSensors, int& leftPwm, int& rightPwm,
-                float* normalizedError = nullptr);
+    LineReading update(const int* rawSensors, float dtS);
 
-    void setPID(float kp, float ki, float kd);
-    void setSpeed(int minSpeed, int baseSpeed, int maxSpeed, float threshold);
-    void reset();
+    /** Error for `rawSensors` without running the PID (used to align resets). */
+    float peekError(const int* rawSensors);
 
-    /** Returns the raw PID correction from the last update() call.
-     *  Used by CascadeController to recover correction without re-deriving
-     *  it from clamped PWM outputs (which would be lossy when motors saturate). */
-    float getLastCorrection() const { return _lastCorrection; }
+    /** Clears the PID aligned to `currentError` and seeds the lost-line memory. */
+    void reset(float currentError = 0.0f);
+
+    void setSensorOrderInverted(bool inverted) { _sensorInvert = inverted; }
 
 private:
-    Calibration&       _cal;
-    PIDController&     _pid;
-    SpeedProfile&      _speed;
-    DifferentialDrive& _drive;
+    float _errorFrom(const int* rawSensors, bool& lost);
 
-    static constexpr float POSITION_MAX = 3500.0f;
-    int   _normalized[8];
-    float _lastCorrection = 0.0f;
+    Calibration&   _cal;
+    PIDController& _pid;
+    float _positionMax;
+    bool  _sensorInvert = false;
+    float _lastValidError = 0.0f;
+    int   _normalized[Calibration::MAX_SENSORS];
 };

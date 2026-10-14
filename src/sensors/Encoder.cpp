@@ -96,16 +96,20 @@ void Encoder::_simulatePulse(bool a, bool b) {
 
 #else  // ESP32 build
 
+// GPIO 34–39 são input-only e não têm pull-up interno: pull-up externo de 10 kΩ obrigatório.
+// Os demais pinos de encoder (18/19, esquerdo) usam o pull-up interno (F-24).
+static uint8_t encoderPinMode(uint8_t pin) {
+    return pin >= 34 ? INPUT : INPUT_PULLUP;
+}
+
 void Encoder::begin() {
     // Idempotência: detach any previous attachment before re-attaching
     if (_started) {
         detachInterrupt(digitalPinToInterrupt(_pinA));
         detachInterrupt(digitalPinToInterrupt(_pinB));
     }
-    // GPIO 36/39 são input-only e NÃO têm pull-up interno; usar INPUT explícito
-    // documenta que o pull-up externo de 10 kΩ é obrigatório no hardware.
-    pinMode(_pinA, INPUT);
-    pinMode(_pinB, INPUT);
+    pinMode(_pinA, encoderPinMode(_pinA));
+    pinMode(_pinB, encoderPinMode(_pinB));
     _lastState  = (digitalRead(_pinA) ? 0x2 : 0x0)
                 | (digitalRead(_pinB) ? 0x1 : 0x0);
     _count = 0;

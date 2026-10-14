@@ -1,154 +1,170 @@
-# TUNING.md — Procedimento de Ajuste PID
+# TUNING.md — Procedimento de Ajuste (firmware 4.0.0)
 
 ## Visão Geral
 
-O ajuste fino do PID é a diferença entre um robô que segue a linha e um campeão. Este documento descreve o procedimento sistemático de calibração, desde o zero absoluto até o modo competição.
+Desde o firmware 4.0.0 todo parâmetro de sintonia é ajustado **por BLE, sem recompilar**, e os
+ganhos são **normalizados** (spec §4.3, DEC-13):
+
+- o erro de posição vai de −1 (linha toda à esquerda) a +1 (toda à direita);
+- a saída do PID de posição e as velocidades são frações de escala em [−1, +1]: no modo PWM
+  direto, 1,0 = duty máximo (1023); no modo cascata, 1,0 = `rpmMax`.
+
+Por isso os ganhos não dependem da resolução do PWM, do número de sensores nem do modo de
+controle. Os valores de fábrica são **ponto de partida para a pista**, não valores sintonizados.
+
+Ajuste ao vivo **não** persiste: só o botão **Salvar** do dashboard (comando `save`) grava na
+NVS, e só com o carro parado. Há 3 perfis (0 "seguro", 1 "treino", 2 "corrida") que diferem,
+de fábrica, só em `vmax` (0,35 / 0,50 / 0,70).
 
 ---
 
 ## 1. Antes de Começar
 
-### Checklist de hardware
-- [ ] Bateria carregada (> 7.0 V em 2S LiPo)
-- [ ] Sensores a **4 mm** do chão (verificar com calibre)
+### Checklist
+- [ ] Bateria 2× 18650 (2S) acima de 7,0 V; o corte padrão (`vcut`) é 6,4 V
+- [ ] Sensores a **3 mm** do chão (patins apoiados)
 - [ ] Rodas limpas, O-rings sem desgaste
-- [ ] Pino STBY habilitado (fio solto = motores mortos)
-- [ ] Encoder: pulsos chegando no osciloscópio ou Serial (teste rápido)
-- [ ] Dashboard BLE conectado e telemetria fluindo
+- [ ] Dashboard conectado (botão **CONECTAR BLE**) e telemetria fluindo
+- [ ] Sentido dos motores conferido no `bench_differential`; se um lado girar ao contrário,
+      ajustar `invL`/`invR` (ou `swap`) pela aba CONFIG — não mexer na fiação
+- [ ] `info` sem aviso `cfgerr` (senão a configuração salva foi descartada e o carro está nos
+      valores de fábrica). O `info` chega quando o dashboard se inscreve nas notificações e a
+      cada `get`; a aba SISTEMA mostra também a folga de pilha (`stk`)
 
-### Parâmetros de partida (config.h)
-```cpp
-KP_DEFAULT   = 3.0f
-KI_DEFAULT   = 0.0f
-KD_DEFAULT   = 12.0f
-BASE_SPEED   = 160      // 0-255
-MAX_SPEED    = 230
-MIN_SPEED    = 60
-THRESHOLD    = 0.6f
-```
+### Parâmetros de partida (fábrica, perfil 0)
+
+| Chave | Valor | Chave | Valor |
+|-------|-------|-------|-------|
+| `mode` | 0 (PWM direto) | `vmax` | 0,35 |
+| `kp` | 1,0 | `vmin` | 0,25 |
+| `ki` | 0,0 | `thr` | 0,6 |
+| `kd` | 0,03 s | `acc` | 2,0 /s |
+| `dlp` | 0,5 | `lostMs` | 300 ms |
+| `kpv` | 0,002 | `kiv` | 0,005 |
+
+Tabela completa, com faixas e unidades: README, seção "Parâmetros em runtime".
 
 ---
 
 ## 2. Calibração dos Sensores
 
-### Procedimento obrigatório antes de qualquer tuning
-1. Posicionar o robô sobre a pista (linha visível pelos sensores)
-2. Pressionar BTN (GPIO 0) — estado muda para `CALIBRATING`
-3. Mover o robô **lentamente** de um lado ao outro da linha durante 5 s
-4. O LED pisca quando a calibração captura extremos satisfatórios
-5. Pressionar BTN novamente → estado `READY`
+### Procedimento obrigatório antes de qualquer sintonia
+1. Posicionar o robô sobre a pista, com a barra sobre a linha
+2. **Toque longo** no botão (segurar 1,5 s) em IDLE ou PRONTO — ou **Calibrar sensores** no
+   dashboard (`scal`). O LED pisca a 5 Hz (CALIBRANDO)
+3. Mover o robô **devagar** de um lado ao outro da linha durante os 5 s da janela
+4. Ao fim, o firmware confere a faixa de cada canal:
+   - todos com max − min ≥ 200 contagens → PRONTO e a calibração é **salva sozinha** na NVS;
+   - algum canal estreito → ERRO(4), e o dashboard mostra "Canais sem contraste: …"
 
 ### Verificar no dashboard
-- Todos os 8 sensores devem variar entre 0–1000 (normalizado)
-- Sensor sobre linha branca: valor alto (> 700)
-- Sensor sobre pista preta: valor baixo (< 200)
-- Se algum sensor não varia → checar conexão SPI / MCP3008
+- Os 8 sensores variam de 0 a 100 % (já com a polaridade `pol` aplicada)
+- Sensor sobre a linha: valor alto (> 70 %); sobre o fundo: baixo (< 20 %)
+- Linha branca é `pol` = 1 (fábrica). Pista com linha preta: `pol` = 0
+- Barra montada espelhada (linha à direita aparece à esquerda): `sinv` = 1
+- Um canal que não varia → conferir SPI/MCP3008 com o `bench_sensor_raw`
 
 ---
 
-## 3. Método Ziegler-Nichols Modificado
+## 3. Sintonia da Malha de Posição (Ziegler–Nichols)
 
-### Passo 1 — Encontrar Ku (ganho crítico de oscilação)
+Trabalhar no **perfil 0 "seguro"** (`vmax` 0,35) e no modo PWM direto (`mode` 0).
 
-1. Zerar Ki e Kd via BLE slider (Ki=0, Kd=0)
-2. Começar com Kp = 1.0
-3. Incrementar Kp em 0.5 a cada tentativa
-4. Observar o robô na pista:
-   - Kp baixo: robô lento para corrigir, sai da linha em curvas
-   - Kp correto: robô oscila com amplitude constante em reta
-   - Kp alto demais: oscilação cresce → sai da linha
-5. Anotar o Kp onde oscila sem crescer → esse é **Ku**
-6. Medir o período de oscilação no gráfico de posição → **Tu** (em ms)
+1. Zerar `ki` e `kd` (aba CONFIG ou sliders da aba PID).
+2. Subir `kp` de **0,5 em 0,5** até o robô oscilar em reta com amplitude constante: esse é o
+   ganho crítico **Ku**. Medir o período da oscilação no gráfico de `pos` → **Tu** (em
+   segundos).
+3. Aplicar o PD de Ziegler–Nichols:
+   - `kp = 0,6 · Ku`
+   - `kd = 0,075 · Ku · Tu` (em segundos)
+   - `ki = 0`
+4. Se o termo D ficar ruidoso (correção tremida no gráfico de `corr`), ajustar `dlp` entre
+   0,3 e 0,7 (menor = mais filtro, mais atraso; 1 = sem filtro).
+5. Subir `vmax` de **0,05 em 0,05** por sessão. Para as curvas, baixar `vmin` (velocidade com
+   erro ≥ `thr`) ou baixar `thr` (a redução começa mais cedo). `acc` limita a subida da
+   velocidade na saída das curvas; a descida é imediata.
+6. `ki` só se houver erro de regime persistente (desvio constante em reta): começar com 0,1.
 
-### Passo 2 — Calcular parâmetros iniciais
-
-| Controlador | Kp        | Ki          | Kd         |
-|-------------|-----------|-------------|------------|
-| P           | 0.50 × Ku | —           | —          |
-| PD          | 0.80 × Ku | —           | 0.125 × Tu |
-| PID clássico| 0.60 × Ku | 1.2/Tu      | 0.075 × Tu |
-| PID agressivo| 0.70 × Ku | 1.75/Tu    | 0.105 × Tu |
-
-> Para LFR: começar com **PD** (Ki=0). Adicionar Ki só se houver erro estático persistente.
-
-### Passo 3 — Ajuste fino iterativo
-
-```
-Iteração 1: definir Kp e Kd por Ziegler-Nichols PD
-Iteração 2: aumentar velocidade base em 10 pontos → re-testar
-Iteração 3: se oscila em reta → aumentar Kd 10%
-Iteração 4: se lento em curva → reduzir MIN_SPEED ou THRESHOLD
-Iteração 5: se perde linha em S → aumentar Kp 15% ou reduzir MAX_SPEED
-```
-
----
-
-## 4. Guia de Sintomas e Correções
+### Ajuste fino
 
 | Sintoma | Causa provável | Ação |
 |---------|---------------|------|
-| Oscila em reta mesmo em baixa velocidade | Kp alto demais | Reduzir Kp 20% |
-| Não segue curva fechada | Kp baixo, MIN_SPEED alto | Aumentar Kp, reduzir MIN_SPEED |
-| Atraso visível na resposta | Kd baixo ou loop > 2 ms | Aumentar Kd, verificar timing |
-| Erro estático (desvia da linha gradualmente) | Ki = 0 com atrito assimétrico | Adicionar Ki = 0.01–0.05 |
-| Perde linha no cruzamento | SpeedProfile agressivo | Aumentar THRESHOLD, reduzir MAX_SPEED |
-| Vibração nos motores em baixa velocidade | PWM < deadband | Aumentar MIN_SPEED |
-| Sai pela esquerda sistematicamente | Sensores descalibrados | Recalibrar; verificar altura |
-| Loop > 2 ms | SPI lento ou cálculo pesado | Verificar SPI_FREQ, checar profiler |
+| Oscila em reta mesmo devagar | `kp` alto | Reduzir `kp` 20 % |
+| Não fecha curva | `kp` baixo ou `vmin` alto | Subir `kp` ou baixar `vmin` |
+| Resposta atrasada | `kd` baixo | Subir `kd` 10 % |
+| Correção tremida | ruído no termo D | Baixar `dlp` |
+| Erro de regime em reta | atrito assimétrico | `ki` 0,1–0,5 |
+| Perde a linha no cruzamento | perfil agressivo | Subir `thr`, baixar `vmax` |
+| Para em ERRO(2) ao sair da curva | linha perdida mais que `lostMs` | Baixar `vmax`/`vmin`; subir `lostMs` com cuidado |
+| ERRO(1) | laço passou de 2000 µs por 5 ciclos | Ver `ovr` no frame `sta`; relatar |
+| ERRO(3) | bateria abaixo de `vcut` por 1 s | Trocar as células; conferir `vbk` com multímetro |
+| ERRO(5) | modo cascata com duty alto e RPM ≈ 0 por 200 ms | Encoder solto ou sem alimentação; conferir no `bench_encoder` e refazer `cal` |
 
 ---
 
-## 5. SpeedProfile — Ajuste de Velocidade Adaptativa
+## 4. Modo Cascata (encoders)
 
-O `SpeedProfile` reduz velocidade proporcionalmente ao erro absoluto:
+Só depois de calibrar **os dois** encoders: com o carro parado, `{"t":"cal","op":"start",
+"side":"L"}`, girar a roda esquerda 10 voltas à mão e `{"t":"cal","op":"finish","side":"L",
+"rot":10}`; repetir com `"side":"R"`. O PPR medido aparece no `ecal` e passa a valer (`pprL`,
+`pprR`). O padrão de fábrica (600) é provisório.
 
-```
-erro em [0, THRESHOLD]  →  velocidade em [MAX_SPEED, BASE_SPEED]
-erro > THRESHOLD        →  velocidade = MIN_SPEED (curva fechada)
-```
+O `start` é recusado (`err:"cal"`) enquanto uma calibração de encoder estiver aberta; `reset`
+também a fecha. Se um encoder parar de contar no modo cascata, o carro para em ERRO(5).
 
-### Estratégia por estágio de competição
-
-| Fase | BASE | MAX | MIN | THRESHOLD | Objetivo |
-|------|------|-----|-----|-----------|----------|
-| Aprendizado | 120 | 160 | 60 | 0.8 | Completar percurso |
-| Retas | 160 | 200 | 70 | 0.6 | Tempo competitivo |
-| Curvas | 150 | 190 | 55 | 0.5 | Precisão nas curvas |
-| Competição | 170 | 230 | 60 | 0.55 | Máximo desempenho |
+1. `mode` = 1 (só com o carro parado).
+2. Começar com `kpv` 0,002 e `kiv` 0,005; `kdv` 0.
+3. `rpmMax` (700) é o RPM que vale a fração 1,0. Conferir no gráfico que `rpmL`/`rpmR`
+   acompanham `spL`/`spR` em reta.
+4. Os ganhos externos (`kp`, `kd`) continuam valendo: a escala é a mesma nos dois modos.
 
 ---
 
-## 6. Log de Sessões de Tuning
+## 5. Salvar e Registrar
 
-Registrar cada sessão na planilha `docs/tuning_log.csv`:
+- Ao fim de cada sessão boa: **Salvar** no dashboard (grava `HardwareConfig` + perfil ativo).
+- **Recarregar** descarta o que não foi salvo; **Fábrica** carrega os valores de fábrica ao
+  vivo (não grava).
+- Trocar de perfil com mudança pendente pede confirmação: salvar antes ou descartar.
+- Registrar a sessão em `docs/tuning_log.csv`:
 
 ```
-data,kp,ki,kd,base_speed,max_speed,min_speed,threshold,melhor_volta_s,observacoes
+data,perfil,mode,kp,ki,kd,dlp,vmax,vmin,thr,acc,kpv,kiv,melhor_volta_s,observacoes
 ```
 
 ---
 
-## 7. Procedimento de Competição (Dia D)
+## 6. Procedimento de Competição (Dia D)
 
 ### 30 minutos antes
-1. Calibrar sensores na pista oficial (mesma iluminação)
-2. Verificar tensão da bateria (7.2–8.4 V)
-3. Rodar 3 voltas em modo conservador (BASE=140, MAX=180)
-4. Anotar linha de base
+1. Calibrar os sensores na pista oficial (mesma iluminação)
+2. Conferir a tensão no dashboard (`vb`, 7,2–8,4 V)
+3. Rodar 3 voltas no perfil 1 "treino"
+4. Anotar a linha de base
 
 ### Progressão nas 3 tentativas
-- **Tentativa 1**: configuração conservadora → garantir completar
-- **Tentativa 2**: aumentar BASE+10, MAX+15 → buscar melhor tempo
-- **Tentativa 3**: máximo desempenho configurado em sessão prévia
+- **Tentativa 1**: perfil conservador → garantir completar
+- **Tentativa 2**: `vmax` + 0,05 → buscar tempo
+- **Tentativa 3**: perfil 2 "corrida", sintonizado em sessão prévia
+
+Ajustes e troca de perfil só **entre** tentativas (regra RoboCore 3.1.1). Durante a tentativa,
+nenhum comando remoto pode parar o robô nem mudar parâmetro (regra 5.9). Para isso:
+
+1. Com o carro parado, ligar o interruptor **Modo competição** na aba CONFIG (`lock` = 1) e
+   **Salvar**. O selo COMPETIÇÃO aparece no dashboard.
+2. Demonstrar aos juízes: com o carro armado ou correndo, `stop`, ajustes e até `get` voltam
+   com `err:"locked"` e não têm efeito. O `start` em PRONTO continua aceito.
+3. O botão do robô continua parando o carro. Para voltar a ajustar entre tentativas, parar o
+   carro (botão) — fora de ARMED/RUNNING os comandos voltam a valer, inclusive desligar `lock`.
 
 ### Emergências
-- **Bateria caindo**: reduzir MAX_SPEED em 20 pts (tensão baixa = torque baixo)
-- **Piso escorregadio**: aumentar Kd 15%, reduzir MAX_SPEED
-- **Iluminação diferente**: recalibrar sensores obrigatoriamente
+- **Bateria caindo**: baixar `vmax` 0,1 (ou confiar na compensação `vcomp`)
+- **Piso escorregadio**: subir `kd` 15 %, baixar `vmax`
+- **Iluminação diferente**: recalibrar os sensores, obrigatoriamente
 
 ---
 
-## 8. Referências
+## 7. Referências
 
 - [Ziegler-Nichols PID Tuning — Wikipedia](https://en.wikipedia.org/wiki/Ziegler%E2%80%93Nichols_method)
 - [PID Tuning Guide — Zbotic (LFR específico)](https://zbotic.in/pid-line-follower-robot-tuning-speed-competition/)
