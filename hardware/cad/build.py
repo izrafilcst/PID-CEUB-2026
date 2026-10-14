@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 """Gera hardware/cad/out/: STL (orientação de impressão), STEP (montagem) e relatório.
 
-Uso: .venv/bin/python build.py
+Uso: .venv/bin/python build.py [--medidas outro.toml] [--saida pasta]
+
+Roda as verificações da spec §5.8 (interferência, folga das rodas, carga nos patins, vão
+livre, altura do sensor, envelope) e grava ✔/✘ por item no relatório. Se alguma falhar,
+exporta mesmo assim, para inspeção, põe a faixa "NÃO IMPRIMIR" no relatório e sai com
+código 1. Medida inválida no TOML: mensagem de erro, nada exportado, código 2.
 """
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -43,22 +49,39 @@ def _pecas(p: Params) -> dict[str, tuple]:
     }
 
 
-def _relatorio(p: Params) -> str:
+def _relatorio(p: Params, verifs: list[assembly.Verificacao]) -> str:
     total, (x, y, z), itens = assembly.massa_e_cg(p)
     g = wheel.verificar_oring(p)
     rpm = wheel.rpm_sob_carga(p)
+    falhas = [v for v in verifs if not v.ok]
+    faixa = [
+        f"> **NÃO IMPRIMIR** — {len(falhas)} verificação(ões) falharam: "
+        + ", ".join(v.nome for v in falhas) + ". As peças foram exportadas só para "
+        "inspeção. Corrija o `medidas.toml` (ou o modelo) e rode o `build.py` de novo.",
+        "",
+    ] if falhas else []
     linhas = [
         "# Relatório de montagem — LFR v2",
         "",
+    ] + faixa + [
         "Gerado por `hardware/cad/build.py`. Massas impressas estimadas (PETG "
         f"{p.petg_densidade * 1000:.2f} g/cm³, preenchimento {p.preenchimento:.0%}); "
         "massas compradas do `specs.py` (estimadas até a pesagem — D7).",
+        "",
+        "## Verificações",
+        "",
+        "| Verificação | Critério | Valor | Resultado |",
+        "|-------------|----------|-------|-----------|",
+    ] + [f"| {v.nome} | {v.criterio} | {v.valor} | {'✔' if v.ok else '✘'} |"
+         for v in verifs] + [
+        "",
+        "## Números do modelo",
         "",
         "| Grandeza | Valor |",
         "|----------|-------|",
         f"| Massa total | {total:.0f} g |",
         f"| CG (x, y, z) | ({x:.1f}, {y:.1f}, {z:.1f}) mm — origem no eixo motriz, no chão |",
-        f"| Carga nos patins | {assembly.carga_patins(p):.1%} do peso (meta 10–20 %) |",
+        f"| Carga nos patins | {x / p.lookahead:.1%} do peso (meta 10–20 %) |",
         f"| Lookahead (sensores → eixo) | {p.lookahead:.0f} mm |",
         f"| Roda (diâmetro com O-ring) | {p.roda_od:.1f} mm |",
         f"| O-ring | {g.id:.0f} × {g.cs:.1f} mm, fundo do canal ⌀{g.fundo_d:.2f} mm |",
@@ -82,7 +105,9 @@ def _relatorio(p: Params) -> str:
     return "\n".join(linhas) + "\n"
 
 
-def gerar(destino: Path, p: Params | None = None) -> dict[str, Path]:
+def executar(destino: Path, p: Params | None = None
+             ) -> tuple[dict[str, Path], list[assembly.Verificacao]]:
+    """Exporta tudo para `destino` e devolve (STLs gerados, verificações)."""
     p = p or carregar()
     destino.mkdir(parents=True, exist_ok=True)
     saidas = {}
@@ -92,11 +117,36 @@ def gerar(destino: Path, p: Params | None = None) -> dict[str, Path]:
         saidas[nome] = destino / f"{nome}.stl"
     tudo = {**assembly.pecas_impressas(p), **assembly.rodas(p), **assembly.componentes(p)}
     export_step(Compound(children=list(tudo.values())), str(destino / "assembly.step"))
-    (destino / "relatorio_montagem.md").write_text(_relatorio(p), encoding="utf-8")
-    return saidas
+    verifs = assembly.verificacoes(p)
+    (destino / "relatorio_montagem.md").write_text(_relatorio(p, verifs), encoding="utf-8")
+    return saidas, verifs
+
+
+def gerar(destino: Path, p: Params | None = None) -> dict[str, Path]:
+    return executar(destino, p)[0]
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--medidas", type=Path, default=None,
+                    help="TOML de medidas (padrão: hardware/cad/medidas.toml)")
+    ap.add_argument("--saida", type=Path, default=CAD_DIR / "out",
+                    help="pasta de saída (padrão: hardware/cad/out)")
+    args = ap.parse_args(argv)
+    try:
+        p = carregar(args.medidas)
+    except (KeyError, ValueError, OSError) as erro:
+        print(f"ERRO no medidas.toml: {erro}", file=sys.stderr)
+        return 2
+    _, verifs = executar(args.saida, p)
+    print((args.saida / "relatorio_montagem.md").read_text(encoding="utf-8"))
+    falhas = [v for v in verifs if not v.ok]
+    if falhas:
+        print("NÃO IMPRIMIR: " + "; ".join(f"{v.nome} ({v.valor})" for v in falhas),
+              file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    gerar(CAD_DIR / "out")
-    print((CAD_DIR / "out" / "relatorio_montagem.md").read_text())
-    sys.exit(0)
+    sys.exit(main())
