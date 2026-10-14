@@ -21,6 +21,25 @@ class TestMontagem(unittest.TestCase):
     def test_roda_tem_folga_minima(self):
         self.assertGreaterEqual(assembly.folga_minima_rodas(self.p), 0.5)
 
+    # A-WP2-02: folga mínima reportada por par (spec §5.8)
+    def test_folgas_por_par_batem_com_a_medicao_independente(self):
+        folgas = {frozenset((a, b)): d for a, b, d in assembly.folgas_por_par(self.p)}
+        esperado = {("abraçadeira E", "motor E"): 0.100, ("abraçadeira D", "motor D"): 0.100,
+                    ("base", "abraçadeira E"): 0.300, ("base", "roda E"): 0.600,
+                    ("motor E", "roda E"): 0.600, ("abraçadeira E", "roda E"): 0.906,
+                    ("abraçadeira E", "suporte 2×18650"): 1.500,
+                    ("base", "barra de sensores"): 0.0, ("barra de sensores", "QTR-8A"): 0.0}
+        for par, d in esperado.items():
+            self.assertIn(frozenset(par), folgas, par)
+            self.assertAlmostEqual(folgas[frozenset(par)], d, delta=0.005, msg=par)
+
+    def test_folgas_por_par_so_abaixo_do_limite_e_ordenadas(self):
+        folgas = assembly.folgas_por_par(self.p)
+        self.assertTrue(all(d < 2.0 for _, _, d in folgas))
+        self.assertEqual([d for _, _, d in folgas], sorted(d for _, _, d in folgas))
+        self.assertNotIn(frozenset(("roda E", "O-ring E")),
+                         {frozenset((a, b)) for a, b, _ in folgas})
+
     def test_envelope_da_regra(self):
         x, y, z = assembly.envelope(self.p)
         self.assertLessEqual(x, 250.0)

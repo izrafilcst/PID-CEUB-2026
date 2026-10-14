@@ -25,6 +25,7 @@ from parts.common import na_mesa
 QUANTIDADE = {"base": 1, "abracadeira_E": 1, "abracadeira_D": 1, "barra_sensores": 1,
               "patim": 2, "calco": 4, "calco_lingua": 2, "roda": 2, "cupom": 1,
               "cupom_chave": 1}
+LIMITE_FOLGAS = 2.0   # mm — pares mais próximos que isto entram na tabela de folgas
 
 
 def _pecas(p: Params) -> dict[str, tuple]:
@@ -49,7 +50,8 @@ def _pecas(p: Params) -> dict[str, tuple]:
     }
 
 
-def _relatorio(p: Params, verifs: list[assembly.Verificacao]) -> str:
+def _relatorio(p: Params, verifs: list[assembly.Verificacao],
+               folgas: list[tuple[str, str, float]]) -> str:
     total, (x, y, z), itens = assembly.massa_e_cg(p)
     g = wheel.verificar_oring(p)
     rpm = wheel.rpm_sob_carga(p)
@@ -74,6 +76,15 @@ def _relatorio(p: Params, verifs: list[assembly.Verificacao]) -> str:
         "|-------------|----------|-------|-----------|",
     ] + [f"| {v.nome} | {v.criterio} | {v.valor} | {'✔' if v.ok else '✘'} |"
          for v in verifs] + [
+        "",
+        f"## Folgas por par (abaixo de {LIMITE_FOLGAS:.0f} mm)",
+        "",
+        "Distância mínima entre cada par de peças impressas, rodas e envelopes dos componentes. "
+        "0,000 = contato de apoio ou encosto previsto (a interferência está nas verificações).",
+        "",
+        "| Peça A | Peça B | Folga (mm) |",
+        "|--------|--------|------------|",
+    ] + [f"| {a} | {b} | {d:.3f} |" for a, b, d in folgas] + [
         "",
         "## Números do modelo",
         "",
@@ -118,7 +129,9 @@ def executar(destino: Path, p: Params | None = None
     tudo = {**assembly.pecas_impressas(p), **assembly.rodas(p), **assembly.componentes(p)}
     export_step(Compound(children=list(tudo.values())), str(destino / "assembly.step"))
     verifs = assembly.verificacoes(p)
-    (destino / "relatorio_montagem.md").write_text(_relatorio(p, verifs), encoding="utf-8")
+    folgas = assembly.folgas_por_par(p, LIMITE_FOLGAS)
+    (destino / "relatorio_montagem.md").write_text(_relatorio(p, verifs, folgas),
+                                                   encoding="utf-8")
     return saidas, verifs
 
 

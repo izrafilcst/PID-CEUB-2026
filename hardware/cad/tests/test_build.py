@@ -43,6 +43,13 @@ class TestBuild(unittest.TestCase):
         self.assertNotIn("✘", texto)
         self.assertNotIn("NÃO IMPRIMIR", texto)
 
+    # A-WP2-02
+    def test_relatorio_tem_folgas_por_par(self):
+        texto = (self.dir / "relatorio_montagem.md").read_text()
+        self.assertIn("## Folgas por par", texto)
+        self.assertRegex(texto, r"\| abraçadeira E \| motor E \| 0\.100 \|")
+        self.assertRegex(texto, r"\| base \| roda E \| 0\.600 \|")
+
     def test_verificacoes_cobrem_a_spec(self):
         nomes = " ".join(v.nome for v in self.verificacoes)
         for trecho in ("Interferência", "Folga mínima das rodas", "Carga nos patins",

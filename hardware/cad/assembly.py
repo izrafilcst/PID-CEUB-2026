@@ -79,6 +79,35 @@ def interferencias(p: Params, calcos: int = 0) -> list[tuple[str, str, float]]:
     return ruins
 
 
+def _distancia_caixas(a, b) -> float:
+    """Distância entre duas bounding boxes (0 se se sobrepõem): filtro rápido."""
+    dx = max(a.min.X - b.max.X, b.min.X - a.max.X, 0.0)
+    dy = max(a.min.Y - b.max.Y, b.min.Y - a.max.Y, 0.0)
+    dz = max(a.min.Z - b.max.Z, b.min.Z - a.max.Z, 0.0)
+    return (dx * dx + dy * dy + dz * dz) ** 0.5
+
+
+def folgas_por_par(p: Params, limite: float = 2.0,
+                   calcos: int = 0) -> list[tuple[str, str, float]]:
+    """(peça A, peça B, distância em mm) de todo par a menos de `limite`, em ordem crescente.
+
+    Distância 0 = contato (apoio, encosto) ou interferência — esta última aparece em
+    interferencias(). Os pares roda–próprio O-ring ficam de fora.
+    """
+    todas = _todas(p, calcos)
+    caixas = {n: s.bounding_box() for n, s in todas.items()}
+    folgas = []
+    for (na, a), (nb, b) in combinations(todas.items(), 2):
+        if frozenset((na, nb)) in PARES_PERMITIDOS:
+            continue
+        if _distancia_caixas(caixas[na], caixas[nb]) >= limite:
+            continue
+        d = a.distance_to(b)
+        if d < limite:
+            folgas.append((na, nb, round(d, 3) + 0.0))
+    return sorted(folgas, key=lambda t: (t[2], t[0], t[1]))
+
+
 def folga_minima_rodas(p: Params) -> float:
     """Menor distância entre uma roda (ou O-ring) e qualquer peça fixa."""
     giram = rodas(p)
