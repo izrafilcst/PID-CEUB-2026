@@ -487,6 +487,11 @@ diagramas, tabela de parâmetros com filtro e árvore de diagnóstico. Abre do d
 arquivos, chaves BLE, comandos, ambientes `bench_*` e STLs que existem (sai com 1 se houver
 problema).
 
+Versão publicada do manual HTML (página privada; abre só para quem tiver acesso):
+<https://claude.ai/artifact/9DdBtHQb1D2rkHPKL3ijsV>. É a mesma página do
+`docs/manual/manual-lfr.html`; ao mudar os manuais, publique de novo para a cópia não ficar
+desatualizada.
+
 ---
 
 ## Pacote dimensional dos componentes
