@@ -1,33 +1,34 @@
 qty,component,description,package,supplier,sku,price_brl,link,notes
-1,ESP32 DevKit V1,MCU dual-core 240 MHz WiFi/BT,DIP-38,Mercado Livre / AliExpress,ESP32-DEVKITV1,45.00,https://www.mercadolivre.com.br/placa-de-desenvolvimento-esp32-devkit-v1/p/MLB26003803,Clone WROOM-32 funciona igual
-1,MCP3008,ADC SPI 8 canais 10-bit,DIP-16,Mercado Livre / Robocore,MCP3008-I/P,25.00,https://www.robocore.net/microcontroladores/conversor-adc-mcp3008-10-bits-8-canais,1 MHz @ 5V; usar divisor de tensão MISO → 3.3V
-1,TCRT5000 array 8 canais,Sensor IR linha 8× TCRT5000 com ajuste,PCB módulo,Mercado Livre / AliExpress,TCRT5000-8CH,40.00,,Espaçamento ~10 mm; verificar tensão de operação 5V
-2,N20 600RPM c/ encoder,Motor DC metal-gear 6V com encoder Hall 7 PPR,N20 3×10mm shaft,Pololu / AliExpress,3081 (Pololu),80.00,https://www.pololu.com/product/3081,Par engrenado; obrigatório com encoder para odometria futura
-1,TB6612FNG módulo,Driver dual H-bridge 1.2A cont / 3.2A pico,módulo PCB,Sparkfun / Mercado Livre,ROB-14450,18.00,https://www.sparkfun.com/products/14450,Eficiência 95%; STBY com pull-down
-1,LiPo 2S 800mAh 30C,Bateria 7.4V 30C conector JST XT30,pouch cell,Hobbyking / Mercado Livre,HXT 2S 800-30C,55.00,,Checar dimensões: máx 65×35×12 mm para encaixar no chassi
-1,Carregador B3 2S/3S,Carregador balanceado LiPo 2S/3S AC,—,Mercado Livre / AliExpress,B3AC,35.00,,Não deixar sem supervisão carregando
-1,MP1584 buck converter,Regulador abaixador ajustável até 3A,módulo PCB,Mercado Livre / AliExpress,MP1584EN,8.00,,Ajustar para 5.0V antes de conectar; verificar ripple
-1,Roda silicone 34mm,Roda com pneu silicone D=34mm eixo 3mm plano,—,AliExpress / Mercado Livre,,20.00,,Par (2 rodas); eixo D-shape 3mm
-1,Ball caster metálico,Roda de apoio traseira ajustável em altura,—,Robocore / Mercado Livre,ROB-09259,8.00,https://www.robocore.net/robotica/bola-de-rodinha-metalica-1-2-polegada,1/2 pol (12.7 mm); ajustar altura com espaçadores M3
-1,PETG filamento 100g,Impressão 3D chassi e suportes (PETG laranja),1.75mm rolo ~100g,Multilaser / Kalatec,,25.00,,PETG: resistência ao calor e impacto > PLA; densidade ~1.27 g/cm³
-1,Capacitor 100µF 16V,Desacoplamento bateria VCC motors,radial electrolítico,Qualquer distribuidora,,2.00,,1× na entrada VCC motores
-4,Capacitor 100nF,Desacoplamento VCC digital,cerâmico 0805,,,,3.00,,1× por CI (MCP3008 + ESP32 + TB6612FNG + regulador)
-1,Resistor 100kΩ 1/4W,Divisor tensão VBAT (R1),—,,,,0.50,,Ver WIRING.md: divisor 100k+47k para GPIO 34
-1,Resistor 47kΩ 1/4W,Divisor tensão VBAT (R2),—,,,,0.50,,
-2,Resistor 10kΩ 1/4W,Pull-down STBY e outros,—,,,,0.50,,
-1,Buzzer 5V passivo 12mm,Feedback sonoro,THT 12mm,,,,2.00,,Passivo (tone() do Arduino); ativo também funciona
-1,LED 5mm (verde + vermelho),Indicação de status,THT 5mm,,,,1.50,,1 verde (READY) + 1 vermelho (ERROR) ou 1 bicolor
-2,Resistor 330Ω 1/4W,Serie para LEDs,—,,,,0.50,,
-1,Chave SPDT mini,Liga/desliga geral,—,,,,3.00,,Corrente mínima 2A para LiPo 2S
-1,Conector JST XH 2.54mm,Conector bateria LiPo,2-pin JST XT30 ou XH,,,,2.00,,Combinar com o conector da bateria
-1,Perfboard 5×7 cm,PCB universal para montagem,—,,,,6.00,,Alternativa: PCB shield ESP32 (arquivo KiCad em hardware/pcb/)
-1,Fios silicone 26 AWG,Cabagem geral (sortido 5 cores 50cm),—,,,,15.00,,Silicone suporta dobramento repetido
-1,Parafusos M2×8 (kit 20un),Fixação sensores e motores N20,M2 chave hex,,,,5.00,,
-1,Parafusos M3×10 (kit 20un),Fixação chassi e suportes,M3 chave hex,,,,5.00,,
-1,Porcas M2 (kit 20un),Par para parafusos M2,M2,,,,2.00,,
-1,Porcas M3 (kit 20un),Par para parafusos M3,M3,,,,2.00,,
-1,Espaçadores M3×5mm (kit 10un),Separar PCB do chassi,alumínio/nylon M3,,,,5.00,,
-1,Fita dupla-face 3M VHB,Fixação bateria e PCB,—,,,,8.00,,Alternativa: velcro para trocar bateria rápido
-1,Kit O-rings silicone 34mm,Pneu extra para rodas (reserva),—,,,,5.00,,Espessura ~2 mm; comprar 2 extras
-,,,,,,,,,
-,TOTAL ESTIMADO (R$),,,,,,423.00,,
+1,ESP32 DevKit V1,MCU dual-core 240 MHz WiFi/BT,DevKit V1 30 pinos (2 × 15),Mercado Livre / AliExpress,ESP32-DEVKITV1,45.00,https://www.mercadolivre.com.br/placa-de-desenvolvimento-esp32-devkit-v1/p/MLB26003803,"Clone WROOM-32 funciona igual. Medir a distância entre fileiras (22,86 ou 25,4 mm) antes de furar o perfboard (ficha 01)"
+1,MCP3008,ADC SPI 8 canais 10-bit,DIP-16,Mercado Livre / Robocore,MCP3008-I/P,25.00,https://www.robocore.net/microcontroladores/conversor-adc-mcp3008-10-bits-8-canais,"VDD e VREF em 3,3 V como no WIRING.md: sem divisor no MISO (a 5 V o DOUT põe 5 V no GPIO 12; D15). 100 nF junto ao CI"
+1,QTR-8A Reflectance Sensor Array,Array IR refletivo 8 canais com saída analógica,PCB 74.93×12.70×3.18 mm,Pololu,960,,https://www.pololu.com/product/960,US$ 12.95 na Pololu; passo 9.525 mm; 3.3–5.0 V; 100 mA; 3.09 g. PREÇO BRL A CONFIRMAR — sem revenda nacional localizada; depende de frete e tributação de importação
+2,N20 600RPM c/ encoder,Motor DC metal-gear 6V com encoder magnético 12 CPR no eixo do motor,N20 3×10mm shaft,Pololu / AliExpress,a confirmar,80.00,https://www.pololu.com/product/3081,Preço do par. Código do motor a confirmar: o SKU Pololu 3081 é só o par de encoders (D6)
+1,TB6612FNG módulo,Driver dual H-bridge 1.2A cont / 3.2A pico,módulo PCB,SparkFun / Mercado Livre,ROB-14451,18.00,https://www.sparkfun.com/sparkfun-motor-driver-dual-tb6612fng-1a.html,Eficiência 95%; STBY com pull-down; 100 µF no VM
+1,MP1584 buck converter,Regulador abaixador ajustável até 3A,módulo PCB,Mercado Livre / AliExpress,MP1584EN,8.00,,Ajustar para 5.0V antes de conectar o ESP32; verificar ripple; sem furos (fita VHB)
+1,Suporte 2×18650 série com fios,Suporte plástico para 2 células 18650 em série (2S),—,Mercado Livre / AliExpress,,5.00,,Ficha 12; MEDIR e preencher hardware/cad/medidas.toml (suporte_l/w/h). Preço estimado (ficha 12)
+2,Célula 18650 high-drain (≥ 20 A),Li-ion 3.6–3.7 V; ex.: INR18650-25R / HG2 / VTC6,18650,Mercado Livre / lojas de baterias,,60.00,,"Ficha 11; mesmo modelo e lote. Preço estimado: 2 × R$ 30, o mínimo da faixa de R$ 30–45 por célula da ficha 11"
+1,Carregador de Li-ion 18650 (2 baias),Carregador de células 18650,—,Mercado Livre,,,,"Carregar fora do carro, sem deixar sem supervisão. Preço a confirmar"
+4,O-ring silicone 34 × 3 mm,"Pneu da roda impressa, silicone 70 Shore A",—,Lojas de vedação / Mercado Livre,,4.00,,"Ficha 13; 2 em uso + 2 reserva. Preço estimado (≈ R$ 1 cada, ficha 13)"
+10,"Inserto térmico M3 (OD 4,0 × 5,7 mm)",Inserto roscado para prensar a quente no PETG,—,,,,,Colunas do perfboard e língua da barra: 6 no carro (relatório de montagem) + 3 no teste do cupom + 1 reserva. Preço a confirmar
+1,Fusível lâmina mini 3 A + porta-fusível em linha,Proteção da bateria,—,,,,,Logo após o suporte (WIRING.md). Preço a confirmar
+1,"P-MOSFET (ex.: AO3401) + zener 9,1–10 V + resistor 10 kΩ",Proteção contra inversão de polaridade,—,,,,,"Recomendado (WIRING.md). Zener acima de 8,4 V e abaixo do V_GS máximo do MOSFET: conferir no datasheet do MOSFET comprado. Preço a confirmar"
+1,PETG filamento 100g,Peças impressas do carro e cupom de tolerância (PETG),1.75mm rolo ~100g,Multilaser / Kalatec,,25.00,,Peças do carro ≈ 59 g pelas massas do relatório de montagem (preenchimento 60 %); densidade ~1.27 g/cm³
+1,Capacitor 100µF 16V,Desacoplamento do VM dos motores,radial electrolítico,Qualquer distribuidora,,2.00,,"1× no VM do TB6612, junto à placa"
+5,Capacitor 100nF,Desacoplamento VCC digital e filtro do GPIO 34,cerâmico 0805,,,3.00,,1× por CI (MCP3008 + ESP32 + TB6612FNG + regulador) + 1× no GPIO 34 (F-10). Preço estimado (o valor era dos 4 anteriores)
+1,Resistor 100kΩ 1/4W,Divisor tensão VBAT (R1),—,,,0.50,,Ver WIRING.md: divisor 100k+47k para GPIO 34
+1,Resistor 47kΩ 1/4W,Divisor tensão VBAT (R2),—,,,0.50,,
+4,Resistor 10kΩ 1/4W,Pull-up GPIO 36 e 39; pull-down GPIO 12 e STBY,—,,,1.00,,Ver WIRING.md. Preço estimado (0.50 por par na versão anterior da BOM)
+1,Buzzer 5V passivo 12mm,Feedback sonoro,THT 12mm,,,2.00,,"Passivo, acionado por transistor (F-26); tom por LEDC a 2,5 kHz; ativo também funciona"
+1,Transistor NPN de sinal + resistor de base,Acionamento do buzzer pelo GPIO 22,—,,,,,Tipo do transistor e valor do resistor a definir na montagem. Preço a confirmar
+1,LED 5mm (verde + vermelho),Indicação de status (opcional),THT 5mm,,,1.50,,Opcional: o firmware usa só o LED da placa (GPIO 2)
+2,Resistor 330Ω 1/4W,Série para LEDs (opcional),—,,,0.50,,
+1,Chave SPDT mini,Liga/desliga geral,—,,,3.00,,"Corpo 8,5 × 3,6 mm no modelo (MEDIR, medidas.toml). Corrente mínima 2 A; dois N20 travados passam de 2 A: preferir 3 A, a do fusível"
+1,Conector da bateria,Suporte 2×18650 → placa,2-pin JST XH ou XT30,,,2.00,,Combinar com os fios do suporte
+1,Perfboard 5×7 cm,PCB universal para montagem,—,,,6.00,,"Furos de fixação feitos pelo montador: broca ⌀3,2 a 3,5 mm das bordas (medidas.toml: perf_furo_canto)"
+1,Fios silicone 26 AWG,Cabagem geral (sortido 5 cores 50cm),—,,,15.00,,Silicone suporta dobramento repetido
+1,"Fio AWG 30 (⌀ ≤ 0,6 mm)",Chicote do QTR-8A (11 vias),—,,,,,"Uma camada no canal de 7 × 1,8 mm da base; fio mais grosso não cabe (relatório de montagem). Preço a confirmar"
+1,"Barra de pinos 2,54 mm (8×2 ou 11×1) + conector fêmea",Ligação do QTR-8A ao chicote,—,,,,,Soldada por cima do QTR-8A (relatório de montagem). Preço a confirmar
+—,Parafusos,Lista do relatório de montagem,M2 e M3,,,10.00,,"2× M3 cabeça chata ISO 10642 ×8 (0–4 calços) ou ×10 (5–6 calços); 4× M3×6 cabeça cilíndrica ou panela (perfboard); 4× M2×8 autoatarraxante (abraçadeiras); 2× M2 autoatarraxante ×12 (0–2 calços) ou ×14 (3–6 calços) (patins); 2× M2×8 autoatarraxante cabeça baixa (QTR-8A); 2× M2×4 autoatarraxante (trava das rodas, opcional); 1 abraçadeira de nylon 2,5 mm (porta-fusível). Preço estimado = kits M2 e M3 da versão anterior da BOM (5.00 + 5.00)"
+1,Fita dupla-face 3M VHB,Fixação do MP1584,—,,,8.00,,O módulo mini não tem furos (ficha 07)
+,,,,,,,,
+,TOTAL ESTIMADO (R$),,,,,325.00,,"NÃO inclui o QTR-8A (importado — preço a confirmar) nem os itens sem preço: carregador, insertos, fusível e porta-fusível, P-MOSFET, transistor do buzzer, fio AWG 30 e barra de pinos"

@@ -1,6 +1,5 @@
 #include "sensors/Calibration.h"
 #include <algorithm>
-#include <cmath>
 
 Calibration::Calibration(int sensorCount)
     : _count(sensorCount), _lastPosition(0.0f), _lineLost(false) {
@@ -20,6 +19,13 @@ void Calibration::reset() {
 int Calibration::getMin(int idx) const { return _min[idx]; }
 int Calibration::getMax(int idx) const { return _max[idx]; }
 
+int Calibration::_range(int i) const {
+    // Canal nunca calibrado tem max < min. Comparar antes de subtrair evita o overflow de
+    // INT_MIN − INT_MAX (F-02).
+    if (_max[i] <= _min[i]) return 0;
+    return _max[i] - _min[i];
+}
+
 void Calibration::update(const int* rawValues) {
     for (int i = 0; i < _count; i++) {
         _min[i] = std::min(_min[i], rawValues[i]);
@@ -29,13 +35,14 @@ void Calibration::update(const int* rawValues) {
 
 void Calibration::normalize(const int* rawValues, int* normalizedOut) const {
     for (int i = 0; i < _count; i++) {
-        int range = _max[i] - _min[i];
+        const int range = _range(i);
         if (range <= 0) {
             normalizedOut[i] = 0;
-        } else {
-            int val = (rawValues[i] - _min[i]) * NORM_MAX / range;
-            normalizedOut[i] = std::max(0, std::min(NORM_MAX, val));
+            continue;
         }
+        const long scaled = static_cast<long>(rawValues[i] - _min[i]) * NORM_MAX / range;
+        const int v = static_cast<int>(std::max(0L, std::min(static_cast<long>(NORM_MAX), scaled)));
+        normalizedOut[i] = _whiteLine ? NORM_MAX - v : v;
     }
 }
 
@@ -45,7 +52,7 @@ float Calibration::weightedPosition(const int* normalized) const {
     const int halfRange = (_count - 1) * static_cast<int>(POSITION_SCALE) / 2;
 
     for (int i = 0; i < _count; i++) {
-        int pos = i * static_cast<int>(POSITION_SCALE) - halfRange;
+        const int pos = i * static_cast<int>(POSITION_SCALE) - halfRange;
         sum += normalized[i];
         weightedSum += static_cast<long>(pos) * normalized[i];
     }
@@ -58,4 +65,43 @@ float Calibration::weightedPosition(const int* normalized) const {
     _lineLost = false;
     _lastPosition = static_cast<float>(weightedSum) / static_cast<float>(sum);
     return _lastPosition;
+}
+
+bool Calibration::isValid(uint8_t* badChannels, int* badCount) const {
+    int n = 0;
+    for (int i = 0; i < _count; i++) {
+        if (_range(i) < MIN_VALID_RANGE) {
+            if (badChannels) badChannels[n] = static_cast<uint8_t>(i);
+            n++;
+        }
+    }
+    if (badCount) *badCount = n;
+    return n == 0;
+}
+
+static int16_t toInt16(int v) {
+    return static_cast<int16_t>(std::max(-32768, std::min(32767, v)));
+}
+
+CalibrationData Calibration::exportData() const {
+    CalibrationData d{};
+    for (int i = 0; i < _count; i++) {
+        if (_max[i] > _min[i]) {
+            d.min[i] = toInt16(_min[i]);
+            d.max[i] = toInt16(_max[i]);
+        }
+    }
+    return d;
+}
+
+void Calibration::importData(const CalibrationData& data) {
+    for (int i = 0; i < _count; i++) {
+        if (data.max[i] > data.min[i]) {
+            _min[i] = data.min[i];
+            _max[i] = data.max[i];
+        } else {
+            _min[i] = INT_MAX;
+            _max[i] = INT_MIN;
+        }
+    }
 }

@@ -14,12 +14,12 @@ static Calibration cal(SENSOR_COUNT);
 static SensorArray sensors(PIN_SPI_CS, SPI_FREQ, SENSOR_COUNT, cal);
 static State state = State::WAITING;
 static uint32_t calStart = 0;
-static int normalized[SENSOR_COUNT];
 
 void setup() {
     Serial.begin(115200);
     SPI.begin(PIN_SPI_CLK, PIN_SPI_MISO, PIN_SPI_MOSI, PIN_SPI_CS);
     sensors.begin();
+    cal.setWhiteLine(true);  // pista com linha branca: igual ao pol = 1 de fábrica (F-03)
     pinMode(PIN_BTN_START, INPUT_PULLUP);
     Serial.println("Pressione BTN_START para calibrar (3s sweep sobre a linha)");
 }

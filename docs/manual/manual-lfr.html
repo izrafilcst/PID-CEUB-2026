@@ -1,0 +1,1928 @@
+<title>Manual LFR</title>
+<style>
+:root {
+  /* Paleta: papel, painel, tinta, apagado, régua, acento (neutros puxados para o azul do acento) */
+  --paper: #eef1f6;
+  --panel: #ffffff;
+  --ink: #131a27;
+  --muted: #4a5568;
+  --rule: #c5cdd9;
+  --accent: #1f4ccc;
+  --accent-ink: #ffffff;
+  /* Pista: manta preta e linha branca */
+  --track: #0f1216;
+  --track-line: #f3f5f9;
+  /* Semânticas, separadas do acento */
+  --ok: #17703f;
+  --ok-bg: #e2f2e8;
+  --warn: #8a5600;
+  --warn-bg: #fff2d1;
+  --warn-stripe: #f0b21a;
+  --danger: #b0251c;
+  --danger-bg: #fbe4e1;
+
+  --f-head: "Bahnschrift", "DIN Alternate", "DIN Condensed", "Roboto Condensed", "Arial Narrow", "Liberation Sans Narrow", system-ui, sans-serif;
+  --f-body: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Ubuntu, Cantarell, sans-serif;
+  --f-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", "DejaVu Sans Mono", Menlo, Consolas, monospace;
+
+  --s-xs: 0.8125rem;
+  --s-sm: 0.9375rem;
+  --s-md: 1rem;
+  --s-lg: 1.25rem;
+  --s-xl: 1.5625rem;
+  --s-2xl: 1.953rem;
+
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0e121a;
+    --panel: #161c27;
+    --ink: #e4e9f2;
+    --muted: #a2adc0;
+    --rule: #2b3443;
+    --accent: #8eaeff;
+    --accent-ink: #0e121a;
+    --track: #050709;
+    --track-line: #e8ecf4;
+    --ok: #6fd49c;
+    --ok-bg: #11301f;
+    --warn: #f3c453;
+    --warn-bg: #33270a;
+    --warn-stripe: #f0b21a;
+    --danger: #ff8b80;
+    --danger-bg: #3a1512;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0e121a;
+  --panel: #161c27;
+  --ink: #e4e9f2;
+  --muted: #a2adc0;
+  --rule: #2b3443;
+  --accent: #8eaeff;
+  --accent-ink: #0e121a;
+  --track: #050709;
+  --track-line: #e8ecf4;
+  --ok: #6fd49c;
+  --ok-bg: #11301f;
+  --warn: #f3c453;
+  --warn-bg: #33270a;
+  --warn-stripe: #f0b21a;
+  --danger: #ff8b80;
+  --danger-bg: #3a1512;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: var(--s-md);
+  line-height: 1.55;
+}
+h1, h2, h3, h4 { font-family: var(--f-head); line-height: 1.15; text-wrap: balance; margin: 0; }
+h2 { font-size: var(--s-2xl); letter-spacing: 0.01em; }
+h3 { font-size: var(--s-xl); margin-top: 2.25rem; padding-top: 0.75rem; border-top: 1px solid var(--rule); }
+h4 { font-size: var(--s-lg); margin-top: 1.5rem; }
+p, li, dd { max-width: 65ch; }
+p { margin: 0.75rem 0; }
+ul, ol { padding-left: 1.4rem; }
+li + li { margin-top: 0.3rem; }
+a { color: var(--accent); text-underline-offset: 0.15em; }
+code, kbd, .mono {
+  font-family: var(--f-mono);
+  font-size: 0.875em;
+  font-variant-numeric: tabular-nums;
+}
+code {
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 0.05em 0.3em;
+  overflow-wrap: anywhere;
+}
+pre {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  background: var(--track);
+  color: var(--track-line);
+  border-radius: 4px;
+  overflow-x: auto;
+  font-family: var(--f-mono);
+  font-size: var(--s-xs);
+  line-height: 1.5;
+}
+pre code { background: none; border: 0; padding: 0; color: inherit; overflow-wrap: normal; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+
+.skip {
+  position: absolute; left: 1rem; top: -3rem; z-index: 20;
+  background: var(--accent); color: var(--accent-ink); padding: 0.5rem 0.75rem; border-radius: 4px;
+}
+.skip:focus { top: 0.5rem; }
+
+.wrap {
+  width: 100%;
+  max-width: 74rem;
+  margin-inline: auto;
+  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* Cabeçalho fixo: manta preta; a aba ativa é a linha branca */
+.top {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 10;
+  background: var(--track);
+  color: var(--track-line);
+}
+.top-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  padding-block: 0.6rem 0.4rem;
+}
+.top-row > * { min-width: 0; }
+.brand { margin: 0; font-family: var(--f-head); font-size: var(--s-lg); letter-spacing: 0.02em; }
+.brand small { font-size: var(--s-xs); opacity: 0.75; letter-spacing: 0.04em; margin-left: 0.4rem; }
+.theme-btn {
+  font: inherit; font-family: var(--f-head); font-size: var(--s-xs); letter-spacing: 0.04em;
+  color: var(--track-line); background: transparent;
+  border: 1.5px solid var(--track-line); border-radius: 4px;
+  padding: 0.35rem 0.6rem; min-height: 36px; cursor: pointer; white-space: nowrap;
+}
+.theme-btn:hover { background: var(--track-line); color: var(--track); }
+.tabs {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.4rem;
+  padding-block: 0 0.6rem;
+}
+.tabs a {
+  display: flex; align-items: center; justify-content: center; min-height: 44px; min-width: 0;
+  font-family: var(--f-head); font-size: var(--s-sm); letter-spacing: 0.03em; text-transform: uppercase;
+  color: var(--track-line); text-decoration: none; text-align: center;
+  border: 1.5px solid var(--track-line); border-radius: 4px; padding: 0.25rem 0.35rem;
+  overflow-wrap: anywhere;
+}
+.tabs a:hover { background: var(--panel); color: var(--ink); border-color: var(--panel); }
+.tabs a[aria-selected="true"] { background: var(--track-line); color: var(--track); font-weight: 700; }
+@media (max-width: 400px) {
+  .tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .brand small { display: none; }
+}
+
+main { padding-block: 1.25rem 3rem; }
+.panel { scroll-margin-top: 8rem; }
+.panel[hidden] { display: none; }
+.panel + .panel { margin-top: 3rem; }
+[id] { scroll-margin-top: 8.5rem; }
+.lead { font-size: var(--s-lg); color: var(--muted); max-width: 60ch; margin-top: 0.5rem; }
+
+/* Resumo antes do detalhe */
+.summary {
+  display: grid; gap: 0.75rem; margin: 1.25rem 0;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+.summary > div { min-width: 0; border-top: 3px solid var(--ink); padding-top: 0.4rem; }
+.summary dt { font-family: var(--f-head); font-size: var(--s-xs); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.summary dd { margin: 0.15rem 0 0; font-family: var(--f-head); font-size: var(--s-xl); font-variant-numeric: tabular-nums; }
+.summary dd small { display: block; font-family: var(--f-body); font-size: var(--s-xs); color: var(--muted); }
+
+.jump { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+.jump li { margin: 0; }
+.jump a {
+  display: inline-block; font-size: var(--s-xs); padding: 0.3rem 0.55rem; min-height: 32px;
+  border: 1px solid var(--rule); border-radius: 4px; background: var(--panel); text-decoration: none; color: var(--ink);
+}
+.jump a:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Faixas de ATENÇÃO */
+.band {
+  position: relative; margin: 1rem 0; padding: 0.75rem 1rem 0.75rem 1.6rem;
+  border-radius: 0 4px 4px 0; max-width: 72ch;
+}
+.band::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 0.6rem; }
+.band > :first-child { margin-top: 0; }
+.band > :last-child { margin-bottom: 0; }
+.band-title { font-family: var(--f-head); text-transform: uppercase; letter-spacing: 0.05em; font-size: var(--s-sm); margin: 0 0 0.25rem; }
+.band-warn { background: var(--warn-bg); }
+.band-warn::before { background: repeating-linear-gradient(-45deg, var(--warn-stripe) 0 6px, var(--track) 6px 12px); }
+.band-warn .band-title { color: var(--warn); }
+.band-danger { background: var(--danger-bg); }
+.band-danger::before { background: var(--danger); }
+.band-danger .band-title { color: var(--danger); }
+.band-info { background: var(--panel); border: 1px solid var(--rule); border-left: 0; }
+.band-info::before { background: var(--accent); }
+
+/* Tabelas */
+.tbl { overflow-x: auto; margin: 0.75rem 0; border: 1px solid var(--rule); border-radius: 4px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: var(--s-sm); }
+th, td { text-align: left; vertical-align: top; padding: 0.5rem 0.65rem; border-bottom: 1px solid var(--rule); }
+th { font-family: var(--f-head); font-size: var(--s-xs); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); background: var(--paper); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { white-space: nowrap; }
+td code { white-space: nowrap; }
+
+/* Passos (sequência real) */
+ol.steps { counter-reset: passo; list-style: none; padding-left: 0; }
+ol.steps > li { counter-increment: passo; position: relative; padding-left: 2.4rem; margin-top: 0.6rem; }
+ol.steps > li::before {
+  content: counter(passo); position: absolute; left: 0; top: 0.05rem;
+  width: 1.75rem; height: 1.75rem; display: grid; place-items: center;
+  font-family: var(--f-head); font-size: var(--s-sm); font-variant-numeric: tabular-nums;
+  border: 1.5px solid var(--ink); border-radius: 50%;
+}
+.expect { display: inline-block; font-family: var(--f-mono); font-size: var(--s-xs); background: var(--ok-bg); color: var(--ok); border-radius: 3px; padding: 0 0.35rem; }
+
+/* Selos e estado em forma */
+.badge {
+  display: inline-flex; align-items: center; gap: 0.3rem; font-family: var(--f-head); font-size: var(--s-xs);
+  letter-spacing: 0.04em; text-transform: uppercase; border: 1.5px solid currentColor; border-radius: 3px; padding: 0.05rem 0.4rem;
+  white-space: nowrap;
+}
+.badge-ok { color: var(--ok); }
+.badge-warn { color: var(--warn); }
+.badge-danger { color: var(--danger); }
+.led { display: inline-block; width: 7rem; height: 0.7rem; border: 1px solid var(--rule); vertical-align: middle; background: var(--panel); }
+.led-1 { background: repeating-linear-gradient(90deg, var(--accent) 0 1.75rem, var(--panel) 1.75rem 3.5rem); }
+.led-5 { background: repeating-linear-gradient(90deg, var(--accent) 0 0.35rem, var(--panel) 0.35rem 0.7rem); }
+.led-10 { background: repeating-linear-gradient(90deg, var(--accent) 0 0.175rem, var(--panel) 0.175rem 0.35rem); }
+.led-on { background: var(--accent); }
+.led-cap { display: block; font-size: var(--s-xs); color: var(--muted); }
+
+.codes { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); margin: 1rem 0; }
+.code-card { min-width: 0; background: var(--panel); border: 1px solid var(--rule); border-top: 4px solid var(--danger); padding: 0.75rem 0.9rem; }
+.code-head { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+.code-num { font-family: var(--f-head); font-size: var(--s-2xl); font-variant-numeric: tabular-nums; line-height: 1; }
+.code-name { font-family: var(--f-head); text-transform: uppercase; letter-spacing: 0.04em; font-size: var(--s-sm); }
+.pulses { display: inline-flex; gap: 3px; margin-left: auto; }
+.pulses i { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--danger); display: block; }
+.code-card dl { margin: 0.5rem 0 0; font-size: var(--s-sm); }
+.code-card dt { font-weight: 700; margin-top: 0.4rem; }
+.code-card dd { margin: 0; }
+
+/* Cartões de bancada */
+.bench { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); }
+.bench > article { min-width: 0; border-top: 3px solid var(--ink); padding-top: 0.5rem; }
+.bench h4 { margin-top: 0; font-size: var(--s-md); }
+.bench pre { margin: 0.4rem 0; }
+
+/* Checklists */
+.checklist { background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; padding: 0.75rem 1rem; margin: 1rem 0; max-width: 72ch; }
+.check-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; justify-content: space-between; }
+.check-head > * { min-width: 0; }
+.check-count { font-family: var(--f-head); font-variant-numeric: tabular-nums; }
+.checklist ul { list-style: none; padding: 0; margin: 0.6rem 0 0; }
+.checklist li { margin: 0; border-top: 1px solid var(--rule); max-width: none; }
+.checklist label { display: flex; gap: 0.65rem; align-items: flex-start; padding: 0.55rem 0.1rem; cursor: pointer; }
+.checklist label > span { min-width: 0; }
+.checklist input[type="checkbox"] { width: 1.25rem; height: 1.25rem; margin: 0.1rem 0 0; flex: none; accent-color: var(--ok); cursor: pointer; }
+.checklist input:checked + span { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--ok); }
+.confirm { margin-top: 0.6rem; padding: 0.6rem 0.75rem; background: var(--danger-bg); border-radius: 4px; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.confirm[hidden] { display: none; }
+.confirm p { margin: 0; flex: 1 1 14rem; }
+
+/* Botões */
+.btn {
+  font: inherit; font-family: var(--f-head); font-size: var(--s-sm); letter-spacing: 0.03em;
+  color: var(--ink); background: var(--panel); border: 1.5px solid var(--ink); border-radius: 4px;
+  padding: 0.45rem 0.85rem; min-height: 40px; cursor: pointer;
+}
+.btn:hover { background: var(--ink); color: var(--panel); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:disabled:hover { background: var(--panel); color: var(--ink); }
+.btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn-primary:hover { background: var(--ink); border-color: var(--ink); color: var(--panel); }
+.btn-danger { color: var(--danger); border-color: var(--danger); }
+.btn-danger:hover { background: var(--danger); color: var(--panel); }
+.btn-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+
+/* Filtro de parâmetros */
+.filter { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: end; margin: 1rem 0 0.5rem; }
+.filter > * { min-width: 0; }
+.filter label { display: grid; gap: 0.25rem; font-family: var(--f-head); font-size: var(--s-xs); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.filter input {
+  font: inherit; font-size: var(--s-md); color: var(--ink); background: var(--panel);
+  border: 1.5px solid var(--ink); border-radius: 4px; padding: 0.45rem 0.65rem; min-height: 44px; width: min(22rem, 100%);
+}
+.filter output { font-family: var(--f-head); font-variant-numeric: tabular-nums; color: var(--muted); }
+
+/* Diagramas */
+.fig { margin: 1rem 0; overflow-x: auto; }
+.fig svg { display: block; width: 100%; height: auto; }
+.fig-narrow svg { max-width: 26rem; }
+.fig-mid svg { max-width: 34rem; }
+.fig figcaption { font-size: var(--s-xs); color: var(--muted); margin-top: 0.4rem; max-width: 65ch; }
+.two { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); align-items: start; }
+.two > * { min-width: 0; }
+svg text { font-family: var(--f-body); }
+.sv-box { fill: var(--panel); stroke: var(--ink); stroke-width: 1.5; }
+.sv-box-dash { fill: var(--panel); stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.sv-box-warn { fill: var(--warn-bg); stroke: var(--warn); stroke-width: 1.5; }
+.sv-box-err { fill: var(--danger-bg); stroke: var(--danger); stroke-width: 1.5; }
+.sv-box-ok { fill: var(--ok-bg); stroke: var(--ok); stroke-width: 1.5; }
+.sv-t { fill: var(--ink); font-size: 13px; }
+.sv-tb { fill: var(--ink); font-size: 14px; font-weight: 700; font-family: var(--f-head); }
+.sv-ts { fill: var(--muted); font-size: 11px; }
+.sv-te { fill: var(--danger); font-size: 11px; }
+.sv-line { stroke: var(--ink); stroke-width: 1.5; fill: none; }
+.sv-line-err { stroke: var(--danger); stroke-width: 1.5; fill: none; }
+.sv-arrow { fill: var(--ink); }
+.sv-arrow-err { fill: var(--danger); }
+.cv-track { fill: var(--track); }
+.cv-line { fill: var(--track-line); }
+.cv-part { fill: var(--panel); stroke: var(--ink); stroke-width: 0.6; }
+.cv-board { fill: var(--accent); stroke: var(--ink); stroke-width: 0.5; }
+.cv-cell { fill: var(--paper); stroke: var(--ink); stroke-width: 0.5; }
+.cv-wheel { fill: var(--muted); stroke: var(--ink); stroke-width: 0.6; }
+.cv-skid { fill: var(--warn-stripe); stroke: var(--ink); stroke-width: 0.5; }
+.cv-sensor { fill: var(--track-line); }
+.cv-axle { stroke: var(--danger); stroke-width: 0.7; stroke-dasharray: 3 2; }
+.cv-dim { stroke: var(--ink); stroke-width: 0.6; fill: none; }
+.cv-dim-t { stroke: var(--track-line); stroke-width: 0.6; fill: none; }
+.cv-txt { fill: var(--ink); font-size: 6.5px; }
+.cv-txt-t { fill: var(--track-line); font-size: 6.5px; }
+.cv-txt-b { fill: var(--ink); font-size: 7px; font-weight: 700; }
+.cv-lbl { fill: var(--ink); font-size: 5.5px; }
+
+/* Peças: detalhes recolhíveis */
+details.part { border-top: 1px solid var(--rule); max-width: 72ch; }
+details.part:last-of-type { border-bottom: 1px solid var(--rule); }
+details.part summary { cursor: pointer; padding: 0.6rem 0.2rem; font-family: var(--f-head); font-size: var(--s-md); list-style-position: inside; min-height: 44px; }
+details.part summary:hover { color: var(--accent); }
+details.part > div { padding: 0 0.2rem 0.75rem; }
+
+/* Árvore de diagnóstico */
+.diag { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); margin: 1rem 0; }
+@media (min-width: 52rem) { .diag { grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr); } }
+.diag-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.35rem; align-content: start; }
+.diag-list li { margin: 0; max-width: none; }
+.diag-list button {
+  width: 100%; text-align: left; font: inherit; font-size: var(--s-sm); color: var(--ink); background: var(--panel);
+  border: 1px solid var(--rule); border-radius: 4px; padding: 0.5rem 0.65rem; min-height: 44px; cursor: pointer;
+}
+.diag-list button:hover { border-color: var(--accent); }
+.diag-list button[aria-pressed="true"] { border: 1.5px solid var(--accent); background: var(--accent); color: var(--accent-ink); }
+.diag-box { min-width: 0; background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; padding: 1rem; }
+.diag-box .q { font-family: var(--f-head); font-size: var(--s-lg); margin: 0.25rem 0 0.75rem; max-width: 50ch; }
+.diag-path { list-style: none; padding: 0; margin: 0 0 0.75rem; font-size: var(--s-xs); color: var(--muted); }
+.diag-path li { margin: 0.15rem 0; }
+.diag-act { border-left: 4px solid var(--ok); background: var(--ok-bg); padding: 0.6rem 0.8rem; margin: 0.5rem 0; }
+.diag-act p { margin: 0; }
+.diag-step-n { font-family: var(--f-head); font-size: var(--s-xs); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.tree article { border-top: 1px solid var(--rule); padding-top: 0.5rem; margin-top: 0.75rem; }
+.tree h4 { margin-top: 0.25rem; font-size: var(--s-md); }
+.tree .ans { font-weight: 700; }
+
+.foot { border-top: 1px solid var(--rule); padding-block: 1.25rem 2rem; font-size: var(--s-xs); color: var(--muted); }
+.foot p { margin: 0.25rem 0; }
+.muted { color: var(--muted); }
+.nowrap { white-space: nowrap; }
+/* cabeçalho de duas linhas de abas no celular: âncoras mais abaixo */
+@media (max-width: 400px) { [id] { scroll-margin-top: 11rem; } }
+</style>
+
+<a class="skip" href="#conteudo">Pular para o conteúdo</a>
+
+<header class="top">
+  <div class="wrap top-row">
+    <p class="brand">LFR v2 · Manual <small>montagem · operação · manutenção</small></p>
+    <button type="button" class="theme-btn" id="tema" aria-label="Trocar o tema da página">Tema: automático</button>
+  </div>
+  <nav class="wrap tabs" role="tablist" aria-label="Papéis">
+    <a href="#montador" id="tab-montador" role="tab" aria-controls="montador" aria-selected="true">Montador</a>
+    <a href="#operador" id="tab-operador" role="tab" aria-controls="operador" aria-selected="false">Operador</a>
+    <a href="#manutencao" id="tab-manutencao" role="tab" aria-controls="manutencao" aria-selected="false">Manutenção</a>
+    <a href="#referencia" id="tab-referencia" role="tab" aria-controls="referencia" aria-selected="false">Referência</a>
+  </nav>
+</header>
+
+<main id="conteudo" class="wrap" tabindex="-1">
+
+<!-- ═══════════════════════════════ MONTADOR ═══════════════════════════════ -->
+<section class="panel" id="montador" role="tabpanel" aria-labelledby="tab-montador">
+  <h2>Montador</h2>
+  <p class="lead">Do pacote de peças ao primeiro teste de bancada. Quando uma cota estiver marcada MEDIR, vale a medida da peça em mãos.</p>
+
+  <dl class="summary">
+    <div><dt>Ordem segura</dt><dd>MP1584 em 5,0 V<small>ajustado sem carga, antes do trilho de 5 V</small></dd></div>
+    <div><dt>Polaridade</dt><dd>Chave desligada<small>ao pôr as células; 7–8,4 V nos fios</small></dd></div>
+    <div><dt>Peças impressas</dt><dd>10 STL<small>já orientados; PETG sem suporte</small></dd></div>
+    <div><dt>Sensor ao chão</dt><dd>3,0 mm<small>sem calço; +0,5 mm por passo</small></dd></div>
+    <div><dt>Lookahead</dt><dd>85 mm<small>sensores → eixo motriz</small></dd></div>
+    <div><dt>Tempo de montagem</dt><dd>não medido<small>anote na lista final</small></dd></div>
+  </dl>
+
+  <div class="band band-warn" role="note">
+    <p class="band-title">Atenção — células Li-ion</p>
+    <p>Carregue as 18650 <strong>fora do carro</strong>, no carregador próprio, sem deixar sem supervisão. Use sempre duas células do mesmo modelo, lote e carga. Célula com invólucro rasgado ou amassada vai para o descarte. Nunca deixe ferramenta ou fio solto sobre o suporte: um curto numa célula carregada aquece o fio e a célula em segundos.</p>
+  </div>
+  <div class="band band-warn" role="note">
+    <p class="band-title">Atenção — polaridade</p>
+    <p>Inverter uma célula no suporte põe tensão reversa no circuito. O fusível de 3 A é obrigatório e o P-MOSFET de proteção é recomendado. Confira a marcação do suporte antes de fechar a chave.</p>
+  </div>
+
+  <ul class="jump" aria-label="Nesta aba">
+    <li><a href="#mt-compras">Peças compradas</a></li>
+    <li><a href="#mt-impressao">Impressão</a></li>
+    <li><a href="#mt-cupom">Cupom</a></li>
+    <li><a href="#mt-medir">Medir e gerar</a></li>
+    <li><a href="#mt-pecas">Peças impressas</a></li>
+    <li><a href="#mt-cotas">Cotas e vista de cima</a></li>
+    <li><a href="#mt-mecanica">Montagem mecânica</a></li>
+    <li><a href="#mt-fiacao">Eletrônica</a></li>
+    <li><a href="#mt-checagens">Antes de energizar</a></li>
+    <li><a href="#mt-energizar">Primeira energização</a></li>
+    <li><a href="#mt-bancada">Testes de bancada</a></li>
+    <li><a href="#mt-lista">Lista final</a></li>
+  </ul>
+
+  <h3 id="mt-compras">Peças compradas</h3>
+  <p>Conforme <code>hardware/bom.csv</code>. Fichas em <code>hardware/components/fichas/</code>.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Item</th><th class="num">Qtd.</th><th>Ficha</th><th>Observação</th></tr></thead>
+    <tbody>
+      <tr><td>ESP32 DevKit V1</td><td class="num">1</td><td>01</td><td>Meça a distância entre as fileiras de pinos (22,86 ou 25,4 mm) antes de furar o perfboard</td></tr>
+      <tr><td>MCP3008 (ADC SPI, PDIP-16)</td><td class="num">1</td><td>02</td><td>Alimentado em 3,3 V, sem divisor no MISO</td></tr>
+      <tr><td>QTR-8A (Pololu 960)</td><td class="num">1</td><td>03</td><td>Importado. Barra de pinos 8×2 ou 11×1 de 2,54 mm</td></tr>
+      <tr><td>Motor N20 600 RPM com encoder</td><td class="num">2</td><td>04</td><td>Código do motor a confirmar (D6)</td></tr>
+      <tr><td>TB6612FNG (SparkFun ROB-14451)</td><td class="num">1</td><td>05</td><td>—</td></tr>
+      <tr><td>Regulador MP1584EN (módulo mini)</td><td class="num">1</td><td>07</td><td>Sem furos de fixação: fita dupla-face</td></tr>
+      <tr><td>Suporte 2×18650 série, com fios</td><td class="num">1</td><td>12</td><td>MEDIR e preencher o <code>medidas.toml</code></td></tr>
+      <tr><td>Célula 18650 high-drain (≥ 20 A)</td><td class="num">2</td><td>11</td><td>Mesmo modelo, lote e carga</td></tr>
+      <tr><td>Carregador de Li-ion 18650 (2 baias)</td><td class="num">1</td><td>—</td><td>Carregar fora do carro</td></tr>
+      <tr><td>O-ring de silicone 34 × 3 mm</td><td class="num">4</td><td>13</td><td>2 em uso + 2 de reserva</td></tr>
+      <tr><td>Inserto térmico M3 (OD 4,0 × 5,7 mm)</td><td class="num">10</td><td>—</td><td>6 no carro + 3 no teste do cupom + 1 de reserva</td></tr>
+      <tr><td>Fusível de lâmina mini 3 A + porta-fusível em linha</td><td class="num">1</td><td>—</td><td>Logo depois do suporte</td></tr>
+      <tr><td>P-MOSFET (ex.: AO3401) + zener 9,1–10 V + resistor 10 kΩ</td><td class="num">1</td><td>—</td><td>Proteção contra inversão (recomendado). Confira o V_GS máximo do MOSFET comprado: o zener fica abaixo dele e acima de 8,4 V</td></tr>
+      <tr><td>Chave SPDT mini (liga/desliga)</td><td class="num">1</td><td>—</td><td>Corpo de 8,5 × 3,6 mm no modelo (MEDIR); de preferência 3 A</td></tr>
+      <tr><td>Conector da bateria (suporte → placa)</td><td class="num">1</td><td>—</td><td>—</td></tr>
+      <tr><td>Perfboard 5 × 7 cm</td><td class="num">1</td><td>10</td><td>Furos de fixação feitos pelo montador</td></tr>
+      <tr><td>Capacitor eletrolítico 100 µF 16 V</td><td class="num">1</td><td>—</td><td>No VM do TB6612</td></tr>
+      <tr><td>Capacitor cerâmico 100 nF</td><td class="num">5</td><td>—</td><td>1 por CI (4) + 1 no GPIO 34</td></tr>
+      <tr><td>Resistor 100 kΩ e resistor 47 kΩ</td><td class="num">1 + 1</td><td>—</td><td>Divisor da bateria</td></tr>
+      <tr><td>Resistor 10 kΩ</td><td class="num">4</td><td>—</td><td>Pull-up nos GPIO 36 e 39, pull-down no GPIO 12 e no STBY</td></tr>
+      <tr><td>Buzzer passivo 12 mm</td><td class="num">1</td><td>—</td><td>Acionado por transistor</td></tr>
+      <tr><td>Transistor NPN de sinal + resistor de base</td><td class="num">1</td><td>—</td><td>Acionamento do buzzer; valores a definir</td></tr>
+      <tr><td>LED 5 mm (verde + vermelho) + 2 resistores 330 Ω</td><td class="num">opcional</td><td>—</td><td>O firmware usa só o LED da placa (GPIO 2)</td></tr>
+      <tr><td>Fio de silicone 26 AWG (sortido)</td><td class="num">1</td><td>—</td><td>Alimentação e motores</td></tr>
+      <tr><td>Fio AWG 30 (⌀ ≤ 0,6 mm)</td><td class="num">1 (11 vias)</td><td>—</td><td>Chicote do QTR-8A</td></tr>
+      <tr><td>Barra de pinos 2,54 mm (8×2 ou 11×1) + conector fêmea</td><td class="num">1</td><td>—</td><td>Ligação do QTR-8A ao chicote</td></tr>
+      <tr><td>Fita dupla-face VHB</td><td class="num">1</td><td>—</td><td>Fixa o MP1584</td></tr>
+      <tr><td>Filamento PETG 1,75 mm</td><td class="num">100 g</td><td>—</td><td>Peças do carro ≈ 59 g</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4 id="mt-fixadores">Fixadores</h4>
+  <p>Tabela do relatório de montagem (<code>hardware/cad/out/relatorio_montagem.md</code>), comprimentos conferidos contra os furos do modelo. Use cabeça chata ISO 10642 nos 2 M3 da barra: outra cabeça fica abaixo da base e invade o vão livre (A-WP2-04).</p>
+  <div class="tbl"><table>
+    <thead><tr><th class="num">Qtd.</th><th>Item</th><th>Onde</th></tr></thead>
+    <tbody>
+      <tr><td class="num">2</td><td>M3 cabeça chata ISO 10642 (sextavado interno): × 8 com 0–4 calços; × 10 com 5–6 calços</td><td>Base → insertos da língua da barra, por baixo, no escareado de 90°</td></tr>
+      <tr><td class="num">6</td><td>Inserto térmico M3 (OD 4,0 × 5,7 mm)</td><td>4 colunas do perfboard + 2 na língua da barra</td></tr>
+      <tr><td class="num">4</td><td>M3 × 6 cabeça cilíndrica ou panela</td><td>Perfboard → insertos das colunas</td></tr>
+      <tr><td class="num">4</td><td>M2 × 8 autoatarraxante</td><td>Abraçadeiras do N20 → berço da base</td></tr>
+      <tr><td class="num">2</td><td>M2 autoatarraxante: × 12 com 0–2 calços; × 14 com 3–6 calços</td><td>Patins, de cima para baixo pela barra</td></tr>
+      <tr><td class="num">2</td><td>M2 × 8 autoatarraxante cabeça baixa</td><td>QTR-8A → postes da barra</td></tr>
+      <tr><td class="num">2</td><td>M2 × 4 autoatarraxante (opcional)</td><td>Trava radial das rodas</td></tr>
+      <tr><td class="num">1</td><td>Abraçadeira de nylon 2,5 mm (≤ 1,2 mm de espessura)</td><td>Porta-fusível, pelos rasgos e pelo rebaixo sob a base</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4 id="mt-ferramentas">Ferramentas</h4>
+  <ul>
+    <li>Ferro de solda com ponta fina, estanho e termo-retrátil.</li>
+    <li>Ferro para insertos (ou ponta cônica no ferro de solda).</li>
+    <li>Paquímetro e multímetro com teste de continuidade.</li>
+    <li>Chaves hexagonais M2 e M3, chave de fenda pequena, alicate de corte e alicate de bico.</li>
+    <li>Furadeira com broca ⌀3,2 mm para os furos do perfboard.</li>
+    <li>Impressora 3D com bico de 0,4 mm e mesa de pelo menos 200 × 200 mm.</li>
+    <li>Computador com PlatformIO e Python 3 (para o <code>build.py</code> do modelo).</li>
+  </ul>
+  <div class="band band-warn" role="note">
+    <p class="band-title">Atenção — solda e insertos</p>
+    <p>A ponta do ferro e o inserto prensado ficam muito quentes. Solde em local ventilado e sem as células no suporte.</p>
+  </div>
+
+  <h3 id="mt-impressao">Impressão — perfil de PETG</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Ajuste</th><th>Valor</th></tr></thead>
+    <tbody>
+      <tr><td>Bico</td><td class="num">0,4 mm</td></tr>
+      <tr><td>Camada</td><td class="num">0,2 mm</td></tr>
+      <tr><td>Perímetros</td><td class="num">3</td></tr>
+      <tr><td>Preenchimento</td><td>40–60 % (o relatório de montagem estima as massas com 60 %)</td></tr>
+      <tr><td>Mesa</td><td class="num">75–85 °C</td></tr>
+      <tr><td>Bico (temperatura)</td><td class="num">230–245 °C</td></tr>
+      <tr><td>Ventoinha</td><td class="num">30–50 %</td></tr>
+      <tr><td>Suporte</td><td>nenhum</td></tr>
+    </tbody>
+  </table></div>
+  <p>Os STL já saem na orientação de impressão. Não gire as peças no fatiador.</p>
+
+  <h3 id="mt-cupom">Cupom de tolerância</h3>
+  <p>Imprima o cupom <strong>antes</strong> de qualquer peça do carro. O resultado vai para a seção <code>[tolerancias]</code> do <code>hardware/cad/medidas.toml</code>.</p>
+  <ol class="steps">
+    <li>Imprima <code>cupom.stl</code> e <code>cupom_chave.stl</code> com o perfil de PETG.</li>
+    <li>Segure o cupom com os bolsões abertos para cima e a borda com entalhes virada para você.</li>
+    <li>Teste cada feição na ordem da tabela.</li>
+    <li>Para cada chave, escreva no <code>medidas.toml</code> o valor <strong>nominal</strong> da feição que deu certo e tire o <code>#</code> da linha.</li>
+  </ol>
+  <div class="tbl"><table>
+    <thead><tr><th>Feição</th><th>Onde fica</th><th>Chave</th><th>Como decidir</th></tr></thead>
+    <tbody>
+      <tr><td>7 furos ⌀2,8 · 2,9 · 3,0 · 3,1 · 3,2 · 3,3 · 3,4 mm</td><td>Fileira de cima; 1 entalhe = ⌀2,8 … 7 entalhes = ⌀3,4</td><td><code>furo_m3</code> (típico 3,4)</td><td>O menor furo em que um parafuso M3 passa inteiro, sem forçar</td></tr>
+      <tr><td>3 furos em D: 3,00/2,50 · 3,05/2,55 · 3,10/2,60 mm</td><td>Fileira do meio, os 3 da esquerda</td><td><code>eixo_d</code> / <code>eixo_achatado</code> (típicos 3,05 / 2,55)</td><td>O furo em que o eixo do N20 entra com pressão leve e não gira dentro</td></tr>
+      <tr><td>3 furos de inserto ⌀3,9 · 4,0 · 4,1 mm</td><td>Fileira do meio, os 3 da direita</td><td><code>inserto_m3_d</code> (típico 4,0)</td><td>O furo que segura o inserto prensado a quente, rente à face, sem rachar a parede</td></tr>
+      <tr><td>3 bolsões para a chave de 10 mm, folga 0,2 · 0,3 · 0,4 mm por lado</td><td>Fileira de baixo, à esquerda</td><td><code>deslizante</code> (típico 0,30)</td><td>O bolsão em que a chave entra e sai deslizando, sem folga visível. Para tirar a chave de um bolsão justo, empurre pelo furo central com uma chave de fenda</td></tr>
+      <tr><td>3 rasgos de PCB 1,8 · 2,0 · 2,2 mm</td><td>Fileira de baixo, à direita</td><td><code>pcb</code> (típico 0,20)</td><td>Registro apenas: na v2 nenhuma peça usa essa chave (A-WP2-06)</td></tr>
+    </tbody>
+  </table></div>
+  <p>O cupom não calibra <code>furo_m2</code> (2,4) nem <code>autoatarraxante_m2</code> (1,7): deixe os valores típicos (A-WP2-16).</p>
+
+  <h3 id="mt-medir">Medir as peças compradas e gerar o modelo</h3>
+  <p>Meça com o paquímetro e escreva na seção <code>[medidas]</code> do <code>medidas.toml</code>. Linha comentada vale o valor típico.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>O que medir</th><th>Chave</th><th class="num">Típico</th></tr></thead>
+    <tbody>
+      <tr><td>Suporte 2×18650: comprimento ao longo das células</td><td><code>suporte_l</code></td><td class="num">77,0 mm</td></tr>
+      <tr><td>Suporte: largura (duas células lado a lado)</td><td><code>suporte_w</code></td><td class="num">41,0 mm</td></tr>
+      <tr><td>Suporte: altura sem as células</td><td><code>suporte_h</code></td><td class="num">20,5 mm</td></tr>
+      <tr><td>Célula 18650 com o termo-retrátil (informativa, A-WP2-06)</td><td><code>celula_d</code></td><td class="num">18,4 mm</td></tr>
+      <tr><td>N20: seção da caixa de redução na vertical (D11)</td><td><code>n20_altura</code></td><td class="num">10,0 mm</td></tr>
+      <tr><td>N20: quanto o conector JST-SH passa do fundo do encoder</td><td><code>n20_conector_l</code></td><td class="num">5,0 mm</td></tr>
+      <tr><td>QTR-8A: entre centros dos dois furos das pontas</td><td><code>qtr_furos_dist</code></td><td class="num">69,85 mm</td></tr>
+      <tr><td>QTR-8A: centro dos furos até a borda dos pinos</td><td><code>qtr_furo_borda</code></td><td class="num">2,4 mm</td></tr>
+      <tr><td>QTR-8A: centro da fileira de pinos mais perto da borda</td><td><code>qtr_pinos_borda</code></td><td class="num">1,7 mm</td></tr>
+      <tr><td>QTR-8A: início do campo de pinos, a partir da ponta do furo do meio</td><td><code>qtr_pinos_ini</code></td><td class="num">27,2 mm</td></tr>
+      <tr><td>QTR-8A: fim do campo de pinos, mesma referência</td><td><code>qtr_pinos_fim</code></td><td class="num">55,4 mm</td></tr>
+      <tr><td>Perfboard: centro do furo de fixação até as bordas</td><td><code>perf_furo_canto</code></td><td class="num">3,5 mm</td></tr>
+      <tr><td>Chave liga/desliga: comprimento e altura do corpo</td><td><code>interruptor_l</code> / <code>interruptor_h</code></td><td class="num">8,5 / 3,6 mm</td></tr>
+      <tr><td>O-ring: diâmetro interno e seção</td><td><code>oring_id</code> / <code>oring_cs</code></td><td class="num">34,0 / 3,0 mm</td></tr>
+      <tr><td>Carro pronto: massa de fios e parafusos</td><td><code>fios_parafusos_massa</code></td><td class="num">10,0 g</td></tr>
+    </tbody>
+  </table></div>
+  <div class="band band-warn" role="note">
+    <p class="band-title">Atenção — QTR-8A antes da barra</p>
+    <p>As quatro cotas <code>qtr_furo_borda</code>, <code>qtr_pinos_borda</code>, <code>qtr_pinos_ini</code> e <code>qtr_pinos_fim</code> foram estimadas em escala no diagrama da Pololu. A avaliação do WP2 mediu 2,65–2,73 mm para <code>qtr_furo_borda</code> e 1,27–1,36 mm para <code>qtr_pinos_borda</code> (A-WP2-21). Meça a placa em mãos e preencha o TOML <strong>antes</strong> de imprimir a barra e de rodar o <code>build.py</code>: com as cotas erradas, o conector do QTR bate na parede da janela.</p>
+  </div>
+  <ul>
+    <li><strong>Colar do N20.</strong> Meça quanto o colar ⌀4 sai da face da caixa. O cubo da roda fica a 0,6 mm dessa face; se o colar sair mais que isso, a roda raspa (A-WP2-07). Avise o projetista antes de imprimir as rodas.</li>
+    <li><strong>Comprimento total do N20.</strong> Varia com a redução (ficha 04).</li>
+  </ul>
+  <pre><code>cd hardware/cad
+python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # só na primeira vez
+.venv/bin/python -m unittest discover -s tests
+.venv/bin/python build.py</code></pre>
+  <div class="tbl"><table>
+    <thead><tr><th class="num">Saída</th><th>Significado</th><th>O que fazer</th></tr></thead>
+    <tbody>
+      <tr><td class="num"><span class="badge badge-ok">0</span></td><td>Todas as verificações com ✔</td><td>Imprimir</td></tr>
+      <tr><td class="num"><span class="badge badge-danger">1</span></td><td>Alguma verificação com ✘. O relatório abre com a faixa <strong>NÃO IMPRIMIR</strong>; as peças saem só para inspeção. Também sai com 1 se o O-ring der roda fora de 38–44 mm (nada é exportado, A-WP2-20)</td><td>Não imprimir. Corrigir a medida (ou chamar o projetista) e rodar de novo</td></tr>
+      <tr><td class="num"><span class="badge badge-warn">2</span></td><td>Medida inválida no TOML (chave desconhecida, zero ou negativa). Nada é exportado</td><td>Corrigir a linha indicada na mensagem <code>ERRO no medidas.toml</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 id="mt-pecas">Peças impressas</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Arquivo</th><th class="num">Qtd.</th><th>Orientação na mesa</th></tr></thead>
+    <tbody>
+      <tr><td><code>base.stl</code></td><td class="num">1</td><td>Face de baixo na mesa</td></tr>
+      <tr><td><code>abracadeira_E.stl</code></td><td class="num">1</td><td>De lado (perfil em U de pé)</td></tr>
+      <tr><td><code>abracadeira_D.stl</code></td><td class="num">1</td><td>De lado (perfil em U de pé)</td></tr>
+      <tr><td><code>barra_sensores.stl</code></td><td class="num">1</td><td>Face de cima na mesa</td></tr>
+      <tr><td><code>patim.stl</code></td><td class="num">2</td><td>Face de fixação na mesa, calota para cima</td></tr>
+      <tr><td><code>calco.stl</code></td><td class="num">4</td><td>Plano (0,5 mm)</td></tr>
+      <tr><td><code>calco_lingua.stl</code></td><td class="num">2</td><td>Plano (0,5 mm)</td></tr>
+      <tr><td><code>roda.stl</code></td><td class="num">2</td><td>Face externa na mesa</td></tr>
+      <tr><td><code>cupom.stl</code></td><td class="num">1</td><td>Plano</td></tr>
+      <tr><td><code>cupom_chave.stl</code></td><td class="num">1</td><td>Plano</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>Calços.</strong> Sem calço, a face dos sensores fica a 3,0 mm do chão. Cada passo de 0,5 mm usa <strong>um calço sob cada patim e um calço de língua</strong>: 2 × <code>calco.stl</code> + 1 × <code>calco_lingua.stl</code>. Os 4 + 2 do relatório dão 2 passos (até 4,0 mm). Para chegar a 6,0 mm (6 passos, o máximo do modelo) imprima 12 + 6 (A-WP2-17). Com calços, troque o comprimento dos parafusos conforme a tabela de fixadores.</p>
+
+  <h3 id="mt-cotas">Cotas principais e vista de cima</h3>
+  <div class="two">
+    <figure class="fig fig-mid">
+      <svg viewBox="-112 -114 224 236" role="img" aria-labelledby="vista-t vista-d">
+        <title id="vista-t">Vista de cima do LFR v2 sobre a pista</title>
+        <desc id="vista-d">Carro com a frente para cima sobre a manta preta e a linha branca de 19 mm. Barra de sensores com os patins na ponta, berço da bateria à frente do eixo motriz, motores e rodas no eixo e perfboard atrás. Cotas: lookahead de 85 mm, comprimento total de 177,8 mm, bitola de 95,8 mm e largura de 104 mm.</desc>
+        <rect class="cv-track" x="-58" y="-114" width="116" height="236"/>
+        <rect class="cv-line" x="-9.5" y="-114" width="19" height="236"/>
+        <text class="cv-txt-t" x="-55" y="-104">manta preta</text>
+        <text class="cv-txt-t" x="12" y="-104">linha branca 19 mm</text>
+        <text class="cv-txt-b" x="-100" y="-104">FRENTE ↑</text>
+        <!-- base (esquemática) -->
+        <rect class="cv-part" x="-39.5" y="-72" width="79" height="156"/>
+        <!-- perfboard -->
+        <rect class="cv-part" x="-25" y="10" width="50" height="70" style="stroke-dasharray: 2 1.5"/>
+        <text class="cv-lbl" x="0" y="47" text-anchor="middle">perfboard</text>
+        <!-- berço da bateria com 2 células -->
+        <rect class="cv-part" x="-38.5" y="-56" width="77" height="41"/>
+        <rect class="cv-cell" x="-32.6" y="-54.95" width="65.2" height="18.4" rx="2"/>
+        <rect class="cv-cell" x="-32.6" y="-34.45" width="65.2" height="18.4" rx="2"/>
+        <text class="cv-lbl" x="0" y="-44" text-anchor="middle">18650</text>
+        <text class="cv-lbl" x="0" y="-23.5" text-anchor="middle">18650</text>
+        <!-- eixo motriz (por baixo dos motores) -->
+        <line class="cv-axle" x1="-58" y1="0" x2="58" y2="0"/>
+        <!-- motores -->
+        <rect class="cv-part" x="-42" y="-6" width="26" height="12"/>
+        <rect class="cv-part" x="16" y="-6" width="26" height="12"/>
+        <text class="cv-lbl" x="-29" y="2" text-anchor="middle">N20</text>
+        <text class="cv-lbl" x="29" y="2" text-anchor="middle">N20</text>
+        <!-- rodas -->
+        <rect class="cv-wheel" x="-52" y="-20.45" width="8.2" height="40.9" rx="1.5"/>
+        <rect class="cv-wheel" x="43.8" y="-20.45" width="8.2" height="40.9" rx="1.5"/>
+        <!-- barra de sensores: língua + viga -->
+        <rect class="cv-part" x="-15" y="-85" width="30" height="25"/>
+        <rect class="cv-part" x="-48.47" y="-93.75" width="96.94" height="17.5"/>
+        <!-- QTR-8A e os 8 sensores -->
+        <rect class="cv-board" x="-37.47" y="-91.35" width="74.93" height="12.7"/>
+        <g class="cv-sensor">
+          <circle cx="-33.34" cy="-85" r="1.5"/><circle cx="-23.81" cy="-85" r="1.5"/><circle cx="-14.29" cy="-85" r="1.5"/><circle cx="-4.76" cy="-85" r="1.5"/>
+          <circle cx="4.76" cy="-85" r="1.5"/><circle cx="14.29" cy="-85" r="1.5"/><circle cx="23.81" cy="-85" r="1.5"/><circle cx="33.34" cy="-85" r="1.5"/>
+        </g>
+        <!-- patins -->
+        <rect class="cv-skid" x="-48.47" y="-90" width="6" height="10"/>
+        <rect class="cv-skid" x="42.47" y="-90" width="6" height="10"/>
+        <!-- rótulos fora da pista -->
+        <text class="cv-txt" x="62" y="-96">QTR-8A</text>
+        <line class="cv-dim" x1="61" y1="-94" x2="36" y2="-88"/>
+        <text class="cv-txt" x="62" y="-76">patim</text>
+        <line class="cv-dim" x1="61" y1="-78" x2="48.5" y2="-84"/>
+        <text class="cv-txt" x="62" y="-37">berço</text>
+        <text class="cv-txt" x="62" y="-30">2×18650</text>
+        <line class="cv-dim" x1="61" y1="-35" x2="39" y2="-35"/>
+        <text class="cv-txt" x="62" y="9">eixo</text>
+        <text class="cv-txt" x="62" y="16">motriz</text>
+        <!-- lookahead 85 mm (eixo → sensores), à esquerda -->
+        <line class="cv-dim" x1="-74" y1="0" x2="-74" y2="-85"/>
+        <line class="cv-dim" x1="-78" y1="0" x2="-60" y2="0"/>
+        <line class="cv-dim" x1="-78" y1="-85" x2="-60" y2="-85"/>
+        <path class="sv-arrow" d="M-74 -85 l-2 4 h4 z M-74 0 l-2 -4 h4 z" style="fill: var(--ink)"/>
+        <text class="cv-txt-b" x="-80" y="-42.5" transform="rotate(-90 -80 -42.5)" text-anchor="middle">lookahead 85 mm</text>
+        <!-- comprimento total 177,8 mm, à direita -->
+        <line class="cv-dim" x1="96" y1="-93.75" x2="96" y2="84"/>
+        <line class="cv-dim" x1="50" y1="-93.75" x2="100" y2="-93.75"/>
+        <line class="cv-dim" x1="40" y1="84" x2="100" y2="84"/>
+        <path d="M96 -93.75 l-2 4 h4 z M96 84 l-2 -4 h4 z" style="fill: var(--ink)"/>
+        <text class="cv-txt-b" x="104" y="-5" transform="rotate(90 104 -5)" text-anchor="middle">comprimento 177,8 mm</text>
+        <!-- bitola 95,8 mm e largura 104 mm, embaixo, sobre a pista -->
+        <line class="cv-dim-t" x1="-47.9" y1="22" x2="-47.9" y2="98"/>
+        <line class="cv-dim-t" x1="47.9" y1="22" x2="47.9" y2="98"/>
+        <line class="cv-dim-t" x1="-47.9" y1="94" x2="47.9" y2="94"/>
+        <path d="M-47.9 94 l4 -2 v4 z M47.9 94 l-4 -2 v4 z" style="fill: var(--track-line)"/>
+        <text class="cv-txt-t" x="0" y="91" text-anchor="middle" style="paint-order: stroke; stroke: var(--track); stroke-width: 2">bitola 95,8 mm</text>
+        <line class="cv-dim-t" x1="-52" y1="104" x2="-52" y2="114"/>
+        <line class="cv-dim-t" x1="52" y1="104" x2="52" y2="114"/>
+        <line class="cv-dim-t" x1="-52" y1="110" x2="52" y2="110"/>
+        <text class="cv-txt-t" x="0" y="107.5" text-anchor="middle" style="paint-order: stroke; stroke: var(--track); stroke-width: 2">largura 104 mm</text>
+      </svg>
+      <figcaption>Esquemático (posições das peças aproximadas); as cotas escritas vêm do relatório de montagem. Frente para cima.</figcaption>
+    </figure>
+    <div>
+      <div class="tbl"><table>
+        <thead><tr><th>Grandeza</th><th>Valor</th></tr></thead>
+        <tbody>
+          <tr><td>Lookahead (sensores → eixo motriz)</td><td class="num">85 mm</td></tr>
+          <tr><td>Envelope montado (C × L × A)</td><td class="num">177,8 × 104,0 × 55,6 mm</td></tr>
+          <tr><td>Bitola (planos médios dos O-rings)</td><td>95,8 mm (D10; a avaliação do WP2 estima 97,2–98,6 mm no assento real do O-ring, A-WP2-10)</td></tr>
+          <tr><td>Roda com O-ring</td><td class="num">⌀40,9 mm</td></tr>
+          <tr><td>Face dos sensores ao chão</td><td class="num">3,0 mm</td></tr>
+          <tr><td>Massa total estimada</td><td>225 g (massas compradas ainda estimadas, D7)</td></tr>
+          <tr><td>Carga nos patins</td><td>16,2 % do peso (meta 10–20 %)</td></tr>
+        </tbody>
+      </table></div>
+      <p>De trás para a frente: perfboard atrás do eixo motriz, motores e rodas no eixo, berço da bateria à frente do eixo, barra de sensores com os patins na ponta.</p>
+    </div>
+  </div>
+
+  <h3 id="mt-mecanica">Montagem mecânica</h3>
+  <p>Monte nesta ordem. Um passo = uma ação. Frente do carro = lado da barra de sensores.</p>
+  <ol class="steps">
+    <li>Prense com o ferro os <strong>4 insertos das colunas</strong> do perfboard, de cima, até ficarem rentes ao topo de cada coluna.</li>
+    <li>Prense os <strong>2 insertos da língua</strong> da barra pela face de baixo da língua (a face que apoia na base), rentes à face.</li>
+    <li>Deite cada <strong>N20 no berço</strong> da base, com a face da caixa de redução encostada na parede de batente e o eixo passando pelo furo da parede.</li>
+    <li>Ponha a <strong>abraçadeira</strong> (E à esquerda, D à direita) sobre a caixa e comece os 2 M2 × 8 sem apertar.</li>
+    <li>Alinhe o achatado do furo em D da <strong>roda</strong> com o achatado do eixo e encaixe a roda, segurando o motor por trás para ele não sair do batente. O cubo passa por dentro do furo da parede.</li>
+    <li>Confira que a face da caixa continua encostada no batente e <strong>aperte a abraçadeira</strong> até as orelhas encostarem no berço, sem esmagar. O motor só fica preso para dentro pelo atrito da abraçadeira, por isso a roda entra antes do aperto.</li>
+    <li>(Opcional) Ponha o <strong>M2 × 4 da trava radial</strong> em cada roda, contra o achatado do eixo, com pouco torque: a rosca pega só na parede do cubo (A-WP2-08).</li>
+    <li>Gire cada roda com a mão: ela não pode tocar a base nem o motor (folga mínima de 0,60 mm no relatório).</li>
+    <li>Encaixe um <strong>O-ring</strong> no canal de cada roda, sem torcer o cordão.</li>
+    <li>Solde a barra de pinos de 2,54 mm <strong>por cima</strong> do QTR-8A (lado oposto aos sensores).</li>
+    <li>Una os dois pinos marcados <strong>3.3V BYPASS</strong> do QTR-8A com um pedaço de fio. Os resistores dos LEDs IR são calibrados para 5 V em dois estágios, e o bypass de um estágio é o que permite operar em 3,3 V (Pololu: página do produto 960 e guia 0J12, seção "Vcc, GND, and 3.3V BYPASS"). <strong>Se esquecer este passo</strong>, a 3,3 V os LEDs ficam fracos ou apagam, o contraste cai e a calibração pode acabar em ERRO(4). <strong>Nunca</strong> una esses pinos com o QTR em 5 V: os LEDs passam da corrente nominal e podem queimar.</li>
+    <li>Solde o <strong>chicote de 11 fios AWG 30</strong> (⌀ ≤ 0,6 mm) no conector fêmea. Fio mais grosso não cabe numa camada no canal da base.</li>
+    <li>Prenda o <strong>QTR-8A</strong> sob os postes da barra com 2 M2 × 8 cabeça baixa, de baixo para cima, com os sensores para baixo e a borda dos pinos para trás. O conector sai pela janela da viga.</li>
+    <li>Passe o chicote por cima da língua e desça pelo rasgo na ponta de trás da língua (e do calço de língua, se houver).</li>
+    <li>Ponha cada <strong>patim</strong> (com os calços, se houver) sob a ponta da barra e aperte o M2 × 12 de cima para baixo.</li>
+    <li>Apoie a <strong>língua</strong> na base (com o calço de língua, se houver) e prenda com 2 M3 ISO 10642 × 8, por baixo, no escareado. A cabeça tem que ficar rente à face de baixo.</li>
+    <li>Deite o chicote no <strong>canal de 7 × 1,8 mm</strong> do topo da base, por baixo do berço, até subir entre os conectores dos N20.</li>
+    <li>Encaixe o <strong>suporte 2×18650</strong> no berço, por baixo das quatro abas dos cantos, sem células. Ele desliza com folga; as células saem por cima sem soltar nada.</li>
+    <li>Monte a <strong>chave liga/desliga</strong> no suporte da lateral esquerda da base.</li>
+    <li>Prenda o <strong>porta-fusível</strong> sob a base com a abraçadeira de nylon, pelos rasgos e pelo rebaixo.</li>
+    <li>Prenda o <strong>perfboard</strong> nas colunas com 4 M3 × 6, com a barra fêmea do ESP32 orientada para o USB ficar virado para trás. Não encaixe o ESP32 ainda: ele só entra depois do ajuste do MP1584.</li>
+  </ol>
+
+  <h3 id="mt-fiacao">Eletrônica e fiação</h3>
+  <div class="two">
+    <figure class="fig fig-narrow">
+      <svg viewBox="0 0 360 520" role="img" aria-labelledby="pwr-t pwr-d">
+        <title id="pwr-t">Caminho de alimentação da v2</title>
+        <desc id="pwr-d">Suporte 2×18650 de 6,0 a 8,4 V, fusível de 3 A, P-MOSFET de proteção contra inversão (recomendado) e chave liga/desliga. Depois da chave, um ramo vai ao MP1584, que entrega 5,0 V só ao VIN do ESP32 e ao buzzer; o 3V3 do ESP32 alimenta o MCP3008, o QTR-8A, o VCC (lógica) do TB6612FNG e os encoders. O outro ramo vai direto ao VM do TB6612FNG, com a tensão do pack. O MP1584 é ajustado com a saída sem carga, antes de ser ligado ao trilho de 5 V.</desc>
+        <defs>
+          <marker id="seta-pwr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sv-arrow" d="M0 0 L10 5 L0 10 z"/></marker>
+        </defs>
+        <rect class="sv-box" x="40" y="10" width="280" height="48" rx="3"/>
+        <text class="sv-tb" x="180" y="31" text-anchor="middle">Suporte 2×18650</text>
+        <text class="sv-ts" x="180" y="48" text-anchor="middle">2S, 6,0–8,4 V</text>
+        <line class="sv-line" x1="180" y1="58" x2="180" y2="80" marker-end="url(#seta-pwr)"/>
+        <rect class="sv-box-err" x="40" y="82" width="280" height="48" rx="3"/>
+        <text class="sv-tb" x="180" y="103" text-anchor="middle">Fusível 3 A</text>
+        <text class="sv-ts" x="180" y="120" text-anchor="middle">lâmina mini, porta-fusível em linha</text>
+        <line class="sv-line" x1="180" y1="130" x2="180" y2="152" marker-end="url(#seta-pwr)"/>
+        <rect class="sv-box-dash" x="40" y="154" width="280" height="48" rx="3"/>
+        <text class="sv-tb" x="180" y="175" text-anchor="middle">P-MOSFET</text>
+        <text class="sv-ts" x="180" y="192" text-anchor="middle">proteção contra inversão (recomendado)</text>
+        <line class="sv-line" x1="180" y1="202" x2="180" y2="224" marker-end="url(#seta-pwr)"/>
+        <rect class="sv-box" x="40" y="226" width="280" height="40" rx="3"/>
+        <text class="sv-tb" x="180" y="251" text-anchor="middle">Chave liga/desliga</text>
+        <path class="sv-line" d="M180 266 V280 H95 V300" marker-end="url(#seta-pwr)"/>
+        <path class="sv-line" d="M180 280 H265 V300" marker-end="url(#seta-pwr)"/>
+        <rect class="sv-box-warn" x="15" y="302" width="160" height="56" rx="3"/>
+        <text class="sv-tb" x="95" y="324" text-anchor="middle">MP1584 buck</text>
+        <text class="sv-t" x="95" y="343" text-anchor="middle">saída 5,0 V</text>
+        <rect class="sv-box" x="185" y="302" width="160" height="56" rx="3"/>
+        <text class="sv-tb" x="265" y="324" text-anchor="middle">TB6612FNG VM</text>
+        <text class="sv-ts" x="265" y="343" text-anchor="middle">tensão do pack</text>
+        <line class="sv-line" x1="95" y1="358" x2="95" y2="380" marker-end="url(#seta-pwr)"/>
+        <rect class="sv-box" x="15" y="382" width="160" height="40" rx="3"/>
+        <text class="sv-tb" x="95" y="400" text-anchor="middle">ESP32 VIN</text>
+        <text class="sv-ts" x="95" y="415" text-anchor="middle">e buzzer (trilho de 5 V)</text>
+        <line class="sv-line" x1="95" y1="422" x2="95" y2="444" marker-end="url(#seta-pwr)"/>
+        <rect class="sv-box" x="15" y="446" width="160" height="66" rx="3"/>
+        <text class="sv-tb" x="95" y="466" text-anchor="middle">3V3</text>
+        <text class="sv-ts" x="95" y="483" text-anchor="middle">MCP3008 + QTR-8A</text>
+        <text class="sv-ts" x="95" y="499" text-anchor="middle">VCC do TB6612 + encoders</text>
+        <text class="sv-te" x="192" y="380">ajuste 5,0 V com a saída</text>
+        <text class="sv-te" x="192" y="395">sem carga, antes de</text>
+        <text class="sv-te" x="192" y="410">ligá-la ao trilho de 5 V</text>
+      </svg>
+      <figcaption>Caixa tracejada: recomendado. Caixa vermelha: obrigatório (nunca troque o fusível por um maior). Fiação completa em <code>docs/WIRING.md</code>.</figcaption>
+    </figure>
+    <div>
+      <p style="margin-top:0">O trilho de 5 V do MP1584 alimenta só o VIN do ESP32 e o buzzer. O VCC (lógica) do TB6612 vai no 3V3 do ESP32, não no 5 V: o MP1584 sai de fábrica com tensão arbitrária e o VCC do TB6612 aceita 2,7–5,5 V (D17).</p>
+      <h4>No perfboard</h4>
+      <ol class="steps">
+        <li>Meça a distância entre as fileiras do ESP32 na placa em mãos e só então fure e solde as barras fêmea.</li>
+        <li>Solde o MCP3008 com as fileiras a 7,62 mm (3 colunas livres entre elas) e o capacitor de 100 nF entre VDD e AGND, junto ao CI.</li>
+        <li>Ligue VDD e VREF do MCP3008, o VCC do QTR-8A e o <strong>VCC (lógica) do TB6612</strong> no <strong>3V3</strong> do ESP32, nunca em 5 V. Assim o DOUT do MCP3008 não põe 5 V no GPIO 12 e o driver não recebe a tensão do MP1584 antes do ajuste.</li>
+        <li>Solde o resistor de <strong>10 kΩ de pull-down no GPIO 12</strong> (MISO). O GPIO 12 é pino de strapping: em nível alto no boot a placa não liga.</li>
+        <li>Solde os resistores de <strong>10 kΩ de pull-up</strong> do GPIO 36 e do GPIO 39 para o 3,3 V. Sem eles o encoder direito conta sozinho.</li>
+        <li>Monte o divisor da bateria: 100 kΩ do +BAT (depois da chave) ao GPIO 34 e 47 kΩ do GPIO 34 ao GND, mais o <strong>capacitor de 100 nF</strong> do GPIO 34 ao GND.</li>
+        <li>Ligue o <strong>buzzer passivo por um transistor</strong> (o GPIO 22 não aciona o buzzer direto).</li>
+        <li>Solde o resistor de 10 kΩ de pull-down no STBY do TB6612 (motores parados até o firmware liberar).</li>
+        <li>Ponha o capacitor de 100 µF no VM do TB6612, junto à placa.</li>
+        <li>Fixe o MP1584 com fita dupla-face: o módulo mini não tem furos. Solde a entrada e deixe o <strong>fio de saída (+5 V) solto</strong>, sem ligar ao trilho de 5 V do perfboard, até o ajuste das checagens.</li>
+        <li>Ligue os encoders pelo conector JST-SH de 6 vias: <strong>VCC dos encoders no 3V3</strong>, GND comum e os sinais nos GPIO 18/19 (esquerdo) e 36/39 (direito). Os encoders aceitam 2,7–18 V, mas em 5 V uma saída push-pull poria 5 V nos GPIO.</li>
+      </ol>
+    </div>
+  </div>
+
+  <h3 id="mt-checagens">Checagens antes de energizar</h3>
+  <p>Faça na ordem, com o multímetro. Não avance com um item fora do esperado.</p>
+  <ol class="steps">
+    <li><strong>Continuidade do GND</strong> entre o pino de GND da barra fêmea do ESP32 (o ESP32 ainda está fora), MCP3008, TB6612, MP1584 e QTR-8A. <span class="expect">bipe em todos os pares</span></li>
+    <li><strong>Sem curto entre +BAT e GND</strong>, com a chave ligada e sem células. <span class="expect">&gt; 1 kΩ</span></li>
+    <li><strong>Fusível de 3 A instalado</strong> no porta-fusível. <span class="expect">continuidade através dele</span></li>
+    <li><strong>Saída do MP1584 solta</strong> (fio de +5 V sem ligação ao trilho de 5 V) e <strong>ESP32 fora da barra fêmea</strong> antes do passo 7.</li>
+    <li><strong>Polaridade das células.</strong> Ponha as duas células conforme a marcação do suporte, <strong>com a chave desligada</strong>. <span class="expect">7–8,4 V nos fios, + no vermelho</span></li>
+    <li>Ligue a chave.</li>
+    <li><strong>Ajuste o MP1584 para 5,0 V com a saída sem nenhuma carga</strong>: gire o trimpot e meça entre o fio de saída e o GND. O módulo sai de fábrica com tensão arbitrária e tem que ser ajustado antes de ligar a carga. <span class="expect">5,0 V</span></li>
+    <li><strong>VM do TB6612.</strong> <span class="expect">a tensão do pack do passo 5</span></li>
+    <li>Desligue a chave, ligue a saída do MP1584 ao trilho de 5 V, encaixe o ESP32 e ligue de novo.</li>
+    <li><strong>VIN do ESP32</strong> <span class="expect">5,0 V</span> · <strong>3V3 no MCP3008 (VDD/VREF), no VCC do QTR-8A, no VCC do TB6612 e no pino de VCC do JST-SH de cada encoder.</strong> <span class="expect">3,3 V</span></li>
+    <li><strong>STBY do TB6612</strong> com o ESP32 sem firmware ou em reset. <span class="expect">0 V, rodas paradas</span></li>
+  </ol>
+
+  <h3 id="mt-energizar">Primeira energização e firmware</h3>
+  <ol class="steps">
+    <li>Deixe a chave do carro <strong>desligada</strong> e ligue o ESP32 ao computador pelo USB. Sem o pack, o VM do TB6612 fica sem tensão e as rodas não giram.</li>
+    <li>Não segure o botão BOOT (GPIO 0) ao ligar: com ele apertado no boot a placa entra em modo de gravação e o firmware não roda.</li>
+    <li>Grave o firmware: <code>pio run -e esp32dev -t upload</code></li>
+    <li>Na primeira vez: <strong>3 bipes curtos</strong> ao ligar (não há configuração salva; some depois do primeiro SALVAR pelo dashboard) e <strong>LED piscando 1 vez por segundo</strong> (IDLE, sem calibração dos sensores).</li>
+    <li>Conecte o dashboard e anote o <code>stk</code> do <code>info</code> (folga de pilha das duas tasks). Nenhuma task deve ficar com menos de ~1 KB.</li>
+  </ol>
+
+  <h3 id="mt-bancada">Testes de bancada</h3>
+  <p>Cada teste substitui o firmware principal. Rode com as <strong>rodas fora do chão</strong>, a chave ligada (pack com células) e o monitor serial aberto (<code>pio device monitor -b 115200</code>). Ao terminar, grave de novo o firmware principal.</p>
+  <div class="bench">
+    <article id="mt-bench-motor">
+      <h4>Motores</h4>
+      <pre><code>pio run -e bench_motor -t upload</code></pre>
+      <p><strong>Observe:</strong> A frente → A ré → B frente → B ré → ambos frente → parado, 1,5 s cada, duty de 700 em 1023. O canal A é o motor esquerdo.</p>
+      <p><strong>Se falhar:</strong> motor parado → conferir VM, STBY (GPIO 23) e a solda. Lado ou sentido trocado → <strong>não refaça a fiação</strong>: corrija pelo BLE com <code>invL</code>, <code>invR</code> ou <code>swap</code>.</p>
+    </article>
+    <article id="mt-bench-encoder">
+      <h4>Encoders</h4>
+      <pre><code>pio run -e bench_encoder -t upload</code></pre>
+      <p><strong>Observe:</strong> linhas <code>countL,deltaL,dirL,countR,deltaR,dirR</code> a cada 100 ms. Gire cada roda com a mão: só a contagem daquele lado muda.</p>
+      <p><strong>Se falhar:</strong> contagem que corre sozinha no lado direito → falta o pull-up no GPIO 36 ou 39. Sempre zero → conector JST-SH ou alimentação. Sinal invertido → <code>einvL</code>/<code>einvR</code>.</p>
+    </article>
+    <article id="mt-bench-raw">
+      <h4>Sensores, leitura bruta</h4>
+      <pre><code>pio run -e bench_sensor_raw -t upload</code></pre>
+      <p><strong>Observe:</strong> 8 colunas <code>s0…s7</code> (0–1023) a cada 50 ms. Sobre a linha branca o valor cai; sobre o preto sobe.</p>
+      <p><strong>Se falhar:</strong> canal parado em 0 ou 1023 → solda no MCP3008 ou fio do chicote. Todos parados → SPI (GPIO 12–15) ou 3,3 V.</p>
+    </article>
+    <article id="mt-bench-cal">
+      <h4>Calibração dos sensores</h4>
+      <pre><code>pio run -e bench_sensor_cal -t upload</code></pre>
+      <p><strong>Observe:</strong> aperte BOOT e varra a linha durante a janela de 3 s deste teste; depois aparecem <code>pos=</code> e <code>lost=</code>. Linha no centro: <code>pos</code> perto de 0; de um lado para o outro, muda de sinal.</p>
+      <p><strong>Se falhar:</strong> <code>lost=SIM</code> sobre a linha → refaça a varredura. Sinal invertido → <code>sinv</code> no firmware principal.</p>
+    </article>
+    <article id="mt-bench-ppr">
+      <h4>PPR dos encoders</h4>
+      <pre><code>pio run -e bench_velocity_cal -t upload</code></pre>
+      <p><strong>Observe:</strong> o teste pede "gire 10 voltas e envie 'f'" para cada roda; depois mostra <code>rpmL</code>/<code>rpmR</code> a cada 200 ms. O PPR medido fica gravado e o firmware principal o usa.</p>
+      <p><strong>Se falhar:</strong> <code>ok=0</code> → nenhuma contagem (ver encoders).</p>
+    </article>
+    <article id="mt-bench-diff">
+      <h4>Movimentos</h4>
+      <pre><code>pio run -e bench_differential -t upload</code></pre>
+      <p><strong>Observe:</strong> aperte BOOT. Reto → curva à direita → curva à esquerda → giro horário → giro anti-horário → parado.</p>
+      <p><strong>Se falhar:</strong> um lado ao contrário → corrija no firmware principal com <code>invL</code>, <code>invR</code> ou <code>swap</code>. Este teste usa a configuração de fábrica e continua mostrando o lado invertido depois da correção.</p>
+    </article>
+  </div>
+
+  <h3 id="mt-lista">Lista final de conferência</h3>
+  <div class="checklist" id="lista-montagem" data-store="lfr-manual:lista-montagem">
+    <div class="check-head">
+      <span class="check-count" id="lista-montagem-cont" aria-live="polite">0 de 17 marcados</span>
+      <button type="button" class="btn btn-danger" id="lista-montagem-limpar">Limpar marcações</button>
+    </div>
+    <div class="confirm" id="lista-montagem-confirma" hidden>
+      <p id="lista-montagem-pergunta">Desmarcar todos os itens desta lista?</p>
+      <button type="button" class="btn btn-danger" id="lista-montagem-sim">Desmarcar tudo</button>
+      <button type="button" class="btn" id="lista-montagem-nao">Manter marcações</button>
+    </div>
+    <ul>
+      <li><label><input type="checkbox" id="lm-01"><span>Cupom impresso e <code>[tolerancias]</code> preenchido</span></label></li>
+      <li><label><input type="checkbox" id="lm-02"><span>Peças compradas medidas e <code>[medidas]</code> preenchido (inclusive as 4 cotas do QTR-8A)</span></label></li>
+      <li><label><input type="checkbox" id="lm-03"><span><code>build.py</code> saiu com código 0, sem a faixa NÃO IMPRIMIR</span></label></li>
+      <li><label><input type="checkbox" id="lm-04"><span>Peças impressas no perfil de PETG, sem suporte</span></label></li>
+      <li><label><input type="checkbox" id="lm-05"><span>Insertos rentes; abraçadeiras apertadas até encostar; rodas girando livres</span></label></li>
+      <li><label><input type="checkbox" id="lm-06"><span>O-rings no canal, sem torção</span></label></li>
+      <li><label><input type="checkbox" id="lm-17"><span>Pinos 3.3V BYPASS do QTR-8A unidos (o QTR está em 3,3 V)</span></label></li>
+      <li><label><input type="checkbox" id="lm-07"><span>QTR-8A preso com os sensores para baixo; face dos sensores a 3,0 mm do chão</span></label></li>
+      <li><label><input type="checkbox" id="lm-08"><span>Parafusos M3 da barra rentes à face de baixo da base</span></label></li>
+      <li><label><input type="checkbox" id="lm-09"><span>Chicote do QTR no canal, sem fio esmagado</span></label></li>
+      <li><label><input type="checkbox" id="lm-10"><span>Pull-down no GPIO 12, pull-ups nos GPIO 36/39, 100 nF no GPIO 34</span></label></li>
+      <li><label><input type="checkbox" id="lm-11"><span>MCP3008, QTR-8A, VCC do TB6612 e VCC dos dois encoders no 3,3 V</span></label></li>
+      <li><label><input type="checkbox" id="lm-12"><span>Fusível de 3 A instalado; P-MOSFET instalado (recomendado)</span></label></li>
+      <li><label><input type="checkbox" id="lm-13"><span>MP1584 ajustado em 5,0 V com a saída sem carga, antes de ligá-la ao trilho de 5 V</span></label></li>
+      <li><label><input type="checkbox" id="lm-14"><span>Os 6 testes de bancada passaram</span></label></li>
+      <li><label><input type="checkbox" id="lm-15"><span>Carro pronto pesado; <code>fios_parafusos_massa</code> ajustado e <code>build.py</code> rodado de novo: carga nos patins entre 10 e 20 % (com fios atrás do eixo ela pode cair, A-WP2-19; D7)</span></label></li>
+      <li><label><input type="checkbox" id="lm-16"><span>Tempo de montagem anotado</span></label></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ OPERADOR ═══════════════════════════════ -->
+<section class="panel" id="operador" role="tabpanel" aria-labelledby="tab-operador">
+  <h2>Operador</h2>
+  <p class="lead">Bancada, pista e box. Firmware 4.0.0.</p>
+
+  <div class="band band-danger" role="note">
+    <p class="band-title">Atenção — volta válida na RoboCore</p>
+    <p>A v2 <strong>não para sozinha depois da chegada</strong>. A regra 5.7 só aceita a volta se o robô parar sozinho, sobre a linha, dentro da área de partida-chegada, e ficar parado por pelo menos 2 s. Com este firmware o carro <strong>não faz volta válida na RoboCore</strong> (F-34). Use a v2 para treino, sintonia e provas que não exijam a parada.</p>
+  </div>
+
+  <dl class="summary">
+    <div><dt>Toque curto</dt><dd>&lt; 0,8 s<small>arma; sai do erro</small></dd></div>
+    <div><dt>Toque longo</dt><dd>1,5 s<small>calibra (IDLE ou PRONTO)</small></dd></div>
+    <div><dt>Parada</dt><dd>Aperto<small>em ARMADO ou CORRENDO, na hora</small></dd></div>
+    <div><dt>Partida</dt><dd>1 s<small>depois de armar (<code>startMs</code>)</small></dd></div>
+    <div><dt>Corte da bateria</dt><dd>6,4 V<small>não arma abaixo; correndo, para após 1 s (<code>vcut</code>)</small></dd></div>
+    <div><dt>Linha perdida</dt><dd>300 ms<small>até parar (<code>lostMs</code>)</small></dd></div>
+  </dl>
+
+  <ul class="jump" aria-label="Nesta aba">
+    <li><a href="#op-botao">Botão</a></li>
+    <li><a href="#op-estados">Estados, LED e bipes</a></li>
+    <li><a href="#op-calibracao">Calibração</a></li>
+    <li><a href="#op-dashboard">Dashboard</a></li>
+    <li><a href="#op-perfis">Perfis e salvamento</a></li>
+    <li><a href="#op-primeira">Primeira volta</a></li>
+    <li><a href="#op-sintonia">Sintonia</a></li>
+    <li><a href="#op-cascata">Modo cascata</a></li>
+    <li><a href="#op-bateria">Bateria</a></li>
+    <li><a href="#op-erros">Códigos de erro</a></li>
+    <li><a href="#op-box">Box</a></li>
+  </ul>
+
+  <h3 id="op-botao">Ligar, desligar e o botão</h3>
+  <p><strong>Ligar.</strong> Ligue a chave na lateral esquerda. O carro começa em <strong>PRONTO</strong> (LED aceso) se houver calibração dos sensores salva, ou em <strong>IDLE</strong> (LED piscando devagar) se não houver. Três bipes curtos ao ligar avisam que a configuração salva estava ausente ou inválida e o carro está nos valores de fábrica.</p>
+  <div class="band band-warn" role="note">
+    <p class="band-title">Atenção — não segure o botão ao ligar</p>
+    <p>O botão do carro é o BOOT da placa (GPIO 0). Ligar com ele apertado põe o ESP32 em modo de gravação: o firmware não roda. Solte o botão, desligue e ligue de novo.</p>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>Gesto</th><th>Tempo</th><th>Uso</th></tr></thead>
+    <tbody>
+      <tr><td>Toque curto</td><td class="num">soltar antes de 0,8 s</td><td>Arma o carro (PRONTO → ARMADO); sai do ERRO; em IDLE com calibração salva (depois de um <code>reset</code>), volta a PRONTO</td></tr>
+      <tr><td>Toque longo</td><td class="num">segurar 1,5 s</td><td>Calibra os sensores (em IDLE ou PRONTO). Age ao completar o tempo, sem esperar soltar</td></tr>
+      <tr><td>Entre 0,8 s e 1,5 s</td><td>—</td><td>Nada acontece</td></tr>
+      <tr><td>Aperto com o carro ARMADO ou CORRENDO</td><td class="num">assim que detectado (30 ms)</td><td><strong>Para o carro</strong> na hora</td></tr>
+    </tbody>
+  </table></div>
+  <p>O aperto que para o carro é consumido: soltar não arma de novo e segurar não começa a calibrar. É a parada de emergência — funciona também com o modo competição ligado.</p>
+  <p><strong>Desligar.</strong> Pare o carro (aperto do botão), confira que ele está em PRONTO e desligue a chave. Ajuste feito pelo BLE e não salvo se perde ao desligar.</p>
+
+  <h3 id="op-estados">Estados, LED e bipes</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Estado (<code>st</code>)</th><th>Dashboard</th><th>LED (2 s)</th><th>Bipe</th><th>O que significa</th><th>O que fazer</th></tr></thead>
+    <tbody>
+      <tr><td>IDLE (0)</td><td>IDLE</td><td><span class="led led-1" aria-hidden="true"></span><span class="led-cap">1 vez por segundo</span></td><td>—</td><td>Sem calibração dos sensores</td><td>Calibrar: toque longo ou CALIBRAR SENSORES</td></tr>
+      <tr><td>CALIBRATING (1)</td><td>CALIBRANDO</td><td><span class="led led-5" aria-hidden="true"></span><span class="led-cap">5 vezes por segundo</span></td><td>1 ao entrar</td><td>Janela de calibração de 5 s</td><td>Varrer a linha</td></tr>
+      <tr><td>READY (2)</td><td>PRONTO</td><td><span class="led led-on" aria-hidden="true"></span><span class="led-cap">aceso</span></td><td>1 ao entrar</td><td>Calibrado, motores parados</td><td>Toque curto (ou <code>start</code>) para armar</td></tr>
+      <tr><td>ARMED (3)</td><td>ARMADO</td><td><span class="led led-10" aria-hidden="true"></span><span class="led-cap">10 vezes por segundo</span></td><td>curto a cada 250 ms</td><td>Parte depois de <code>startMs</code></td><td>Tirar a mão. Aperto do botão cancela</td></tr>
+      <tr><td>RUNNING (4)</td><td>CORRENDO</td><td><span class="led" aria-hidden="true"></span><span class="led-cap">apagado</span></td><td>—</td><td>Seguindo a linha</td><td>Aperto do botão para</td></tr>
+      <tr><td>ERROR (5)</td><td>ERRO</td><td><span class="pulses" aria-hidden="true"><i></i><i></i><i></i></span><span class="led-cap"><em>n</em> piscadas, pausa de 1,2 s</span></td><td><em>n</em> ao entrar</td><td>Parou com o código <em>n</em></td><td>Ver códigos de erro; toque curto sai do erro</td></tr>
+    </tbody>
+  </table></div>
+  <div class="two">
+    <figure class="fig fig-narrow">
+      <svg viewBox="0 0 360 480" role="img" aria-labelledby="sm-t sm-d">
+        <title id="sm-t">Máquina de estados do LFR v2</title>
+        <desc id="sm-d">IDLE vai a CALIBRANDO por toque longo ou scal. CALIBRANDO vai a PRONTO depois de 5 s com todos os canais bons, ou a ERRO(4). PRONTO vai a ARMADO por toque curto ou start, volta a CALIBRANDO por toque longo, ou vai a ERRO(3) com bateria baixa. ARMADO vai a CORRENDO depois de startMs. ARMADO e CORRENDO voltam a PRONTO com o aperto do botão ou stop. CORRENDO vai a ERRO com os códigos 1, 2, 3 ou 5. Do ERRO, toque curto volta a PRONTO, ou a IDLE sem calibração. reset leva qualquer estado a IDLE.</desc>
+        <defs>
+          <marker id="seta-sm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sv-arrow" d="M0 0 L10 5 L0 10 z"/></marker>
+          <marker id="seta-sm-err" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sv-arrow-err" d="M0 0 L10 5 L0 10 z"/></marker>
+        </defs>
+        <text class="sv-ts" x="352" y="14" text-anchor="end">reset: qualquer estado → IDLE</text>
+        <!-- nós -->
+        <rect class="sv-box" x="45" y="22" width="140" height="44" rx="3"/>
+        <text class="sv-tb" x="115" y="42" text-anchor="middle">IDLE</text>
+        <text class="sv-ts" x="115" y="58" text-anchor="middle">st 0 · sem calibração</text>
+        <rect class="sv-box" x="45" y="122" width="140" height="44" rx="3"/>
+        <text class="sv-tb" x="115" y="142" text-anchor="middle">CALIBRANDO</text>
+        <text class="sv-ts" x="115" y="158" text-anchor="middle">CALIBRATING · st 1</text>
+        <rect class="sv-box-ok" x="45" y="222" width="140" height="44" rx="3"/>
+        <text class="sv-tb" x="115" y="242" text-anchor="middle">PRONTO</text>
+        <text class="sv-ts" x="115" y="258" text-anchor="middle">READY · st 2</text>
+        <rect class="sv-box" x="45" y="322" width="140" height="44" rx="3"/>
+        <text class="sv-tb" x="115" y="342" text-anchor="middle">ARMADO</text>
+        <text class="sv-ts" x="115" y="358" text-anchor="middle">ARMED · st 3</text>
+        <rect class="sv-box" x="45" y="422" width="140" height="44" rx="3"/>
+        <text class="sv-tb" x="115" y="442" text-anchor="middle">CORRENDO</text>
+        <text class="sv-ts" x="115" y="458" text-anchor="middle">RUNNING · st 4</text>
+        <rect class="sv-box-err" x="240" y="290" width="112" height="70" rx="3"/>
+        <text class="sv-tb" x="296" y="311" text-anchor="middle">ERRO(n)</text>
+        <text class="sv-ts" x="296" y="327" text-anchor="middle">ERROR · st 5</text>
+        <text class="sv-te" x="296" y="341" text-anchor="middle">toque curto →</text>
+        <text class="sv-te" x="296" y="354" text-anchor="middle">PRONTO ou IDLE</text>
+        <!-- cadeia principal -->
+        <line class="sv-line" x1="115" y1="66" x2="115" y2="120" marker-end="url(#seta-sm)"/>
+        <text class="sv-t" x="122" y="97">toque longo · scal</text>
+        <line class="sv-line" x1="115" y1="166" x2="115" y2="220" marker-end="url(#seta-sm)"/>
+        <text class="sv-t" x="108" y="197" text-anchor="end">5 s, canais ok</text>
+        <line class="sv-line" x1="115" y1="266" x2="115" y2="320" marker-end="url(#seta-sm)"/>
+        <text class="sv-t" x="122" y="297">toque curto · start</text>
+        <line class="sv-line" x1="115" y1="366" x2="115" y2="420" marker-end="url(#seta-sm)"/>
+        <text class="sv-t" x="122" y="397">após startMs</text>
+        <!-- voltas para PRONTO: aperto / stop -->
+        <path class="sv-line" d="M45 344 C 28 344 28 252 43 252" marker-end="url(#seta-sm)"/>
+        <path class="sv-line" d="M45 444 C 10 444 10 236 43 236" marker-end="url(#seta-sm)"/>
+        <text class="sv-t" x="12" y="340" transform="rotate(-90 12 340)" text-anchor="middle">aperto do botão · stop</text>
+        <!-- PRONTO → CALIBRANDO -->
+        <path class="sv-line" d="M185 230 C 206 230 206 158 187 158" marker-end="url(#seta-sm)"/>
+        <text class="sv-t" x="208" y="198">toque longo</text>
+        <!-- para ERRO -->
+        <path class="sv-line-err" d="M185 134 H326 V288" marker-end="url(#seta-sm-err)"/>
+        <text class="sv-te" x="252" y="128" text-anchor="middle">canal sem faixa: 4</text>
+        <path class="sv-line-err" d="M185 256 H268 V288" marker-end="url(#seta-sm-err)"/>
+        <text class="sv-te" x="216" y="250">bateria: 3</text>
+        <path class="sv-line-err" d="M185 444 H296 V362" marker-end="url(#seta-sm-err)"/>
+        <text class="sv-te" x="240" y="438" text-anchor="middle">1 · 2 · 3 · 5</text>
+      </svg>
+      <figcaption>Transições do firmware (estados de <code>src/strategy/RobotStateMachine.cpp</code>, descritas no manual do operador).</figcaption>
+    </figure>
+    <div>
+      <h4 style="margin-top:0">Outros sinais sonoros</h4>
+      <div class="tbl"><table>
+        <thead><tr><th>Sinal</th><th>Quando</th><th>Significado</th></tr></thead>
+        <tbody>
+          <tr><td>3 bipes curtos</td><td>Ao ligar</td><td>Configuração salva ausente ou inválida: valores de fábrica</td></tr>
+          <tr><td>1 bipe curto</td><td><code>cal start</code></td><td>Calibração de encoder começou</td></tr>
+          <tr><td>1 bipe longo</td><td><code>cal finish</code></td><td>PPR do encoder medido e gravado</td></tr>
+          <tr><td>3 bipes</td><td><code>cal finish</code></td><td>Calibração de encoder falhou (nenhuma contagem)</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <h3 id="op-calibracao">Calibração dos sensores</h3>
+  <p><strong>Quando refazer:</strong> pista ou iluminação nova; troca de calços; troca ou remontagem do QTR-8A; depois de um ERRO(4); antes da prova, na pista oficial.</p>
+  <ol class="steps">
+    <li>Ponha o carro na pista com a barra de sensores sobre a linha.</li>
+    <li>Em IDLE ou PRONTO, faça um <strong>toque longo</strong> (1,5 s) — ou toque <strong>CALIBRAR SENSORES</strong> na aba CONFIG (<code>{"t":"scal"}</code>). O LED pisca 5 vezes por segundo.</li>
+    <li>Durante os <strong>5 s</strong> da janela, deslize o carro devagar de um lado ao outro, até cada um dos 8 sensores passar pela linha e pelo fundo preto.</li>
+    <li>Espere o fim da janela. Todos os canais com faixa de pelo menos 200 contagens → <span class="badge badge-ok">PRONTO</span> com 1 bipe e <code>{"t":"calres","ok":1}</code>. Algum canal com menos → <span class="badge badge-danger">ERRO(4)</span> e, por exemplo, <code>{"t":"calres","ok":0,"ch":[3,4]}</code>: os canais sem contraste, contados de 0 (<code>s0</code> a <code>s7</code>).</li>
+  </ol>
+  <p>A calibração válida fica <strong>salva sozinha</strong> na memória do carro: ao ligar de novo, o carro já começa em PRONTO. Na faixa de sensores do dashboard, sobre a linha o valor fica alto; sobre o fundo, baixo.</p>
+
+  <h3 id="op-dashboard">Dashboard</h3>
+  <ol class="steps">
+    <li>Abra <code>docs/dashboard/lfr-cockpit-mock.html</code> no <strong>Chrome ou Edge</strong>. O Web Bluetooth exige página em HTTPS ou em <code>localhost</code>. No computador: <code>cd docs/dashboard</code>, <code>python3 -m http.server 8765</code> e abra <code>http://localhost:8765/lfr-cockpit-mock.html</code>.</li>
+    <li>Toque <strong>CONECTAR BLE</strong> (barra de cima) e escolha <code>LFR-RACER-01</code>. Android com Chrome funciona. <strong>iPhone não tem Web Bluetooth.</strong></li>
+    <li>Ao conectar, o dashboard recebe o <code>info</code> (versão, aviso de configuração, folga de pilha) e a configuração inteira.</li>
+  </ol>
+  <div class="tbl"><table>
+    <thead><tr><th>Aba do dashboard</th><th>Para quê</th></tr></thead>
+    <tbody>
+      <tr><td>GRÁFICO</td><td>Posição, correção e velocidades dos últimos 5 s</td></tr>
+      <tr><td>PID</td><td>Sliders de <code>kp</code>, <code>ki</code>, <code>kd</code> (enviam <code>set</code> ao soltar)</td></tr>
+      <tr><td>VELOCIDADE</td><td>Sliders de <code>vmax</code>, <code>vmin</code> (em %) e <code>thr</code></td></tr>
+      <tr><td>CONFIG</td><td>Todos os parâmetros, seletor de perfil, SALVAR, RECARREGAR, FÁBRICA, CALIBRAR SENSORES e o interruptor Modo competição</td></tr>
+      <tr><td>SISTEMA</td><td>Nome, firmware, ESTADO, ERRO, TENSÃO, PERFIL, MODO COMPETIÇÃO, LAÇO MÁX (<code>ovr</code>) e PILHA LIVRE (<code>stk</code>)</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><span class="badge badge-warn">NÃO SALVO</span> há ajuste aplicado ao vivo que não foi gravado. Some depois de SALVAR ou RECARREGAR.</li>
+    <li><span class="badge badge-danger">COMPETIÇÃO</span> o modo competição está ligado (<code>lock</code> = 1).</li>
+    <li>"Configuração salva ausente ou inválida — usando valores de fábrica": aviso <code>cfgerr</code> do <code>info</code>.</li>
+  </ul>
+  <div class="band band-info" role="note">
+    <p class="band-title">O "ok" de start, stop e scal só confirma o recebimento</p>
+    <p><code>{"t":"ack","k":"start","ok":1}</code> quer dizer que o carro recebeu o comando, não que ele armou. Um <code>start</code> em IDLE, um <code>stop</code> em PRONTO ou um <code>scal</code> com o carro correndo respondem <code>ok</code> e não fazem nada (A-WP1-07). O estado real é o campo <code>st</code> da telemetria: olhe o ESTADO no dashboard.</p>
+  </div>
+  <p>Comandos de estado: <code>{"t":"start"}</code> arma o carro em PRONTO, como o toque curto; <code>{"t":"stop"}</code> para o carro armado ou correndo e o deixa em PRONTO, como o aperto do botão; <code>{"t":"reset"}</code> leva qualquer estado a IDLE.</p>
+  <p>Sem o dashboard, qualquer app BLE serve: serviço <code>0xABCC</code>, comandos em JSON escritos na característica <code>0xABCE</code>, respostas e telemetria por notificação na <code>0xABCD</code>.</p>
+
+  <h3 id="op-perfis">Perfis e salvamento</h3>
+  <div class="tbl"><table>
+    <thead><tr><th class="num">Perfil</th><th>Nome</th><th class="num">vmax de fábrica</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0</td><td>seguro</td><td class="num">0,35</td></tr>
+      <tr><td class="num">1</td><td>treino</td><td class="num">0,50</td></tr>
+      <tr><td class="num">2</td><td>corrida</td><td class="num">0,70</td></tr>
+    </tbody>
+  </table></div>
+  <p>Os perfis são iguais de fábrica exceto em <code>vmax</code>. As chaves de hardware (<code>invL</code> a <code>pprR</code>, as 13 primeiras da tabela de parâmetros) valem para todos; as de sintonia (<code>kp</code> a <code>startMs</code>) são de cada perfil.</p>
+  <ul>
+    <li><strong>Ajuste ao vivo não grava.</strong> Um <code>set</code> (ou um slider) muda o carro na hora e acende o NÃO SALVO. Ao desligar, volta o que estava salvo.</li>
+    <li><strong>SALVAR</strong> (<code>{"t":"save"}</code>) grava as chaves de hardware, o perfil ativo e qual perfil está ativo. Só com o carro parado: armado ou correndo, volta <code>err:"running"</code>.</li>
+    <li><strong>RECARREGAR</strong> (<code>{"t":"load"}</code>) descarta o que não foi salvo e relê o perfil ativo.</li>
+    <li><strong>FÁBRICA</strong> (<code>{"t":"defaults"}</code>) carrega os valores de fábrica do hardware e do perfil ativo, ao vivo, sem gravar.</li>
+    <li>SALVAR, RECARREGAR, FÁBRICA, a troca de perfil e o <code>cal</code> dos encoders só funcionam com o carro parado: armado ou correndo, voltam <code>err:"running"</code>.</li>
+  </ul>
+  <div class="band band-warn" role="note">
+    <p class="band-title">Atenção — FÁBRICA apaga correções e a calibração dos encoders</p>
+    <p>FÁBRICA volta todas as chaves de hardware para a fábrica — inclusive <code>invL</code>, <code>invR</code>, <code>swap</code>, <code>sinv</code>, <code>pol</code>, <code>lock</code> e <code>vbk</code> — e devolve <code>pprL</code>/<code>pprR</code> para 600. Um SALVAR em seguida grava 600 por cima do PPR medido no <code>cal</code> (A-WP1-04). Depois de FÁBRICA, refaça as correções da primeira volta e o <code>cal</code> do modo cascata (ou digite de novo o PPR do último <code>ecal</code>) <strong>antes</strong> de salvar.</p>
+  </div>
+  <p><strong>Trocar de perfil:</strong> botões 0 SEGURO / 1 TREINO / 2 CORRIDA na aba CONFIG, ou <code>{"t":"prof","n":2}</code>. Com mudança pendente, o carro recusa (<code>err:"dirty"</code>) e o dashboard pergunta: DESCARTAR E TROCAR (envia <code>"f":1</code> e perde o que não foi salvo) ou CANCELAR. A troca também relê as chaves de hardware salvas. O carro liga no último perfil <strong>salvo</strong>: para mudar o perfil de partida, troque de perfil e toque SALVAR. Na primeira vez, liga no perfil 0.</p>
+
+  <h3 id="op-primeira">Primeira volta</h3>
+  <p>Na primeira vez na pista e depois de qualquer remontagem.</p>
+  <ol class="steps">
+    <li>Pista livre, bateria carregada.</li>
+    <li>Ligue o carro e conecte o dashboard.</li>
+    <li>Confira na aba CONFIG: perfil 0 SEGURO e <code>mode</code> = 0. Mude se preciso e toque SALVAR.</li>
+    <li>Calibre os sensores.</li>
+    <li>Mova o carro com a mão sobre a linha e confira a faixa de sensores: sensores altos sobre o fundo e baixos sobre a linha → <code>pol</code> (1 para linha branca, 0 para preta); linha sob o lado esquerdo aparece à direita → <code>sinv</code> = 1.</li>
+    <li>Ponha o carro sobre a linha e faça um <strong>toque curto</strong>. O LED pisca rápido e bipa durante <code>startMs</code> (1 s de fábrica); depois o carro parte devagar (<code>vmax</code> 0,35).</li>
+    <li>Observe a primeira reta e a primeira curva. <strong>Aperte o botão</strong> para parar quando quiser.</li>
+    <li>Corrija pelo BLE, sem recompilar, com o carro parado (tabela abaixo).</li>
+    <li>Com o carro correto, toque SALVAR.</li>
+  </ol>
+  <div class="tbl"><table>
+    <thead><tr><th>Sintoma</th><th>Corrija com</th><th class="num">Valor</th></tr></thead>
+    <tbody>
+      <tr><td>Uma roda gira para trás</td><td><code>invL</code> (esquerda) ou <code>invR</code> (direita)</td><td class="num">1</td></tr>
+      <tr><td>O comando de um lado move a roda do outro (no <code>bench_motor</code>, o canal A deveria ser a esquerda)</td><td><code>swap</code></td><td class="num">1</td></tr>
+      <tr><td>O carro vira para o lado oposto ao da linha e sai</td><td><code>sinv</code> (faixa de sensores espelhada) ou <code>invL</code>/<code>invR</code>/<code>swap</code> (rodas trocadas)</td><td class="num">1</td></tr>
+      <tr><td>RPM negativo com a roda andando para frente (modo cascata)</td><td><code>einvL</code> ou <code>einvR</code></td><td class="num">1</td></tr>
+    </tbody>
+  </table></div>
+  <p>Se o carro parar sozinho, veja o código de erro. O mais comum na primeira volta é o ERRO(2): a linha ficou fora dos sensores por mais de <code>lostMs</code> (300 ms de fábrica).</p>
+
+  <h3 id="op-sintonia">Sintonia na pista</h3>
+  <p>Procedimento completo em <code>docs/TUNING.md</code>.</p>
+  <ol class="steps">
+    <li>Perfil 0, <code>mode</code> 0, <code>ki</code> = 0 e <code>kd</code> = 0.</li>
+    <li>Suba <code>kp</code> de 0,5 em 0,5 até o carro oscilar na reta com amplitude constante: <strong>Ku</strong>. Meça o período da oscilação no gráfico de posição: <strong>Tu</strong>, em segundos.</li>
+    <li>Aplique <code>kp</code> = 0,6 · Ku, <code>kd</code> = 0,075 · Ku · Tu e <code>ki</code> = 0.</li>
+    <li>Correção tremida no gráfico: ajuste <code>dlp</code> entre 0,3 e 0,7.</li>
+    <li>Suba <code>vmax</code> de 0,05 em 0,05 por sessão. Para as curvas, baixe <code>vmin</code> ou <code>thr</code>.</li>
+    <li>Se a frente levantar na largada ou na saída das curvas (patins fora do chão), baixe <code>acc</code> (A-WP2-18).</li>
+    <li><code>ki</code> só se houver desvio constante na reta: comece com 0,1.</li>
+    <li>Ao fim de cada sessão boa, SALVAR e registre em <code>docs/tuning_log.csv</code>: <code>data,perfil,mode,kp,ki,kd,dlp,vmax,vmin,thr,acc,kpv,kiv,melhor_volta_s,observacoes</code>.</li>
+  </ol>
+
+  <h3 id="op-cascata">Modo cascata (encoders)</h3>
+  <p>O modo cascata (<code>mode</code> = 1) controla a rotação de cada roda pelos encoders. O PPR de fábrica (600) é provisório: calibre os dois encoders antes.</p>
+  <ol class="steps">
+    <li>Carro parado (IDLE, PRONTO ou ERRO), rodas fora do chão.</li>
+    <li>Envie <code>{"t":"cal","op":"start","side":"L"}</code>. Um bipe curto confirma.</li>
+    <li>Gire a roda <strong>esquerda</strong> 10 voltas completas com a mão, sempre para frente.</li>
+    <li>Envie <code>{"t":"cal","op":"finish","side":"L","rot":10}</code> (<code>rot</code> = número de voltas, inteiro de 1 a 1000).</li>
+    <li>Confira a resposta, por exemplo <code>{"t":"ecal","side":"L","ok":1,"ppr":612.5}</code>, e um bipe longo. <code>ok</code> 0 com 3 bipes = nenhuma contagem: veja o teste de encoders.</li>
+    <li>Repita os passos 2 a 5 com <code>"side":"R"</code> e a roda direita.</li>
+    <li>O PPR medido já fica gravado (não precisa de SALVAR, e o NÃO SALVO não acende) e passa a valer como <code>pprL</code>/<code>pprR</code>.</li>
+    <li>Com o carro parado, <code>{"t":"set","k":"mode","v":1}</code> e SALVAR.</li>
+    <li>Comece com <code>kpv</code> 0,002, <code>kiv</code> 0,005 e <code>kdv</code> 0. No gráfico, <code>rpmL</code>/<code>rpmR</code> têm que acompanhar <code>spL</code>/<code>spR</code> na reta. <code>kp</code> e <code>kd</code> continuam valendo.</li>
+  </ol>
+  <p>Com uma calibração de encoder aberta (<code>start</code> sem <code>finish</code>), o carro não arma: o <code>start</code> volta <code>err:"cal"</code> e o botão não faz nada. Termine com <code>finish</code> ou envie <code>{"t":"reset"}</code>. Se uma roda ficar com duty de 60 % ou mais e rotação abaixo de 5 % de <code>rpmMax</code> por 200 ms, o carro para em ERRO(5).</p>
+
+  <h3 id="op-bateria">Bateria</h3>
+  <p>O dashboard mostra a carga em % e a tensão (barra de cima e aba SISTEMA), 2 vezes por segundo pelo frame <code>sta</code>. O % segue a curva de Li-ion de 2S (<code>chem</code> = 1) e serve só como indicação.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Tensão do pack</th><th class="num">6,0 V</th><th class="num">6,8 V</th><th class="num">7,2 V</th><th class="num">7,6 V</th><th class="num">8,0 V</th><th class="num">8,4 V</th></tr></thead>
+    <tbody><tr><td>Carga indicada</td><td class="num">0 %</td><td class="num">10 %</td><td class="num">40 %</td><td class="num">70 %</td><td class="num">90 %</td><td class="num">100 %</td></tr></tbody>
+  </table></div>
+  <p><strong>Corte:</strong> com a tensão abaixo de <code>vcut</code> (6,4 V de fábrica), o carro não arma: o toque curto ou o <code>start</code> vão para ERRO(3) na hora, comparando a tensão filtrada com <code>vcut</code>. Correndo, ele para em ERRO(3) depois de 1 s seguido abaixo de <code>vcut</code>.</p>
+  <h4 id="op-vbk">Aferir a leitura (<code>vbk</code>)</h4>
+  <ol class="steps">
+    <li>Carro ligado e parado, células no suporte.</li>
+    <li>Meça com o multímetro a tensão entre os fios do suporte.</li>
+    <li>Espere alguns segundos e leia a TENSÃO no dashboard.</li>
+    <li>Calcule <code>vbk</code> novo = <code>vbk</code> atual × tensão do multímetro ÷ tensão do dashboard. Exemplo: 1,0 × 7,80 ÷ 7,62 = 1,024.</li>
+    <li>Envie <code>{"t":"set","k":"vbk","v":1.024}</code> (faixa 0,8–1,2) e SALVAR.</li>
+  </ol>
+  <div class="band band-warn" role="note">
+    <p class="band-title">Atenção — células Li-ion</p>
+    <ul>
+      <li>Carregue as 18650 <strong>fora do carro</strong>, no carregador de Li-ion, sem deixar sem supervisão.</li>
+      <li>Nunca descarregue uma célula abaixo de 2,5 V (o mínimo do fabricante fica entre 2,5 e 3,0 V). O corte de 6,4 V no pack protege durante a corrida; não deixe o carro ligado parado por horas.</li>
+      <li>Use sempre duas células do mesmo modelo, lote e carga.</li>
+      <li>Célula amassada, com invólucro rasgado ou quente sem motivo → descarte. Não use.</li>
+      <li>Ponha as células conforme a marcação do suporte, com a chave desligada.</li>
+    </ul>
+  </div>
+
+  <h3 id="op-erros">Códigos de erro</h3>
+  <p>O carro para os motores e fica em ERRO. O LED pisca <em>n</em> vezes e pausa; ao entrar, bipa <em>n</em> vezes. <strong>Para sair:</strong> toque curto (volta a PRONTO, ou a IDLE sem calibração) ou <code>{"t":"reset"}</code> (vai a IDLE).</p>
+  <div class="codes">
+    <article class="code-card" id="op-erro-1">
+      <div class="code-head"><span class="code-num">1</span><span class="code-name">Laço atrasado</span><span class="pulses" aria-label="1 piscada"><i></i></span></div>
+      <dl><dt>Sintoma</dt><dd>Para no meio da corrida.</dd>
+      <dt>Causa provável</dt><dd>O laço de controle passou de 2000 µs em 5 ciclos seguidos.</dd>
+      <dt>Ação</dt><dd>Anote o LAÇO MÁX (<code>ovr</code>) da aba SISTEMA. Toque curto e tente de novo. Se repetir, regrave o firmware e relate ao desenvolvimento.</dd></dl>
+    </article>
+    <article class="code-card" id="op-erro-2">
+      <div class="code-head"><span class="code-num">2</span><span class="code-name">Linha perdida</span><span class="pulses" aria-label="2 piscadas"><i></i><i></i></span></div>
+      <dl><dt>Sintoma</dt><dd>Para ao sair de uma curva ou cruzamento.</dd>
+      <dt>Causa provável</dt><dd>A linha ficou fora dos sensores por mais de <code>lostMs</code>.</dd>
+      <dt>Ação</dt><dd>Recoloque o carro na linha e dê toque curto. Baixe <code>vmax</code>/<code>vmin</code>; recalibre se a luz mudou; suba <code>lostMs</code> com cuidado.</dd></dl>
+    </article>
+    <article class="code-card" id="op-erro-3">
+      <div class="code-head"><span class="code-num">3</span><span class="code-name">Bateria baixa</span><span class="pulses" aria-label="3 piscadas"><i></i><i></i><i></i></span></div>
+      <dl><dt>Sintoma</dt><dd>Não arma, ou para correndo.</dd>
+      <dt>Causa provável</dt><dd>Tensão abaixo de <code>vcut</code> ao armar, ou por 1 s com o carro correndo.</dd>
+      <dt>Ação</dt><dd>Troque por células carregadas. Confira a leitura com o multímetro e afira <code>vbk</code>.</dd></dl>
+    </article>
+    <article class="code-card" id="op-erro-4">
+      <div class="code-head"><span class="code-num">4</span><span class="code-name">Calibração inválida</span><span class="pulses" aria-label="4 piscadas"><i></i><i></i><i></i><i></i></span></div>
+      <dl><dt>Sintoma</dt><dd>Fim da calibração com 4 piscadas.</dd>
+      <dt>Causa provável</dt><dd>Algum canal com faixa menor que 200 contagens; o <code>calres</code> lista os canais. Com todos os canais fracos: QTR-8A sem os pinos 3.3V BYPASS unidos.</dd>
+      <dt>Ação</dt><dd>Refaça a calibração passando todos os sensores pela linha. Confira a altura do sensor e o canal no <code>bench_sensor_raw</code>.</dd></dl>
+    </article>
+    <article class="code-card" id="op-erro-5">
+      <div class="code-head"><span class="code-num">5</span><span class="code-name">Encoder sem leitura</span><span class="pulses" aria-label="5 piscadas"><i></i><i></i><i></i><i></i><i></i></span></div>
+      <dl><dt>Sintoma</dt><dd>Para no modo cascata.</dd>
+      <dt>Causa provável</dt><dd><code>mode</code> = 1 e uma roda com duty alto e rotação ≈ 0 por 200 ms.</dd>
+      <dt>Ação</dt><dd>Confira o conector do encoder e o <code>bench_encoder</code>; refaça o <code>cal</code>. Até resolver, use <code>mode</code> = 0.</dd></dl>
+    </article>
+  </div>
+  <p>Respostas de erro do BLE: veja a aba <a href="#ref-erros-ble">Referência</a>.</p>
+
+  <h3 id="op-box">Box e competição</h3>
+  <p>A pista tem linha branca de 19 ± 1 mm sobre manta preta. Regulamento RoboCore: ajustes e troca de perfil só <strong>entre</strong> tentativas (regra 3.1.1). Durante a tentativa, nenhum comando remoto pode parar o robô nem mudar parâmetro, e o celular fica onde o juiz mandar (regra 5.9). Lembre que a v2 não faz volta válida na RoboCore.</p>
+  <h4 id="op-lock">Tomada de tempo com modo competição (regra 5.9)</h4>
+  <ol class="steps">
+    <li>Com o carro parado (PRONTO), ligue o interruptor Modo competição na aba CONFIG (<code>{"t":"set","k":"lock","v":1}</code>) e toque SALVAR. O selo <span class="badge badge-danger">COMPETIÇÃO</span> aparece.</li>
+    <li>Demonstre ao juiz: arme o carro (ou deixe-o correr na pista) e envie um ajuste ou <code>{"t":"stop"}</code>. A resposta é <code>{"t":"ack","k":"stop","ok":0,"err":"locked"}</code> e nada muda no carro. A telemetria continua.</li>
+    <li>Pare o carro pelo botão.</li>
+    <li><strong>Entregue o celular ao juiz</strong> (ou deixe no local que ele indicar) antes da tomada de tempo.</li>
+    <li>Largue pelo botão (toque curto).</li>
+    <li>Entre tentativas, com o carro parado pelo botão, os comandos voltam a valer, inclusive desligar o <code>lock</code>.</li>
+  </ol>
+  <div class="checklist" id="lista-box" data-store="lfr-manual:lista-box">
+    <div class="check-head">
+      <span class="check-count" id="lista-box-cont" aria-live="polite">0 de 9 marcados</span>
+      <button type="button" class="btn btn-danger" id="lista-box-limpar">Limpar marcações</button>
+    </div>
+    <div class="confirm" id="lista-box-confirma" hidden>
+      <p id="lista-box-pergunta">Desmarcar todos os itens desta lista?</p>
+      <button type="button" class="btn btn-danger" id="lista-box-sim">Desmarcar tudo</button>
+      <button type="button" class="btn" id="lista-box-nao">Manter marcações</button>
+    </div>
+    <ul>
+      <li><label><input type="checkbox" id="lb-01"><span>Células carregadas fora do carro; pack acima de 7,0 V</span></label></li>
+      <li><label><input type="checkbox" id="lb-02"><span>Parafusos firmes (abraçadeiras, barra, patins, perfboard)</span></label></li>
+      <li><label><input type="checkbox" id="lb-03"><span>O-rings no canal, sem desgaste nem superfície lisa</span></label></li>
+      <li><label><input type="checkbox" id="lb-04"><span>Patins inteiros, sem desgaste visível</span></label></li>
+      <li><label><input type="checkbox" id="lb-05"><span>Sensores calibrados na pista oficial, com a iluminação da prova</span></label></li>
+      <li><label><input type="checkbox" id="lb-06"><span>Perfil certo selecionado e salvo (sem NÃO SALVO)</span></label></li>
+      <li><label><input type="checkbox" id="lb-07"><span><code>lock</code> = 1 salvo e selo COMPETIÇÃO visível</span></label></li>
+      <li><label><input type="checkbox" id="lb-08"><span>Botão testado: o carro para no aperto</span></label></li>
+      <li><label><input type="checkbox" id="lb-09"><span>Celular entregue ao juiz; BLE desconectado se o regulamento do evento exigir</span></label></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ MANUTENÇÃO ═══════════════════════════════ -->
+<section class="panel" id="manutencao" role="tabpanel" aria-labelledby="tab-manutencao">
+  <h2>Manutenção</h2>
+  <p class="lead">Inspeções, troca de peças e diagnóstico. "Bateria" = uma carga do par de células.</p>
+
+  <dl class="summary">
+    <div><dt>A cada sessão</dt><dd>Patins · O-rings<small>e células, antes de carregar</small></dd></div>
+    <div><dt>A cada 10 baterias</dt><dd>Parafusos · JST-SH<small>e fios perto das rodas</small></dd></div>
+    <div><dt>Mensal</dt><dd>Insertos · molas<small>e chicote do QTR-8A</small></dd></div>
+    <div><dt>Patim</dt><dd>&gt; 0,5 mm<small>de desgaste → trocar</small></dd></div>
+    <div><dt>Fusível</dt><dd>3 A<small>nunca maior</small></dd></div>
+  </dl>
+
+  <ul class="jump" aria-label="Nesta aba">
+    <li><a href="#mn-inspecao">Inspeção periódica</a></li>
+    <li><a href="#mn-troca">Troca de peças</a></li>
+    <li><a href="#mn-diagnostico">Diagnóstico</a></li>
+    <li><a href="#mn-firmware">Firmware</a></li>
+    <li><a href="#mn-bancada">Testes de bancada</a></li>
+    <li><a href="#mn-afericao">Aferição</a></li>
+    <li><a href="#mn-reposicao">Reposição</a></li>
+    <li><a href="#mn-registro">Registro</a></li>
+  </ul>
+
+  <h3 id="mn-inspecao">Inspeção periódica</h3>
+  <p>Marque cada item ao inspecionar; anote a intervenção no registro.</p>
+  <div class="checklist" id="lista-inspecao" data-store="lfr-manual:lista-inspecao">
+    <div class="check-head">
+      <span class="check-count" id="lista-inspecao-cont" aria-live="polite">0 de 9 marcados</span>
+      <button type="button" class="btn btn-danger" id="lista-inspecao-limpar">Limpar marcações</button>
+    </div>
+    <div class="confirm" id="lista-inspecao-confirma" hidden>
+      <p id="lista-inspecao-pergunta">Desmarcar todos os itens desta lista?</p>
+      <button type="button" class="btn btn-danger" id="lista-inspecao-sim">Desmarcar tudo</button>
+      <button type="button" class="btn" id="lista-inspecao-nao">Manter marcações</button>
+    </div>
+    <ul>
+      <li><label><input type="checkbox" id="li-01"><span><strong>Patins</strong> — a cada sessão. Desgaste da calota, trincas. Desgaste maior que 0,5 mm ou calota achatada → trocar.</span></label></li>
+      <li><label><input type="checkbox" id="li-02"><span><strong>O-rings</strong> — a cada sessão. Superfície, trincas, folga no canal. Liso, rachado ou frouxo → trocar o par.</span></label></li>
+      <li><label><input type="checkbox" id="li-03"><span><strong>Células 18650</strong> — a cada sessão, antes de carregar. Invólucro, amassados, aquecimento, tensão em repouso de cada uma. Invólucro rasgado, amassada ou quente sem motivo → descarte. Tensões muito diferentes → carregar separadas e conferir de novo.</span></label></li>
+      <li><label><input type="checkbox" id="li-04"><span><strong>Parafusos</strong> — a cada 10 baterias. Abraçadeiras, barra, patins, perfboard. Folgado → reapertar sem esmagar; rosca espanada → ver insertos.</span></label></li>
+      <li><label><input type="checkbox" id="li-05"><span><strong>Conectores JST-SH dos encoders</strong> — a cada 10 baterias. Encaixe firme, fios sem tensão. Solto ou com fio partido → refazer e testar no <code>bench_encoder</code>.</span></label></li>
+      <li><label><input type="checkbox" id="li-06"><span><strong>Fios perto das rodas e dos motores</strong> — a cada 10 baterias. Isolação, atrito com a roda, solda dos motores. Esfolado ou solda trincada → refazer.</span></label></li>
+      <li><label><input type="checkbox" id="li-07"><span><strong>Insertos M3</strong> — mensal. Inserto girando em falso ou saindo → prensar de novo a quente ou trocar a peça.</span></label></li>
+      <li><label><input type="checkbox" id="li-08"><span><strong>Molas do suporte 2×18650</strong> — mensal. Pressão, oxidação. Célula com folga ou mau contato → trocar o suporte.</span></label></li>
+      <li><label><input type="checkbox" id="li-09"><span><strong>Chicote do QTR-8A</strong> — mensal. Fios esmagados no canal da base, conector firme. Fio partido → refazer com AWG 30 (⌀ ≤ 0,6 mm).</span></label></li>
+    </ul>
+  </div>
+
+  <h3 id="mn-troca">Troca de peças</h3>
+  <p>Depois de qualquer troca, faça o teste de bancada indicado e rode uma volta curta no perfil 0.</p>
+  <details class="part" id="mn-troca-patim"><summary>Patim</summary><div><ol class="steps">
+    <li>Solte o M2 do patim, por cima da barra.</li>
+    <li>Tire o patim e os calços que estiverem sob ele. Anote quantos calços havia.</li>
+    <li>Ponha o patim novo (<code>patim.stl</code>) com o mesmo número de calços.</li>
+    <li>Aperte o M2 (× 12 com 0–2 calços, × 14 com 3–6).</li>
+    <li>Faça o mesmo do outro lado se o desgaste for parecido: os dois patins têm que ter a mesma altura.</li>
+  </ol></div></details>
+  <details class="part" id="mn-troca-calco"><summary>Calço (altura do sensor)</summary><div><ol class="steps">
+    <li>Cada passo de 0,5 mm usa um <code>calco.stl</code> sob cada patim e um <code>calco_lingua.stl</code> sob a língua da barra.</li>
+    <li>Solte os 2 M2 dos patins e os 2 M3 da língua (por baixo da base).</li>
+    <li>Acrescente ou tire os calços <strong>nos três pontos ao mesmo tempo</strong>, para o chassi continuar nivelado.</li>
+    <li>Troque o comprimento dos parafusos se mudar de faixa (M3 × 8 até 4 calços, × 10 com 5–6; M2 × 12 até 2 calços, × 14 com 3–6).</li>
+    <li>Aperte e <strong>recalibre os sensores</strong>.</li>
+  </ol></div></details>
+  <details class="part" id="mn-troca-oring"><summary>O-ring</summary><div><ol class="steps">
+    <li>Tire o O-ring velho do canal da roda com os dedos (sem ferramenta de ponta, para não riscar o canal).</li>
+    <li>Encaixe o novo (34 × 3 mm), sem torcer o cordão.</li>
+    <li>Troque os dois lados juntos: diâmetros diferentes fazem o carro puxar para um lado.</li>
+  </ol></div></details>
+  <details class="part" id="mn-troca-roda"><summary>Roda</summary><div><ol class="steps">
+    <li>Solte a trava radial M2 × 4, se houver.</li>
+    <li>Puxe a roda para fora do eixo, segurando o motor pelo lado de dentro.</li>
+    <li>Encaixe a roda nova com o achatado do furo em D alinhado com o do eixo.</li>
+    <li>Confira que a face da caixa do motor continua encostada no batente; se saiu, solte a abraçadeira, encoste e aperte de novo.</li>
+    <li>Gire a roda com a mão: não pode tocar a base nem o motor.</li>
+  </ol></div></details>
+  <details class="part" id="mn-troca-motor"><summary>Abraçadeira e motor N20</summary><div><ol class="steps">
+    <li>Desligue a chave e tire as células.</li>
+    <li>Tire a roda.</li>
+    <li>Dessolde ou desconecte os fios do motor e o conector JST-SH do encoder.</li>
+    <li>Solte os 2 M2 × 8 da abraçadeira e tire o motor.</li>
+    <li>Monte o motor novo como na montagem mecânica, passos 3 a 8 (a roda entra antes do aperto da abraçadeira).</li>
+    <li>Rode o <code>bench_motor</code> e o <code>bench_encoder</code>.</li>
+    <li>Refaça a calibração do encoder daquele lado (<code>cal</code>) e confira o sentido (<code>invL</code>/<code>invR</code>, <code>einvL</code>/<code>einvR</code>).</li>
+  </ol></div></details>
+  <details class="part" id="mn-troca-qtr"><summary>QTR-8A</summary><div><ol class="steps">
+    <li>Desligue a chave.</li>
+    <li>Desconecte o conector do chicote pela janela da barra.</li>
+    <li>Solte os 2 M2 × 8 cabeça baixa por baixo e tire a placa.</li>
+    <li>Una os dois pinos <strong>3.3V BYPASS</strong> da placa nova com um pedaço de fio (montagem mecânica). Sem isso, a 3,3 V os LEDs ficam fracos e a calibração pode dar ERRO(4).</li>
+    <li>Monte a placa nova com os sensores para baixo e a borda dos pinos para trás.</li>
+    <li>Rode o <code>bench_sensor_raw</code>: os 8 canais têm que responder.</li>
+    <li><strong>Recalibre os sensores</strong> no firmware principal.</li>
+  </ol></div></details>
+  <details class="part" id="mn-troca-suporte"><summary>Suporte 2×18650</summary><div><ol class="steps">
+    <li>Desligue a chave e tire as células.</li>
+    <li>Desconecte os fios do suporte da placa.</li>
+    <li>Puxe o suporte para fora das abas do berço.</li>
+    <li>Meça o suporte novo (comprimento, largura, altura). Se for diferente do anterior, preencha o <code>[medidas]</code> do <code>medidas.toml</code> e rode o <code>build.py</code>: o berço pode não servir.</li>
+    <li>Confira que o suporte novo é <strong>série</strong> (2S): com as células, 7–8,4 V entre os fios.</li>
+    <li>Encaixe pelas abas, ligue os fios respeitando a polaridade e confira com o multímetro antes de ligar a chave.</li>
+  </ol></div></details>
+  <details class="part" id="mn-troca-fusivel"><summary>Fusível</summary><div>
+    <div class="band band-warn" role="note"><p class="band-title">Atenção</p><p>Fusível queimado indica curto ou motor travado. Ache a causa antes de trocar.</p></div>
+    <ol class="steps">
+    <li>Desligue a chave e tire as células.</li>
+    <li>Procure a causa: fio esfolado encostando no chassi, solda em curto, célula invertida, roda travada.</li>
+    <li>Com as células fora, <strong>ligue a chave</strong> e meça a resistência entre +BAT depois da chave e o GND: tem que ser maior que 1 kΩ. Com a chave desligada a medição não pega o lado da carga, onde o curto costuma estar.</li>
+    <li>Desligue a chave.</li>
+    <li>Troque por um fusível de lâmina mini <strong>de 3 A</strong> — nunca maior.</li>
+  </ol></div></details>
+
+  <h3 id="mn-diagnostico">Diagnóstico</h3>
+  <p>Escolha o sintoma e responda às perguntas na ordem. O primeiro caminho com ação termina o diagnóstico.</p>
+  <div class="diag" id="diag">
+    <ul class="diag-list" id="diag-sintomas" aria-label="Sintomas"></ul>
+    <div class="diag-box" id="diag-caixa" aria-live="polite">
+      <p class="muted" id="diag-vazio">Escolha um sintoma na lista.</p>
+    </div>
+  </div>
+  <details id="diag-arvore">
+    <summary class="btn" style="display:inline-block">Ver a árvore completa</summary>
+    <div class="tree" id="diag-dados">
+      <article id="dg-nao-liga" data-titulo="Não liga (LED apagado, nenhum bipe)">
+        <h4>Não liga (LED apagado, nenhum bipe)</h4>
+        <ol>
+          <li data-resp="nao"><span class="q">O fusível está inteiro?</span> <span class="ans">Não →</span> <span class="a">Troque o fusível (Manutenção, troca de peças): ache a causa antes, nunca use um maior que 3 A.</span></li>
+          <li data-resp="nao"><span class="q">As células estão na polaridade certa e o pack tem 6,0–8,4 V entre os fios do suporte?</span> <span class="ans">Não →</span> <span class="a">Recoloque ou carregue as células.</span></li>
+          <li data-resp="nao"><span class="q">A chave passa corrente (mesma tensão antes e depois)?</span> <span class="ans">Não →</span> <span class="a">Troque a chave.</span></li>
+          <li data-resp="nao"><span class="q">A saída do MP1584 está em 5,0 V?</span> <span class="ans">Não →</span> <span class="a">Solte o fio de saída do trilho de 5 V, tire o ESP32 e reajuste para 5,0 V sem carga.</span></li>
+          <li data-resp="sim"><span class="q">O botão BOOT estava apertado ao ligar?</span> <span class="ans">Sim →</span> <span class="a">Solte e religue: com o GPIO 0 em nível baixo no boot a placa entra em modo de gravação.</span></li>
+          <li data-resp="sim"><span class="q">O ESP32 liga pelo USB sozinho (sem o perfboard)?</span> <span class="ans">Sim →</span> <span class="a">Com o perfboard ele não liga: confira o pull-down de 10 kΩ no GPIO 12 e o MCP3008 em 3,3 V. Com o GPIO 12 em nível alto no boot a placa não inicia.</span></li>
+        </ol>
+      </article>
+      <article id="dg-reinicia" data-titulo="Liga e reinicia ao acelerar">
+        <h4>Liga e reinicia ao acelerar</h4>
+        <ol>
+          <li data-resp="nao"><span class="q">As células são high-drain (≥ 20 A) e do mesmo lote?</span> <span class="ans">Não →</span> <span class="a">Troque as células.</span></li>
+          <li data-resp="nao"><span class="q">As molas do suporte seguram as células sem folga?</span> <span class="ans">Não →</span> <span class="a">Troque o suporte 2×18650.</span></li>
+          <li data-resp="nao"><span class="q">O capacitor de 100 µF está no VM do TB6612?</span> <span class="ans">Não →</span> <span class="a">Instale o capacitor.</span></li>
+          <li data-resp="nao"><span class="q">Os fios de alimentação estão firmes nas soldas e no conector da bateria?</span> <span class="ans">Não →</span> <span class="a">Refaça as soldas e o conector.</span></li>
+        </ol>
+      </article>
+      <article id="dg-erro-1" data-titulo="LED em ERRO(1) — laço atrasado">
+        <h4>LED em ERRO(1) — laço atrasado</h4>
+        <ol>
+          <li data-resp="nao" data-resp-outra="sim"><span class="q">O erro se repete na mesma situação?</span> <span class="ans">Não →</span> <span class="a">Toque curto e siga; anote no registro.</span> <span class="ans">Sim →</span> <span class="a2">Anote o LAÇO MÁX (<code>ovr</code>) e a PILHA LIVRE (<code>stk</code>) da aba SISTEMA, regrave o firmware e relate ao desenvolvimento com esses números.</span></li>
+        </ol>
+      </article>
+      <article id="dg-erro-2" data-titulo="LED em ERRO(2) — linha perdida">
+        <h4>LED em ERRO(2) — linha perdida</h4>
+        <ol>
+          <li data-resp="nao"><span class="q">A faixa de sensores do dashboard mostra a linha com o carro parado sobre ela?</span> <span class="ans">Não →</span> <span class="a">Recalibre os sensores.</span></li>
+          <li data-resp="nao"><span class="q">A face dos sensores está a 3,0 mm do chão, patins inteiros?</span> <span class="ans">Não →</span> <span class="a">Troque o patim ou ajuste os calços.</span></li>
+          <li data-resp="sim"><span class="q">O erro aparece na saída das curvas rápidas?</span> <span class="ans">Sim →</span> <span class="a">Baixe <code>vmax</code>/<code>vmin</code> ou suba <code>kp</code>.</span></li>
+        </ol>
+      </article>
+      <article id="dg-erro-3" data-titulo="LED em ERRO(3) — bateria baixa">
+        <h4>LED em ERRO(3) — bateria baixa</h4>
+        <ol>
+          <li data-resp="sim" data-resp-outra="nao"><span class="q">O multímetro mostra o pack abaixo de <code>vcut</code> (6,4 V de fábrica)?</span> <span class="ans">Sim →</span> <span class="a">Troque por células carregadas.</span> <span class="ans">Não →</span> <span class="a2">Multímetro acima e dashboard abaixo: afira <code>vbk</code>.</span></li>
+        </ol>
+      </article>
+      <article id="dg-erro-4" data-titulo="LED em ERRO(4) — calibração inválida">
+        <h4>LED em ERRO(4) — calibração inválida</h4>
+        <ol>
+          <li data-resp="sim"><span class="q">No <code>bench_sensor_raw</code>, todos os canais variam pouco entre a linha e o fundo?</span> <span class="ans">Sim →</span> <span class="a">Confira os pinos 3.3V BYPASS do QTR-8A unidos (montagem mecânica).</span></li>
+          <li data-resp="sim" data-resp-outra="nao"><span class="q">O <code>calres</code> lista os mesmos canais toda vez?</span> <span class="ans">Sim →</span> <span class="a">Rode o <code>bench_sensor_raw</code>: canal parado indica solda no MCP3008 ou fio do chicote partido.</span> <span class="ans">Não →</span> <span class="a2">Refaça a varredura passando os 8 sensores pela linha e pelo fundo, com a altura certa.</span></li>
+        </ol>
+      </article>
+      <article id="dg-erro-5" data-titulo="LED em ERRO(5) — encoder sem leitura">
+        <h4>LED em ERRO(5) — encoder sem leitura (modo cascata)</h4>
+        <ol>
+          <li data-resp="nao" data-resp-outra="sim"><span class="q">O <code>bench_encoder</code> conta nas duas rodas?</span> <span class="ans">Não →</span> <span class="a">Confira o conector JST-SH, a alimentação do encoder ou o pull-up de 10 kΩ no GPIO 36/39 (lado direito).</span> <span class="ans">Sim →</span> <span class="a2">Refaça o <code>cal</code> dos dois lados e confira <code>einvL</code>/<code>einvR</code>. Até resolver, use <code>mode</code> = 0.</span></li>
+        </ol>
+      </article>
+      <article id="dg-circulos" data-titulo="Gira em círculos">
+        <h4>Gira em círculos</h4>
+        <ol>
+          <li data-resp="nao"><span class="q">No <code>bench_differential</code>, o "reto" anda reto?</span> <span class="ans">Não →</span> <span class="a">Um motor invertido ou canais trocados: corrija <code>invL</code>/<code>invR</code>/<code>swap</code> pelo BLE no firmware principal (não refaça a fiação).</span></li>
+          <li data-resp="sim"><span class="q">Uma roda está parada?</span> <span class="ans">Sim →</span> <span class="a">Veja o sintoma <a href="#dg-motor">Um motor não gira</a>.</span></li>
+          <li data-resp="nao"><span class="q">A faixa de sensores mostra a linha do lado certo?</span> <span class="ans">Não →</span> <span class="a"><code>sinv</code> = 1 (barra espelhada).</span></li>
+        </ol>
+      </article>
+      <article id="dg-oscila" data-titulo="Oscila na reta" data-fim="Nada disso: suba kd 10 %.">
+        <h4>Oscila na reta</h4>
+        <ol>
+          <li data-resp="sim"><span class="q">O carro oscila mesmo devagar (perfil 0)?</span> <span class="ans">Sim →</span> <span class="a">Baixe <code>kp</code> 20 %.</span></li>
+          <li data-resp="sim"><span class="q">A correção (gráfico <code>corr</code>) treme?</span> <span class="ans">Sim →</span> <span class="a">Baixe <code>dlp</code>.</span></li>
+          <li data-resp="sim"><span class="q">Os O-rings estão lisos ou os patins gastos?</span> <span class="ans">Sim →</span> <span class="a">Troque os O-rings ou os patins.</span></li>
+        </ol>
+        <p>Nada disso → suba <code>kd</code> 10 %.</p>
+      </article>
+      <article id="dg-curvas" data-titulo="Sai da pista nas curvas">
+        <h4>Sai da pista nas curvas</h4>
+        <ol>
+          <li data-resp="sim"><span class="q">Sai só nas curvas rápidas?</span> <span class="ans">Sim →</span> <span class="a">Baixe <code>vmin</code> ou <code>thr</code>, ou baixe <code>vmax</code>.</span></li>
+          <li data-resp="sim"><span class="q">Não fecha nem devagar?</span> <span class="ans">Sim →</span> <span class="a">Suba <code>kp</code>.</span></li>
+          <li data-resp="sim"><span class="q">O O-ring da roda de fora sai do canal na curva?</span> <span class="ans">Sim →</span> <span class="a">Anote e avise o projetista (retenção do O-ring, A-WP2-11).</span></li>
+          <li data-resp="sim"><span class="q">Os O-rings estão lisos?</span> <span class="ans">Sim →</span> <span class="a">Troque os O-rings.</span></li>
+        </ol>
+      </article>
+      <article id="dg-motor" data-titulo="Um motor não gira">
+        <h4>Um motor não gira</h4>
+        <ol>
+          <li data-resp="nao"><span class="q">No <code>bench_motor</code>, o motor gira em algum passo?</span> <span class="ans">Não →</span> <span class="a">Meça a tensão nos terminais do motor durante o passo: com tensão → motor ou redução travados (troque o motor); sem tensão → solda, TB6612 ou STBY (GPIO 23).</span></li>
+          <li data-resp="sim"><span class="q">Gira no <code>bench_motor</code> mas não no carro?</span> <span class="ans">Sim →</span> <span class="a">Confira <code>swap</code> e se o carro está mesmo em CORRENDO (estado no dashboard).</span></li>
+        </ol>
+      </article>
+      <article id="dg-rpm" data-titulo="RPM zerado no modo cascata">
+        <h4>RPM zerado no modo cascata</h4>
+        <ol>
+          <li data-resp="sim"><span class="q">Há uma calibração de encoder aberta (<code>cal start</code> sem <code>finish</code>)?</span> <span class="ans">Sim →</span> <span class="a">Envie <code>finish</code> ou <code>{"t":"reset"}</code>. Durante a calibração o RPM fica em 0.</span></li>
+          <li data-resp="nao"><span class="q">O <code>bench_encoder</code> conta naquele lado?</span> <span class="ans">Não →</span> <span class="a">Conector, alimentação ou pull-up (ver ERRO(5)).</span></li>
+          <li data-resp="sim"><span class="q"><code>pprL</code>/<code>pprR</code> ainda estão em 600 (fábrica)?</span> <span class="ans">Sim →</span> <span class="a">Faça o <code>cal</code> dos dois lados.</span></li>
+        </ol>
+      </article>
+      <article id="dg-ble" data-titulo="BLE não conecta">
+        <h4>BLE não conecta</h4>
+        <ol>
+          <li data-resp="nao"><span class="q">O navegador é Chrome ou Edge, no computador ou no Android?</span> <span class="ans">Não →</span> <span class="a">Troque de navegador; iPhone não tem Web Bluetooth.</span></li>
+          <li data-resp="nao"><span class="q">A página foi aberta por <code>http://localhost</code> ou HTTPS?</span> <span class="ans">Não →</span> <span class="a">Abra pelo servidor local (Operador, dashboard).</span></li>
+          <li data-resp="nao"><span class="q">O carro aparece como <code>LFR-RACER-01</code> na lista?</span> <span class="ans">Não →</span> <span class="a">Religue o carro; desconecte outros apps BLE que estejam ligados a ele.</span></li>
+        </ol>
+      </article>
+      <article id="dg-nao-salvo" data-titulo="&quot;NÃO SALVO&quot; que não some">
+        <h4>"NÃO SALVO" que não some</h4>
+        <ol>
+          <li data-tipo="escolha"><span class="q">Qual foi a resposta do SALVAR?</span>
+            <ul>
+              <li data-opcao='{"t":"ack","k":"save","ok":1}'><span class="a">O indicador some no próximo frame <code>sta</code> (2 vezes por segundo).</span></li>
+              <li data-opcao='err:"running"'><span class="a">O carro está armado ou correndo: pare pelo botão e salve de novo.</span></li>
+              <li data-opcao='err:"locked"'><span class="a">Modo competição com o carro andando: pare pelo botão.</span></li>
+              <li data-opcao='err:"store"'><span class="a">Falha ao gravar: repita; se persistir, regrave o firmware e relate ao desenvolvimento.</span></li>
+            </ul>
+          </li>
+        </ol>
+      </article>
+    </div>
+  </details>
+
+  <h3 id="mn-firmware">Firmware</h3>
+  <ul>
+    <li><strong>Versão atual:</strong> 4.0.0. Aparece no <code>info</code> e na aba SISTEMA.</li>
+    <li><strong>Plataforma:</strong> <code>espressif32@6.13.0</code> (arduino-esp32 2.0.17) e NimBLE-Arduino 2.5.1, com versões fixas.</li>
+    <li><strong>Regravar:</strong> <code>pio run -e esp32dev -t upload</code></li>
+    <li>A configuração salva, os perfis, a calibração dos sensores e o PPR dos encoders ficam na NVS e <strong>sobrevivem à regravação</strong>.</li>
+    <li>Configuração salva ausente ou corrompida → valores de fábrica daquele bloco, 3 bipes curtos e o aviso <code>cfgerr</code> = 1 no dashboard.</li>
+    <li><strong>Voltar aos valores de fábrica:</strong> FÁBRICA (<code>{"t":"defaults"}</code>) e depois SALVAR (<code>{"t":"save"}</code>), com o carro parado. Isso também devolve <code>pprL</code>/<code>pprR</code> a 600: refaça o <code>cal</code> antes de salvar se for usar o modo cascata (A-WP1-04). A calibração dos sensores não muda.</li>
+    <li>Os testes de bancada substituem o firmware principal: grave-o de novo ao terminar.</li>
+    <li>Pendências conhecidas da v2: sem parada automática depois da chegada (F-34); <code>ack</code> de <code>start</code>/<code>stop</code>/<code>scal</code> só confirma o recebimento (A-WP1-07); <code>defaults</code> volta o PPR a 600 (A-WP1-04).</li>
+  </ul>
+
+  <h3 id="mn-bancada">Testes de bancada</h3>
+  <p>Rodas fora do chão, monitor serial aberto (<code>pio device monitor -b 115200</code>). Detalhes na aba <a href="#mt-bancada">Montador</a>.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Comando</th><th>Quando usar</th><th>Resultado esperado</th></tr></thead>
+    <tbody>
+      <tr><td><code>pio run -e bench_motor -t upload</code></td><td>Motor ou TB6612 suspeito; depois de trocar motor</td><td>A frente, A ré, B frente, B ré, ambos, parado — 1,5 s cada</td></tr>
+      <tr><td><code>pio run -e bench_encoder -t upload</code></td><td>ERRO(5), RPM zerado, troca de motor ou conector</td><td>Contagem muda só no lado da roda girada; parada quando a roda para</td></tr>
+      <tr><td><code>pio run -e bench_sensor_raw -t upload</code></td><td>ERRO(4), canal suspeito, troca do QTR-8A</td><td>8 valores de 0 a 1023 que caem sobre a linha branca</td></tr>
+      <tr><td><code>pio run -e bench_sensor_cal -t upload</code></td><td>Conferir a posição calculada</td><td><code>pos</code> perto de 0 com a linha no centro, mudando de sinal de um lado para o outro</td></tr>
+      <tr><td><code>pio run -e bench_velocity_cal -t upload</code></td><td>Medir o PPR sem o dashboard</td><td><code>ok=1</code> e o PPR de cada lado; depois <code>rpmL</code>/<code>rpmR</code> ao girar</td></tr>
+      <tr><td><code>pio run -e bench_differential -t upload</code></td><td>Gira em círculos; conferir sentido dos motores</td><td>Reto, curva à direita, curva à esquerda, giro horário, giro anti-horário, parado</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 id="mn-afericao">Aferição</h3>
+  <h4>Leitura da bateria (<code>vbk</code>)</h4>
+  <p>Compare a tensão do multímetro com a do dashboard e corrija <code>vbk</code> (faixa 0,8–1,2). Passo a passo na aba <a href="#op-vbk">Operador</a>. Refaça depois de trocar o divisor (100 kΩ / 47 kΩ) ou o ESP32.</p>
+  <h4>PPR dos encoders (<code>cal</code>)</h4>
+  <p>O padrão de 600 contagens por volta do eixo de saída é provisório. Meça com o <code>cal</code> pelo BLE (aba <a href="#op-cascata">Operador</a>) ou com o <code>bench_velocity_cal</code>. Refaça depois de trocar um motor.</p>
+  <h4>Altura do sensor (calços)</h4>
+  <p>A face dos sensores fica a 3,0 mm do chão sem calço; a Pololu indica 3 mm como ótimo e 6 mm como máximo. Meça com o paquímetro de profundidade entre o chão e a face do QTR-8A, com o carro apoiado nas rodas e nos patins. Ajuste com calços de 0,5 mm e recalibre os sensores.</p>
+
+  <h3 id="mn-reposicao">Peças de reposição</h3>
+  <p>Quantidades a ter na caixa do box, iguais às do carro, salvo indicação. A BOM já traz só os O-rings e 1 inserto de reserva; as peças impressas saem do PETG da BOM; o resto é <strong>compra extra</strong>.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Item</th><th class="num">Na caixa</th><th>Fonte</th></tr></thead>
+    <tbody>
+      <tr><td>O-ring de silicone 34 × 3 mm</td><td class="num">2</td><td>BOM (2 de reserva)</td></tr>
+      <tr><td>Patim</td><td class="num">2</td><td><code>patim.stl</code></td></tr>
+      <tr><td>Calço e calço de língua</td><td class="num">4 + 2</td><td><code>calco.stl</code>, <code>calco_lingua.stl</code></td></tr>
+      <tr><td>Roda</td><td class="num">2</td><td><code>roda.stl</code></td></tr>
+      <tr><td>Abraçadeira do N20 (E e D)</td><td class="num">1 + 1</td><td><code>abracadeira_E.stl</code>, <code>abracadeira_D.stl</code></td></tr>
+      <tr><td>Fusível de lâmina mini 3 A</td><td class="num">1</td><td>Compra extra: o mesmo item da BOM, que traz só o fusível do carro</td></tr>
+      <tr><td>Células 18650 carregadas (mesmo modelo e lote)</td><td class="num">2</td><td>Compra extra: um segundo par igual ao da BOM (ficha 11)</td></tr>
+      <tr><td>Inserto térmico M3</td><td class="num">1</td><td>BOM (1 de reserva)</td></tr>
+      <tr><td>Parafusos de cada tipo da tabela de fixadores</td><td class="num">1 jogo</td><td>Compra extra; tipos no relatório de montagem</td></tr>
+      <tr><td>Fio AWG 30 e conector do QTR-8A</td><td class="num">1 chicote</td><td>Compra extra: os mesmos itens da BOM</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 id="mn-registro">Registro de manutenção</h3>
+  <p>Copie a tabela para uma folha, uma linha por intervenção.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Data</th><th>Baterias desde a última</th><th>O que foi feito</th><th>Peças trocadas</th><th>Por quem</th><th>Observação</th></tr></thead>
+    <tbody>
+      <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ═══════════════════════════════ REFERÊNCIA ═══════════════════════════════ -->
+<section class="panel" id="referencia" role="tabpanel" aria-labelledby="tab-referencia">
+  <h2>Referência</h2>
+  <p class="lead">Parâmetros, comandos BLE e respostas. Para mudar um valor: <code>{"t":"set","k":"&lt;chave&gt;","v":&lt;valor&gt;}</code> ou o campo da aba CONFIG do dashboard.</p>
+
+  <ul class="jump" aria-label="Nesta aba">
+    <li><a href="#ref-parametros">Parâmetros</a></li>
+    <li><a href="#ref-comandos">Comandos</a></li>
+    <li><a href="#ref-erros-ble">Erros do BLE</a></li>
+  </ul>
+
+  <h3 id="ref-parametros">Parâmetros</h3>
+  <p>Na ordem do <code>src/config/RobotConfig.cpp</code>. Valor fora da faixa volta com <code>err:"range"</code> e não muda nada. Chaves de 0/1 e de milissegundos são arredondadas para o inteiro mais próximo — <code>{"t":"set","k":"invL","v":0.6}</code> aplica 1 — e o <code>ack</code> mostra o valor aplicado. "Com o carro andando" = ARMADO e CORRENDO; com o modo competição ligado (<code>lock</code> = 1), <strong>nenhuma</strong> chave muda nesses estados.</p>
+  <div class="filter">
+    <label for="filtro-param">Filtrar parâmetros
+      <input type="search" id="filtro-param" placeholder="ex.: bateria, kp, encoder" autocomplete="off">
+    </label>
+    <output id="filtro-param-cont" for="filtro-param" aria-live="polite">30 de 30</output>
+  </div>
+  <div class="tbl"><table id="tabela-param">
+    <thead><tr><th>Chave</th><th>Descrição</th><th>Unidade</th><th class="num">Fábrica</th><th class="num">Faixa</th><th>Com o carro andando?</th></tr></thead>
+    <tbody>
+      <tr><td><code>invL</code></td><td>Inverte o sentido do motor esquerdo</td><td>—</td><td class="num">0</td><td class="num">0 ou 1</td><td>não</td></tr>
+      <tr><td><code>invR</code></td><td>Inverte o sentido do motor direito</td><td>—</td><td class="num">0</td><td class="num">0 ou 1</td><td>não</td></tr>
+      <tr><td><code>swap</code></td><td>Troca os canais A/B do TB6612 entre esquerdo e direito</td><td>—</td><td class="num">0</td><td class="num">0 ou 1</td><td>não</td></tr>
+      <tr><td><code>einvL</code></td><td>Inverte o sentido de contagem do encoder esquerdo</td><td>—</td><td class="num">0</td><td class="num">0 ou 1</td><td>não</td></tr>
+      <tr><td><code>einvR</code></td><td>Inverte o sentido de contagem do encoder direito</td><td>—</td><td class="num">0</td><td class="num">0 ou 1</td><td>não</td></tr>
+      <tr><td><code>pol</code></td><td>Cor da linha: 0 = linha preta, 1 = linha branca</td><td>—</td><td class="num">1</td><td class="num">0 ou 1</td><td>não</td></tr>
+      <tr><td><code>sinv</code></td><td>Inverte a ordem dos sensores (barra montada espelhada)</td><td>—</td><td class="num">0</td><td class="num">0 ou 1</td><td>não</td></tr>
+      <tr><td><code>chem</code></td><td>Química da bateria (curva de %): 0 = LiPo, 1 = Li-ion</td><td>—</td><td class="num">1</td><td class="num">0 ou 1</td><td>não</td></tr>
+      <tr><td><code>lock</code></td><td>Modo competição: 1 = recusa todo comando BLE com o carro andando</td><td>—</td><td class="num">0</td><td class="num">0 ou 1</td><td>não</td></tr>
+      <tr><td><code>vcut</code></td><td>Tensão de corte: abaixo dela o carro não arma (ERRO(3)); correndo, para depois de 1 s abaixo dela</td><td>V</td><td class="num">6,4</td><td class="num">5,6–7,6</td><td>não</td></tr>
+      <tr><td><code>vbk</code></td><td>Correção da leitura de tensão (aferida com multímetro)</td><td>—</td><td class="num">1,0</td><td class="num">0,8–1,2</td><td>não</td></tr>
+      <tr><td><code>pprL</code></td><td>Contagens ×4 por volta do eixo de saída, encoder esquerdo (também pelo <code>cal</code>)</td><td>—</td><td class="num">600</td><td class="num">1–10000</td><td>não</td></tr>
+      <tr><td><code>pprR</code></td><td>Idem, encoder direito</td><td>—</td><td class="num">600</td><td class="num">1–10000</td><td>não</td></tr>
+      <tr><td><code>kp</code></td><td>Proporcional da malha de posição</td><td>fração / erro</td><td class="num">1,0</td><td class="num">0–20</td><td>sim</td></tr>
+      <tr><td><code>ki</code></td><td>Integral da malha de posição</td><td>1/s</td><td class="num">0,0</td><td class="num">0–50</td><td>sim</td></tr>
+      <tr><td><code>kd</code></td><td>Derivativo da malha de posição</td><td>s</td><td class="num">0,03</td><td class="num">0–2</td><td>sim</td></tr>
+      <tr><td><code>dlp</code></td><td>Filtro do termo D (1 = sem filtro; menor = mais filtro)</td><td>—</td><td class="num">0,5</td><td class="num">0,05–1</td><td>sim</td></tr>
+      <tr><td><code>mode</code></td><td>0 = PWM direto, 1 = cascata com encoders</td><td>—</td><td class="num">0</td><td class="num">0 ou 1</td><td>não</td></tr>
+      <tr><td><code>kpv</code></td><td>Proporcional da malha de velocidade (cascata)</td><td>fração / RPM</td><td class="num">0,002</td><td class="num">0–0,05</td><td>sim</td></tr>
+      <tr><td><code>kiv</code></td><td>Integral da malha de velocidade</td><td>fração / (RPM·s)</td><td class="num">0,005</td><td class="num">0–1</td><td>sim</td></tr>
+      <tr><td><code>kdv</code></td><td>Derivativo da malha de velocidade</td><td>fração·s / RPM</td><td class="num">0,0</td><td class="num">0–0,01</td><td>sim</td></tr>
+      <tr><td><code>rpmMax</code></td><td>RPM que vale a fração 1,0 no modo cascata</td><td>RPM</td><td class="num">700</td><td class="num">100–2000</td><td>sim</td></tr>
+      <tr><td><code>vmax</code></td><td>Velocidade-base em reta (erro zero)</td><td>fração</td><td>0,35 / 0,50 / 0,70 (perfis 0 / 1 / 2)</td><td class="num">0–1, ≥ <code>vmin</code></td><td>sim</td></tr>
+      <tr><td><code>vmin</code></td><td>Velocidade-base com erro ≥ <code>thr</code></td><td>fração</td><td class="num">0,25</td><td class="num">0–1, ≤ <code>vmax</code></td><td>sim</td></tr>
+      <tr><td><code>thr</code></td><td>Erro a partir do qual a base é <code>vmin</code></td><td>—</td><td class="num">0,6</td><td class="num">0,05–1</td><td>sim</td></tr>
+      <tr><td><code>acc</code></td><td>Rampa máxima de subida da base (a descida é imediata)</td><td>fração/s</td><td class="num">2,0</td><td class="num">0,1–50</td><td>sim</td></tr>
+      <tr><td><code>vref</code></td><td>Tensão de referência da compensação de bateria</td><td>V</td><td class="num">7,4</td><td class="num">5,0–8,4</td><td>sim</td></tr>
+      <tr><td><code>vcomp</code></td><td>Liga a compensação de tensão (× <code>vref</code> / tensão da bateria)</td><td>—</td><td class="num">1</td><td class="num">0 ou 1</td><td>sim</td></tr>
+      <tr><td><code>lostMs</code></td><td>Tempo com a linha perdida até parar em ERRO(2)</td><td>ms</td><td class="num">300</td><td class="num">50–5000</td><td>sim</td></tr>
+      <tr><td><code>startMs</code></td><td>Atraso entre armar e partir (estado ARMADO)</td><td>ms</td><td class="num">1000</td><td class="num">0–5000</td><td>sim</td></tr>
+      <tr id="tabela-param-vazia" hidden><td colspan="6">Nenhum parâmetro com esse texto.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Escala: no modo PWM direto, a fração 1,0 é o duty máximo (1023); no modo cascata, 1,0 é <code>rpmMax</code>. O erro de posição vai de −1 (linha toda à esquerda) a +1 (toda à direita). Os valores de fábrica são ponto de partida para a pista, não valores sintonizados.</p>
+
+  <h3 id="ref-comandos">Comandos e respostas BLE</h3>
+  <p>Serviço <code>0xABCC</code>. Comandos em JSON, um por escrita, na característica <code>0xABCE</code>; respostas e telemetria por notificação na <code>0xABCD</code>. Nome anunciado: <code>LFR-RACER-01</code>.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Comando</th><th>Efeito</th><th>Carro andando</th></tr></thead>
+    <tbody>
+      <tr><td><code>{"t":"set","k":"kp","v":1.2}</code></td><td>Aplica uma chave ao vivo (não grava); acende o NÃO SALVO</td><td>Só as chaves marcadas "sim" na tabela de parâmetros; com <code>lock</code> = 1, nenhuma</td></tr>
+      <tr><td><code>{"t":"save"}</code></td><td>Grava hardware, perfil ativo e qual perfil está ativo</td><td><code>err:"running"</code></td></tr>
+      <tr><td><code>{"t":"load"}</code></td><td>Descarta o que não foi salvo e relê o perfil ativo</td><td><code>err:"running"</code></td></tr>
+      <tr><td><code>{"t":"defaults"}</code></td><td>Valores de fábrica do hardware e do perfil ativo, ao vivo; volta o PPR a 600 (A-WP1-04)</td><td><code>err:"running"</code></td></tr>
+      <tr><td><code>{"t":"prof","n":2}</code></td><td>Troca de perfil; com mudança pendente, <code>err:"dirty"</code>, a menos que venha <code>"f":1</code></td><td><code>err:"running"</code></td></tr>
+      <tr><td><code>{"t":"scal"}</code></td><td>Calibra os sensores (como o toque longo); ao fim, <code>calres</code></td><td>Responde ok sem efeito</td></tr>
+      <tr><td><code>{"t":"start"}</code></td><td>Arma o carro em PRONTO; com calibração de encoder aberta, <code>err:"cal"</code></td><td>—</td></tr>
+      <tr><td><code>{"t":"stop"}</code></td><td>Para o carro (ARMADO ou CORRENDO → PRONTO)</td><td>Com <code>lock</code> = 1, <code>err:"locked"</code></td></tr>
+      <tr><td><code>{"t":"reset"}</code></td><td>Qualquer estado → IDLE; fecha a calibração de encoder aberta</td><td>Com <code>lock</code> = 1, <code>err:"locked"</code></td></tr>
+      <tr><td><code>{"t":"cal","op":"start","side":"L"}</code></td><td>Começa a calibração do encoder daquele lado (<code>"L"</code> ou <code>"R"</code>)</td><td><code>err:"running"</code></td></tr>
+      <tr><td><code>{"t":"cal","op":"finish","side":"L","rot":10}</code></td><td>Termina; <code>rot</code> = voltas giradas (inteiro de 1 a 1000); responde <code>ecal</code></td><td><code>err:"running"</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>O <code>ack</code> de <code>start</code>, <code>stop</code> e <code>scal</code> só confirma o recebimento; o estado real é o campo <code>st</code> da telemetria (0 IDLE … 5 ERROR). Com <code>lock</code> = 1, em ARMADO ou CORRENDO todo comando volta <code>err:"locked"</code>, por exemplo <code>{"t":"ack","k":"stop","ok":0,"err":"locked"}</code>.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Resposta do carro</th><th>Quando</th></tr></thead>
+    <tbody>
+      <tr><td><code>{"t":"ack","k":"start","ok":1}</code></td><td>Resposta a cada comando; <code>ok</code> 0 traz o <code>err</code></td></tr>
+      <tr><td><code>{"t":"calres","ok":1}</code> · <code>{"t":"calres","ok":0,"ch":[3,4]}</code></td><td>Fim da calibração dos sensores; <code>ch</code> = canais sem contraste, de 0 a 7</td></tr>
+      <tr><td><code>{"t":"ecal","side":"L","ok":1,"ppr":612.5}</code></td><td>Fim da calibração de um encoder (exemplo)</td></tr>
+      <tr><td><code>info</code></td><td>Ao conectar: versão, aviso <code>cfgerr</code> e folga de pilha <code>stk</code></td></tr>
+      <tr><td><code>sta</code></td><td>2 vezes por segundo: carga e tensão da bateria, entre outros</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 id="ref-erros-ble">Erros do BLE</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Erro</th><th>Significa</th><th>O que fazer</th></tr></thead>
+    <tbody>
+      <tr><td><code>err:"range"</code></td><td>Valor fora da faixa (ou não numérico)</td><td>Use a faixa da tabela de parâmetros</td></tr>
+      <tr><td><code>err:"key"</code></td><td>Chave desconhecida</td><td>Confira o nome (maiúsculas contam)</td></tr>
+      <tr><td><code>err:"running"</code></td><td>Não permitido com o carro armado ou correndo</td><td>Pare o carro e repita</td></tr>
+      <tr><td><code>err:"dirty"</code></td><td>Troca de perfil com mudança não salva</td><td>Salve ou descarte</td></tr>
+      <tr><td><code>err:"store"</code></td><td>Falha ao gravar</td><td>Repita; se persistir, veja o diagnóstico "NÃO SALVO que não some"</td></tr>
+      <tr><td><code>err:"parse"</code></td><td>Comando com JSON inválido</td><td>Confira aspas e vírgulas</td></tr>
+      <tr><td><code>err:"locked"</code></td><td>Modo competição: recusado com o carro armado ou correndo</td><td>Pare o carro pelo botão</td></tr>
+      <tr><td><code>err:"cal"</code></td><td><code>start</code> com calibração de encoder aberta</td><td>Termine com <code>cal finish</code> ou envie <code>reset</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</main>
+
+<footer class="wrap foot">
+  <p>Fonte: docs/manual/*.md — commit f3c31ba. Este manual não traz informação que não esteja nos manuais em Markdown (MONTAGEM, OPERACAO e MANUTENCAO).</p>
+  <p>LFR v2 · firmware 4.0.0 · abre sem rede; as marcações das listas ficam só neste navegador.</p>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var TABS = ["montador", "operador", "manutencao", "referencia"];
+  var TOKEN = /^[A-Za-z0-9_-]{1,64}$/;
+  var PREFIX = "lfr-manual:";
+
+  function store(key, value) {
+    try {
+      if (value === undefined) { return window.localStorage.getItem(PREFIX + key); }
+      if (value === null) { window.localStorage.removeItem(PREFIX + key); return null; }
+      window.localStorage.setItem(PREFIX + key, value);
+    } catch (e) { /* sem localStorage: a página funciona igual, sem lembrar */ }
+    return null;
+  }
+
+  /* ── Tema ─────────────────────────────────────────────────────────── */
+  var root = document.documentElement;
+  var themeBtn = document.getElementById("tema");
+  var THEMES = ["auto", "light", "dark"];
+  var THEME_LABEL = { auto: "Tema: automático", light: "Tema: claro", dark: "Tema: escuro" };
+  function applyTheme(t) {
+    if (THEMES.indexOf(t) < 0) { t = "auto"; }
+    if (t === "auto") { root.removeAttribute("data-theme"); } else { root.setAttribute("data-theme", t); }
+    themeBtn.textContent = THEME_LABEL[t];
+    themeBtn.setAttribute("data-mode", t);
+  }
+  applyTheme(store("tema") || "auto");
+  themeBtn.addEventListener("click", function () {
+    var cur = themeBtn.getAttribute("data-mode") || "auto";
+    var next = THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length];
+    applyTheme(next);
+    store("tema", next);
+  });
+
+  /* ── Abas por #hash ───────────────────────────────────────────────── */
+  var panels = {};
+  var tabs = {};
+  TABS.forEach(function (id) {
+    panels[id] = document.getElementById(id);
+    tabs[id] = document.getElementById("tab-" + id);
+  });
+
+  function showTab(id) {
+    TABS.forEach(function (t) {
+      var on = t === id;
+      panels[t].hidden = !on;
+      tabs[t].setAttribute("aria-selected", on ? "true" : "false");
+      tabs[t].setAttribute("tabindex", on ? "0" : "-1");
+    });
+    store("aba", id);
+  }
+
+  function route(initial) {
+    var tok = window.location.hash.slice(1);
+    if (!TOKEN.test(tok)) { tok = ""; }
+    if (tok && TABS.indexOf(tok) >= 0) {
+      showTab(tok);
+      if (!initial) { window.scrollTo(0, 0); }
+      return;
+    }
+    var el = tok ? document.getElementById(tok) : null;
+    var panel = el ? el.closest(".panel") : null;
+    if (panel && TABS.indexOf(panel.id) >= 0) {
+      showTab(panel.id);
+      if (el.tagName === "ARTICLE" && el.closest("#diag-dados")) {
+        pickSymptom(el.id);
+        el = document.getElementById("diag");
+      }
+      if (el.tagName === "DETAILS") { el.open = true; }
+      el.scrollIntoView();
+      return;
+    }
+    if (initial) {
+      var last = store("aba");
+      showTab(TABS.indexOf(last) >= 0 ? last : TABS[0]);
+    }
+  }
+
+  document.querySelector(".tabs").addEventListener("keydown", function (ev) {
+    if (ev.key !== "ArrowRight" && ev.key !== "ArrowLeft" && ev.key !== "Home" && ev.key !== "End") { return; }
+    var cur = TABS.indexOf(ev.target.getAttribute("aria-controls"));
+    if (cur < 0) { return; }
+    var next = cur;
+    if (ev.key === "ArrowRight") { next = (cur + 1) % TABS.length; }
+    if (ev.key === "ArrowLeft") { next = (cur - 1 + TABS.length) % TABS.length; }
+    if (ev.key === "Home") { next = 0; }
+    if (ev.key === "End") { next = TABS.length - 1; }
+    ev.preventDefault();
+    tabs[TABS[next]].focus();
+    window.location.hash = TABS[next];
+  });
+
+  /* ── Listas marcáveis ─────────────────────────────────────────────── */
+  function setupChecklist(box) {
+    var key = box.getAttribute("data-store").replace(PREFIX, "");
+    var boxes = Array.prototype.slice.call(box.querySelectorAll('input[type="checkbox"]'));
+    var count = document.getElementById(box.id + "-cont");
+    var clear = document.getElementById(box.id + "-limpar");
+    var confirmBox = document.getElementById(box.id + "-confirma");
+    var question = document.getElementById(box.id + "-pergunta");
+    var yes = document.getElementById(box.id + "-sim");
+    var no = document.getElementById(box.id + "-nao");
+    var saved = [];
+    try { saved = JSON.parse(store(key) || "[]"); } catch (e) { saved = []; }
+    if (!Array.isArray(saved)) { saved = []; }
+    boxes.forEach(function (b) { b.checked = saved.indexOf(b.id) >= 0; });
+
+    function refresh() {
+      var n = boxes.filter(function (b) { return b.checked; }).length;
+      count.textContent = n + " de " + boxes.length + " marcados";
+      clear.disabled = n === 0;
+      return n;
+    }
+    function save() {
+      var ids = boxes.filter(function (b) { return b.checked; }).map(function (b) { return b.id; });
+      store(key, JSON.stringify(ids));
+      refresh();
+    }
+    boxes.forEach(function (b) { b.addEventListener("change", save); });
+    clear.addEventListener("click", function () {
+      var n = refresh();
+      question.textContent = "Desmarcar " + (n === 1 ? "o item marcado" : "os " + n + " itens marcados") + " desta lista?";
+      confirmBox.hidden = false;
+      no.focus();
+    });
+    no.addEventListener("click", function () { confirmBox.hidden = true; clear.focus(); });
+    yes.addEventListener("click", function () {
+      boxes.forEach(function (b) { b.checked = false; });
+      save();
+      confirmBox.hidden = true;
+      boxes[0].focus();
+    });
+    refresh();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".checklist[data-store]"), setupChecklist);
+
+  /* ── Filtro de parâmetros ─────────────────────────────────────────── */
+  var filter = document.getElementById("filtro-param");
+  var rows = Array.prototype.slice.call(document.querySelectorAll("#tabela-param tbody tr:not(#tabela-param-vazia)"));
+  var empty = document.getElementById("tabela-param-vazia");
+  var filterCount = document.getElementById("filtro-param-cont");
+  function norm(s) { return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); }
+  var rowText = rows.map(function (r) { return norm(r.textContent); });
+  function applyFilter() {
+    var q = norm(filter.value.trim());
+    var shown = 0;
+    rows.forEach(function (r, i) {
+      var ok = !q || rowText[i].indexOf(q) >= 0;
+      r.hidden = !ok;
+      if (ok) { shown++; }
+    });
+    empty.hidden = shown !== 0;
+    filterCount.textContent = shown + " de " + rows.length;
+  }
+  filter.addEventListener("input", applyFilter);
+
+  /* ── Árvore de diagnóstico ────────────────────────────────────────── */
+  var list = document.getElementById("diag-sintomas");
+  var boxDiag = document.getElementById("diag-caixa");
+  var articles = Array.prototype.slice.call(document.querySelectorAll("#diag-dados > article"));
+  var state = { id: null, step: 0, path: [] };
+
+  articles.forEach(function (art) {
+    var li = document.createElement("li");
+    var b = document.createElement("button");
+    b.type = "button";
+    b.id = "diag-btn-" + art.id;
+    b.textContent = art.getAttribute("data-titulo");
+    b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", function () { pickSymptom(art.id); boxDiag.focus(); });
+    li.appendChild(b);
+    list.appendChild(li);
+  });
+  boxDiag.setAttribute("tabindex", "-1");
+
+  function el(tag, cls, html) {
+    var e = document.createElement(tag);
+    if (cls) { e.className = cls; }
+    if (html !== undefined) { e.innerHTML = html; }
+    return e;
+  }
+  function button(id, label, cls, fn) {
+    var b = el("button", "btn" + (cls ? " " + cls : ""));
+    b.type = "button"; b.id = id; b.textContent = label;
+    b.addEventListener("click", fn);
+    return b;
+  }
+
+  function pickSymptom(id) {
+    state = { id: id, step: 0, path: [] };
+    articles.forEach(function (a) {
+      document.getElementById("diag-btn-" + a.id).setAttribute("aria-pressed", a.id === id ? "true" : "false");
+    });
+    render();
+  }
+
+  function finish(actionHtml) {
+    var art = document.getElementById(state.id);
+    boxDiag.innerHTML = "";
+    boxDiag.appendChild(el("p", "diag-step-n", art.getAttribute("data-titulo")));
+    if (state.path.length) {
+      var ul = el("ul", "diag-path");
+      state.path.forEach(function (p) { ul.appendChild(el("li", "", p)); });
+      boxDiag.appendChild(ul);
+    }
+    var act = el("div", "diag-act");
+    act.appendChild(el("p", "", "<strong>Ação:</strong> " + actionHtml));
+    boxDiag.appendChild(act);
+    var row = el("div", "btn-row");
+    row.appendChild(button("diag-recomecar", "Recomeçar este sintoma", "btn-primary", function () { pickSymptom(state.id); boxDiag.focus(); }));
+    row.appendChild(button("diag-outro", "Escolher outro sintoma", "", function () {
+      var first = list.querySelector("button[aria-pressed=\"true\"]") || list.querySelector("button");
+      first.focus();
+    }));
+    boxDiag.appendChild(row);
+  }
+
+  function render() {
+    var art = document.getElementById(state.id);
+    var steps = Array.prototype.slice.call(art.querySelectorAll(":scope > ol > li"));
+    if (state.step >= steps.length) {
+      var fim = art.getAttribute("data-fim");
+      finish(fim ? fim.replace(/&/g, "&amp;").replace(/</g, "&lt;") : "Fim das perguntas deste sintoma no manual: nenhuma ação listada para este caminho.");
+      return;
+    }
+    var li = steps[state.step];
+    var qHtml = li.querySelector(".q").innerHTML;
+    boxDiag.innerHTML = "";
+    boxDiag.appendChild(el("p", "diag-step-n", art.getAttribute("data-titulo") + " · pergunta " + (state.step + 1) + " de " + steps.length));
+    if (state.path.length) {
+      var ul = el("ul", "diag-path");
+      state.path.forEach(function (p) { ul.appendChild(el("li", "", p)); });
+      boxDiag.appendChild(ul);
+    }
+    boxDiag.appendChild(el("p", "q", qHtml));
+    var row = el("div", "btn-row");
+    if (li.getAttribute("data-tipo") === "escolha") {
+      Array.prototype.forEach.call(li.querySelectorAll("li[data-opcao]"), function (opt, i) {
+        var label = opt.getAttribute("data-opcao");
+        row.appendChild(button("diag-opcao-" + (i + 1), label, "mono", function () {
+          state.path.push(qHtml + " → " + label.replace(/&/g, "&amp;").replace(/</g, "&lt;"));
+          finish(opt.querySelector(".a").innerHTML);
+        }));
+      });
+    } else {
+      var resp = li.getAttribute("data-resp");
+      var other = li.getAttribute("data-resp-outra");
+      ["sim", "nao"].forEach(function (ans) {
+        row.appendChild(button("diag-" + ans, ans === "sim" ? "Sim" : "Não", ans === "sim" ? "btn-primary" : "", function () {
+          state.path.push(qHtml + " → " + (ans === "sim" ? "sim" : "não"));
+          if (ans === resp) { finish(li.querySelector(".a").innerHTML); return; }
+          if (other && ans === other) { finish(li.querySelector(".a2").innerHTML); return; }
+          state.step += 1;
+          render();
+        }));
+      });
+    }
+    boxDiag.appendChild(row);
+  }
+
+  boxDiag.addEventListener("click", function (ev) {
+    var a = ev.target.closest('a[href^="#dg-"]');
+    if (!a) { return; }
+    ev.preventDefault();
+    var id = a.getAttribute("href").slice(1);
+    if (TOKEN.test(id) && document.getElementById(id)) { pickSymptom(id); boxDiag.focus(); }
+  });
+
+  window.addEventListener("hashchange", function () { route(false); });
+  route(true);
+})();
+</script>

@@ -51,12 +51,12 @@ void setup() {
 }
 
 void loop() {
-    static uint32_t last = 0;
-    uint32_t now = millis();
-    uint32_t dt = now - last;
+    static uint32_t last = micros();
+    const uint32_t now = micros();
+    const uint32_t dtUs = now - last;
     last = now;
-    velL.update(dt);
-    velR.update(dt);
+    velL.update(dtUs);
+    velR.update(dtUs);
     Serial.printf("rpmL=%.1f  rpmR=%.1f\n", velL.getRPM(), velR.getRPM());
     delay(200);
 }
