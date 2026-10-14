@@ -481,7 +481,9 @@ mm. Passo a passo no [manual de montagem](docs/manual/MONTAGEM.md).
 | [Operação](docs/manual/OPERACAO.md) | Operador | Botão, estados, calibração, dashboard, parâmetros, perfis, primeira volta, sintonia, bateria, códigos de erro, box |
 | [Manutenção](docs/manual/MANUTENCAO.md) | Manutenção | Inspeções, troca de peças, diagnóstico, firmware, aferição, reposição |
 
-Os Markdown são a fonte. `python3 tools/check_manuais.py` confere se os manuais só citam
+[Manual HTML](docs/manual/manual-lfr.html): um arquivo só, com abas por papel, listas marcáveis,
+diagramas, tabela de parâmetros com filtro e árvore de diagnóstico. Abre do disco, sem rede (para a
+área de competição). Os Markdown são a fonte. `python3 tools/check_manuais.py` confere se os manuais só citam
 arquivos, chaves BLE, comandos, ambientes `bench_*` e STLs que existem (sai com 1 se houver
 problema).
 
