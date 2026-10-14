@@ -118,17 +118,22 @@ void CommandHandler::handle(const Command& cmd, bool running, ResponseSink& sink
             break;
         case CmdType::SAVE: {
             if (running) { _ack(sink, "save", false, "running"); break; }
+            NvsWriteGuard nvs(_nvs);
+            if (!nvs.acquired()) { _ack(sink, "save", false, "running"); break; }
             const bool ok = _store.saveActive(_live);
             if (ok) _dirty = false;
             _ack(sink, "save", ok, ok ? nullptr : "store");
             break;
         }
-        case CmdType::LOAD:
+        case CmdType::LOAD: {
             if (running) { _ack(sink, "load", false, "running"); break; }
+            NvsWriteGuard nvs(_nvs);
+            if (!nvs.acquired()) { _ack(sink, "load", false, "running"); break; }
             _reloadFromStore(_live.profile);
             _ack(sink, "load", true, nullptr);
             sendConfig(sink);
             break;
+        }
         case CmdType::DEFAULTS:
             if (running) { _ack(sink, "defaults", false, "running"); break; }
             _live.hw = robotcfg::factoryHardware();
@@ -138,14 +143,17 @@ void CommandHandler::handle(const Command& cmd, bool running, ResponseSink& sink
             _ack(sink, "defaults", true, nullptr);
             sendConfig(sink);
             break;
-        case CmdType::PROFILE:
+        case CmdType::PROFILE: {
             if (cmd.profile >= PROFILE_COUNT) { _ack(sink, "prof", false, "range"); break; }
             if (running) { _ack(sink, "prof", false, "running"); break; }
             if (_dirty && !cmd.force) { _ack(sink, "prof", false, "dirty"); break; }
+            NvsWriteGuard nvs(_nvs);
+            if (!nvs.acquired()) { _ack(sink, "prof", false, "running"); break; }
             _reloadFromStore(cmd.profile);
             _ack(sink, "prof", true, nullptr);
             sendConfig(sink);
             break;
+        }
         case CmdType::SENSOR_CAL:
             msg.req = ControlRequest::SENSOR_CAL;
             _ack(sink, "scal", true, nullptr);

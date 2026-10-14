@@ -3,6 +3,7 @@
 #include "comm/CommandProtocol.h"
 #include "config/ConfigStore.h"
 #include "config/RobotConfig.h"
+#include "storage/NvsArbiter.h"
 
 class ResponseSink {
 public:
@@ -33,6 +34,8 @@ struct ControlMsg {
  * Aplica comandos à configuração viva (spec §4.5). Roda na task comm (core 0).
  * - set: valida chave a chave; marca "dirty".
  * - save/load/defaults/prof: recusados em ARMED/RUNNING (escrita na flash para o cache).
+ *   save/load/prof seguram o NvsArbiter: a control não arma durante o acesso, e se ela já
+ *   armou (mesmo que o estado publicado ainda diga READY) o comando é recusado (A-WP1-05).
  * - prof: recusa com "dirty" se houver mudança não salva, a menos que venha f:1.
  * - lock = 1 (modo competição): em ARMED/RUNNING todo comando é recusado com "locked".
  * - get: info + cfg. O info também sai quando o cliente ativa as notificações (A-WP1-01).
@@ -50,6 +53,8 @@ public:
     void sendInfoAndConfig(ResponseSink& sink) const;
     /** Where the info values come from (name, cfgerr, stack headroom). Null → defaults. */
     void setInfoSource(DeviceInfoFn fn) { _infoFn = fn; }
+    /** save/load/prof hold it while touching the NVS; refused with "running" if armed. */
+    void setNvsArbiter(NvsArbiter* nvs) { _nvs = nvs; }
 
     /**
      * Mirrors an encoder auto-calibration result (already persisted by the estimator) into
@@ -72,6 +77,7 @@ private:
     ConfigStore& _store;
     const char*  _fw;
     DeviceInfoFn _infoFn = nullptr;
+    NvsArbiter*  _nvs = nullptr;
     bool _dirty = false;
     bool _changed = false;
 };

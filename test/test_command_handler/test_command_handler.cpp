@@ -6,6 +6,7 @@
 #include "comm/CommandProtocol.h"
 #include "comm/Mailbox.h"
 #include "config/ConfigStore.h"
+#include "storage/NvsArbiter.h"
 #include "storage/InMemoryStore.h"
 
 class VectorSink : public ResponseSink {
@@ -265,6 +266,32 @@ void test_command_handler_encoder_cal_result_out_of_range_is_ignored() {
     TEST_ASSERT_TRUE(sink.contains("\"k\":\"save\",\"ok\":1"));
 }
 
+// A-WP1-05: o g_state lido pela comm ainda diz READY, mas a control já armou
+void test_command_handler_nvs_ops_refused_when_control_armed() {
+    NvsArbiter nvs;
+    h->setNvsArbiter(&nvs);
+    send("{\"t\":\"set\",\"k\":\"kp\",\"v\":2}");
+    TEST_ASSERT_TRUE(nvs.tryArm());
+    send("{\"t\":\"save\"}", false);
+    TEST_ASSERT_TRUE(sink.contains("\"k\":\"save\",\"ok\":0,\"err\":\"running\""));
+    TEST_ASSERT_FALSE(mem->exists("prof0"));
+    send("{\"t\":\"load\"}", false);
+    TEST_ASSERT_TRUE(sink.contains("\"k\":\"load\",\"ok\":0,\"err\":\"running\""));
+    send("{\"t\":\"prof\",\"n\":1,\"f\":1}", false);
+    TEST_ASSERT_TRUE(sink.contains("\"k\":\"prof\",\"ok\":0,\"err\":\"running\""));
+    TEST_ASSERT_EQUAL_UINT8(0, live.profile);
+    TEST_ASSERT_TRUE(h->dirty());
+}
+
+void test_command_handler_nvs_released_after_save() {
+    NvsArbiter nvs;
+    h->setNvsArbiter(&nvs);
+    send("{\"t\":\"save\"}");
+    TEST_ASSERT_TRUE(sink.contains("\"k\":\"save\",\"ok\":1"));
+    TEST_ASSERT_FALSE(nvs.writeInProgress());
+    TEST_ASSERT_TRUE(nvs.tryArm());
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_command_handler_set_applies_and_marks_dirty);
@@ -290,5 +317,7 @@ int main() {
     RUN_TEST(test_command_handler_info_without_source_has_safe_defaults);
     RUN_TEST(test_command_handler_encoder_cal_result_updates_live_ppr);
     RUN_TEST(test_command_handler_encoder_cal_result_out_of_range_is_ignored);
+    RUN_TEST(test_command_handler_nvs_ops_refused_when_control_armed);
+    RUN_TEST(test_command_handler_nvs_released_after_save);
     return UNITY_END();
 }

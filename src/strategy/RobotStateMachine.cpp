@@ -1,11 +1,17 @@
 #include "strategy/RobotStateMachine.h"
 
-RobotStateMachine::RobotStateMachine(bool calibrationValidAtBoot, uint32_t nowMs)
+RobotStateMachine::RobotStateMachine(bool calibrationValidAtBoot, uint32_t nowMs,
+                                     NvsArbiter* nvs)
     : _state(calibrationValidAtBoot ? RobotState::READY : RobotState::IDLE),
-      _enteredAt(nowMs) {}
+      _enteredAt(nowMs), _nvs(nvs) {}
 
 bool RobotStateMachine::_enter(RobotState s, ErrorCode e, uint32_t nowMs) {
     if (s == _state && e == _error) return false;
+    const bool wasActive = isActive();
+    const bool willBeActive = isActiveState(static_cast<uint8_t>(s));
+    // NVS em uso pela comm: não arma (fica no estado atual) — spec §4.4, A-WP1-05
+    if (!wasActive && willBeActive && _nvs && !_nvs->tryArm()) return false;
+    if (wasActive && !willBeActive && _nvs) _nvs->disarm();
     _state = s;
     _error = e;
     _enteredAt = nowMs;

@@ -1,5 +1,6 @@
 #include <unity.h>
 #include "strategy/RobotStateMachine.h"
+#include "storage/NvsArbiter.h"
 
 static const SmInputs OK_IN{true, true};
 static const SmInputs NO_CAL{false, true};
@@ -138,6 +139,43 @@ void test_state_machine_is_active_state_helper() {
     TEST_ASSERT_FALSE(isActiveState(static_cast<uint8_t>(RobotState::READY)));
 }
 
+// A-WP1-05: com a NVS ocupada pela comm, a control não arma
+void test_state_machine_does_not_arm_while_nvs_busy() {
+    NvsArbiter nvs;
+    RobotStateMachine sm(true, 0, &nvs);
+    TEST_ASSERT_TRUE(nvs.tryBeginWrite());
+    TEST_ASSERT_FALSE(sm.handle(SmEvent::BTN_SHORT, OK_IN, 10));
+    TEST_ASSERT_FALSE(sm.handle(SmEvent::CMD_START, OK_IN, 20));
+    TEST_ASSERT_EQUAL(RobotState::READY, sm.state());
+    nvs.endWrite();
+    TEST_ASSERT_TRUE(sm.handle(SmEvent::CMD_START, OK_IN, 30));
+    TEST_ASSERT_EQUAL(RobotState::ARMED, sm.state());
+    TEST_ASSERT_FALSE(nvs.tryBeginWrite());  // armado: a comm não escreve
+}
+
+void test_state_machine_leaving_active_releases_nvs() {
+    NvsArbiter nvs;
+    RobotStateMachine a(true, 0, &nvs);
+    a.handle(SmEvent::CMD_START, OK_IN, 10);
+    a.tick(1010, 1000);
+    TEST_ASSERT_EQUAL(RobotState::RUNNING, a.state());
+    TEST_ASSERT_TRUE(nvs.armed());
+    a.handle(SmEvent::LINE_LOST_TIMEOUT, OK_IN, 2000);
+    TEST_ASSERT_FALSE(nvs.armed());
+    TEST_ASSERT_TRUE(nvs.tryBeginWrite());
+    nvs.endWrite();
+
+    RobotStateMachine b(true, 0, &nvs);
+    b.handle(SmEvent::CMD_START, OK_IN, 10);
+    b.handle(SmEvent::CMD_STOP, OK_IN, 20);  // cancela em ARMED
+    TEST_ASSERT_FALSE(nvs.armed());
+
+    RobotStateMachine c(true, 0, &nvs);
+    c.handle(SmEvent::CMD_START, OK_IN, 10);
+    c.handle(SmEvent::CMD_RESET, OK_IN, 20);
+    TEST_ASSERT_FALSE(nvs.armed());
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_state_machine_boot_with_calibration_is_ready);
@@ -155,5 +193,7 @@ int main() {
     RUN_TEST(test_state_machine_reset_from_anywhere);
     RUN_TEST(test_state_machine_ready_long_press_recalibrates);
     RUN_TEST(test_state_machine_is_active_state_helper);
+    RUN_TEST(test_state_machine_does_not_arm_while_nvs_busy);
+    RUN_TEST(test_state_machine_leaving_active_releases_nvs);
     return UNITY_END();
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include "storage/NvsArbiter.h"
 
 enum class RobotState : uint8_t { IDLE, CALIBRATING, READY, ARMED, RUNNING, ERROR };
 enum class ErrorCode : uint8_t { NONE = 0, OVR = 1, LINE = 2, BAT = 3, CAL = 4 };
@@ -25,7 +26,12 @@ class RobotStateMachine {
 public:
     static constexpr uint32_t CAL_DURATION_MS = 5000;
 
-    explicit RobotStateMachine(bool calibrationValidAtBoot, uint32_t nowMs = 0);
+    /**
+     * `nvs` (optional): entering ARMED claims it and leaving ARMED/RUNNING releases it, so the
+     * car never arms while the comm task is using the NVS (A-WP1-05).
+     */
+    explicit RobotStateMachine(bool calibrationValidAtBoot, uint32_t nowMs = 0,
+                               NvsArbiter* nvs = nullptr);
 
     RobotState state() const { return _state; }
     ErrorCode  error() const { return _error; }
@@ -43,7 +49,8 @@ public:
 private:
     bool _enter(RobotState s, ErrorCode e, uint32_t nowMs);
 
-    RobotState _state;
-    ErrorCode  _error = ErrorCode::NONE;
-    uint32_t   _enteredAt;
+    RobotState  _state;
+    ErrorCode   _error = ErrorCode::NONE;
+    uint32_t    _enteredAt;
+    NvsArbiter* _nvs;
 };

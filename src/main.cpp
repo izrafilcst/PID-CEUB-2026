@@ -28,6 +28,7 @@
 #include "sensors/Encoder.h"
 #include "sensors/SensorArray.h"
 #include "sensors/VelocityEstimator.h"
+#include "storage/NvsArbiter.h"
 #include "storage/NvsStore.h"
 #include "strategy/ControlLoop.h"
 #include "strategy/RobotStateMachine.h"
@@ -71,6 +72,7 @@ static Mailbox<StatusFrame>    g_staBox;  // control → comm
 static Mailbox<CalReport>      g_calBox;  // control → comm
 static QueueHandle_t           g_ctlQueue = nullptr;  // comm → control (ControlMsg)
 static std::atomic<uint8_t>    g_state{0};
+static NvsArbiter              g_nvs;     // NVS (comm) × carro armado (control), A-WP1-05
 static bool g_cfgErr = false;
 static bool g_calValidAtBoot = false;
 // Handles para medir a folga de pilha (info "stk", E-2). Gravados por xTaskCreatePinnedToCore
@@ -137,7 +139,7 @@ static void taskControl(void*) {
     velL.setPprX4(cfg.hw.pprL);
     velR.setPprX4(cfg.hw.pprR);
 
-    RobotStateMachine sm(g_calValidAtBoot, millis());
+    RobotStateMachine sm(g_calValidAtBoot, millis(), &g_nvs);
     annunciator.onState(sm.state(), sm.error(), millis());
     if (g_cfgErr) annunciator.beep(3, 60, 60, millis());
 
@@ -275,6 +277,7 @@ static void taskComm(void*) {
     BleSink sink;
     CommandHandler handler(g_liveCfg, configStore, FW_VERSION);
     handler.setInfoSource(currentInfo);
+    handler.setNvsArbiter(&g_nvs);
     char in[CommandQueue::MAX_LEN];
     char outBuf[192];
     uint32_t telSeen = 0;
