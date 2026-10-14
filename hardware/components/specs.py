@@ -57,6 +57,7 @@ U_DEVKIT = ("https://mischianti.org/"
             "doit-esp32-dev-kit-v1-high-resolution-pinout-and-specs/")
 U_MCP = "https://ww1.microchip.com/downloads/en/DeviceDoc/21295d.pdf"
 U_QTR = "https://www.pololu.com/product/960"
+U_QTR_DIM = "https://a.pololu-files.com/picture/0J623.600.jpg (docs/0J12/3)"
 U_N20 = "https://www.pololu.com/file/0J949/micro-metal-gearmotor-dimensions.pdf"
 U_TB = "https://www.sparkfun.com/sparkfun-motor-driver-dual-tb6612fng-1a.html"
 U_MP = "https://www.makerfabs.com/adjustable-mini-dc-dc-module-mp1584en.html"
@@ -242,6 +243,35 @@ COMPONENTES: dict[str, Componente] = {
                 nota="Máxima recomendada: 6 mm. O config.h usa "
                      "SENSOR_HEIGHT_MM 4 — dentro do limite, mas acima do "
                      "ótimo (ver docs/DIVERGENCIAS.md, D8)."),
+            "entre_furos": Medida(
+                69.85, Prov.OFICIAL,
+                f'{U_QTR_DIM} — 2.75" entre os furos de fixação das pontas',
+                nota="Furos para parafuso #2 (M2). Há um terceiro furo a "
+                     '0.55" (13,97 mm) de uma das pontas, usado quando a placa '
+                     "é partida em 6 + 2 sensores."),
+            "furo_borda": Medida(
+                2.4, Prov.MEDIR,
+                f"{U_QTR_DIM} — estimado em escala no diagrama (sem cota): "
+                "o centro dos furos fica junto da borda dos pinos, não no eixo "
+                "da placa",
+                nota="MEDIR (medidas.toml: qtr_furo_borda). Define a posição "
+                     "dos postes da barra de sensores."),
+            "pinos_fileira_borda": Medida(
+                1.7, Prov.MEDIR,
+                f"{U_QTR_DIM} — estimado em escala: centro da fileira de "
+                "pinos mais próxima da borda; a segunda fica 2,54 mm para dentro",
+                nota="MEDIR (medidas.toml: qtr_pinos_borda). Barra 8×2 ou 11×1 "
+                     "de 2,54 mm (página do produto)."),
+            "pinos_inicio": Medida(
+                27.2, Prov.MEDIR,
+                f"{U_QTR_DIM} — estimado em escala: início do campo de pinos, "
+                'medido da ponta do furo a 0.55"',
+                nota="MEDIR (medidas.toml: qtr_pinos_ini)."),
+            "pinos_fim": Medida(
+                55.4, Prov.MEDIR,
+                f"{U_QTR_DIM} — estimado em escala: fim do campo de pinos "
+                "(GND da fileira de dentro), mesma referência",
+                nota="MEDIR (medidas.toml: qtr_pinos_fim)."),
         },
         eletrico={
             "tensão de operação": "3,3 – 5,0 V",

@@ -10,6 +10,7 @@
 # n20_altura = 10.0         # seção da caixa de redução na vertical (Pololu: 10 × 12)
 # n20_conector_l = 5.0      # quanto o conector JST-SH passa do fundo do encoder
 # qtr_furos_dist = 69.85    # entre centros dos dois furos de fixação do QTR-8A
+# qtr_furo_borda = 2.4      # QTR-8A: centro dos furos de fixação até a borda dos pinos
 # perf_furo_canto = 3.5     # centro do furo de fixação até as bordas do perfboard
 # interruptor_l = 8.5       # chave liga/desliga: comprimento do corpo
 # interruptor_h = 3.6       # chave liga/desliga: altura do corpo

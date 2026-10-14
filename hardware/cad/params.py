@@ -71,6 +71,7 @@ class Params:
     qtr_massa: float = 0.0
     qtr_furos_dist: float = 69.85     # entre os furos de fixação nas pontas
     qtr_furo_d: float = 2.2
+    qtr_furo_borda: float = 2.4       # centro dos furos → borda dos pinos (não é o eixo)
     # ── Eletrônica ─────────────────────────────────────────────────────────
     perf_l: float = 0.0               # 70 mm, ao longo de X no carro
     perf_w: float = 0.0               # 50 mm, ao longo de Y
@@ -131,8 +132,8 @@ class Params:
 # Cotas △ MEDIR (ou típicas de peça genérica) que o montador deve conferir no medidas.toml
 MEDIR_TOML = (
     "suporte_l", "suporte_w", "suporte_h", "celula_d", "n20_altura", "n20_conector_l",
-    "qtr_furos_dist", "perf_furo_canto", "interruptor_l", "interruptor_h", "oring_id",
-    "oring_cs", "fios_parafusos_massa",
+    "qtr_furos_dist", "qtr_furo_borda", "perf_furo_canto", "interruptor_l", "interruptor_h",
+    "oring_id", "oring_cs", "fios_parafusos_massa",
 )
 
 
@@ -158,6 +159,8 @@ def _base() -> Params:
         qtr_w=_spec("qtr8a", "largura"),
         qtr_t=_spec("qtr8a", "espessura"),
         qtr_massa=COMPONENTES["qtr8a"].massa_g,
+        qtr_furos_dist=_spec("qtr8a", "entre_furos"),
+        qtr_furo_borda=_spec("qtr8a", "furo_borda"),
         perf_l=_spec("perfboard", "comprimento"),
         perf_w=_spec("perfboard", "largura"),
         perf_t=_spec("perfboard", "espessura"),

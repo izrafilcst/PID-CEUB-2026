@@ -33,6 +33,16 @@ def y_patim(p: Params) -> float:
     return p.qtr_l / 2 + 2.0 + PATIM_Y / 2 + 3.0
 
 
+def furos_qtr(p: Params) -> list[tuple[float, float]]:
+    """Centros dos furos de fixação do QTR-8A, na montagem.
+
+    O QTR monta com os componentes para cima e a borda dos pinos para trás (−X); os furos
+    ficam a qtr_furo_borda dessa borda (diagrama dimensional da Pololu), não no eixo da placa.
+    """
+    x = p.lookahead - p.qtr_w / 2 + p.qtr_furo_borda
+    return [(x, -p.qtr_furos_dist / 2), (x, p.qtr_furos_dist / 2)]
+
+
 def furos_base(p: Params) -> list[tuple[float, float]]:
     x = p.barra_lingua_x + 6.0
     return [(x, -8.0), (x, 8.0)]
@@ -49,9 +59,9 @@ def fazer(p: Params, calcos: int = 0) -> Part:
     barra = viga + lingua
     # Postes do QTR (descem até a face de cima do QTR) com furo para M2 autoatarraxante
     z_qtr_topo = p.sensor_altura + calcos * CALCO_T + p.qtr_t
-    for y in (-p.qtr_furos_dist / 2, p.qtr_furos_dist / 2):
-        barra += cil_z(POSTE_D, z0 - z_qtr_topo, xa, y, z_qtr_topo)
-        barra -= cil_z(p.tol.autoatarraxante_m2, p.tol.autoatarraxante_prof, xa, y, z_qtr_topo)
+    for x, y in furos_qtr(p):
+        barra += cil_z(POSTE_D, z0 - z_qtr_topo, x, y, z_qtr_topo)
+        barra -= cil_z(p.tol.autoatarraxante_m2, p.tol.autoatarraxante_prof, x, y, z_qtr_topo)
     # Furos dos patins (M2 de cima para baixo) e insertos M3 da língua (de baixo)
     for y in (-y_patim(p), y_patim(p)):
         barra -= cil_z(p.tol.furo_m2, p.barra_t + 2, xa, y, z0 - 1)

@@ -26,6 +26,7 @@ ainda precisa de trabalho.
 | D11 | `hardware/components/specs.py` (n20), ficha 04 | `altura_caixa = 13 mm` contra a seção de 10 × 12 mm que a Pololu anuncia para o micro metal gearmotor | Pololu, *micro metal gearmotors*: seção da caixa 10 × 12 mm | O CAD usa 10 mm (`medidas.toml: n20_altura`). MEDIR a caixa de redução e corrigir a ficha 04 | **Aberto** |
 | D12 | `src/config.h`, `hardware/cad/params.py` | Lookahead do firmware (`LOOKAHEAD_MM 70`) contra 85 mm do modelo | `hardware/cad/out/relatorio_montagem.md`; memória ruflo `lfr-2026/wp2/params` | O WP2 não edita o firmware: o coordenador atualiza o `config.h` para 85 no merge | **Resolvido no merge** |
 | D13 | `hardware/drawings/assy/A1-layout-funcional.svg`, `A2-vista-explodida.svg` | Pranchas A1/A2 desenhadas para o layout com LiPo e ball caster | DEC-1 e DEC-2 (spec 2026-10-13) | Ficam como registro histórico; a referência é o modelo CAD em `hardware/cad/` | **Aceito** |
+| D14 | `hardware/cad/parts/sensor_bar.py`, ficha 03 | Os postes da barra estavam no eixo longitudinal do QTR-8A; no diagrama dimensional da Pololu os furos de fixação ficam junto da borda dos pinos | Diagrama `0J623` (docs/0J12/3): furos a 2.75" entre si, centro a ≈ 2,4 mm da borda dos pinos (estimado em escala, sem cota) | Postes movidos para os furos reais (`sensor_bar.furos_qtr`); o QTR monta com a borda dos pinos para trás. MEDIR `qtr_furo_borda` na placa em mãos | **Resolvido** (MEDIR) |
 
 ---
 

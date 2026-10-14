@@ -43,6 +43,20 @@ class TestBarra(unittest.TestCase):
     def test_calota_do_patim_tem_raio_minimo(self):
         self.assertGreaterEqual(skid.RAIO_CALOTA, 3.0)
 
+    # Diagrama dimensional da Pololu: os furos de fixação ficam junto da borda dos pinos,
+    # não no eixo da placa. O QTR monta com a borda dos pinos para trás (−X).
+    def test_postes_nos_furos_reais_do_qtr(self):
+        p = self.p
+        x = p.lookahead - p.qtr_w / 2 + p.qtr_furo_borda
+        self.assertEqual(sorted(sensor_bar.furos_qtr(p)),
+                         sorted([(x, -p.qtr_furos_dist / 2), (x, p.qtr_furos_dist / 2)]))
+        self.assertGreater(p.lookahead - x, 3.0)
+
+    def test_postes_assentam_dentro_da_placa_do_qtr(self):
+        qtr = components.qtr(self.p).bounding_box()
+        for x, y in sensor_bar.furos_qtr(self.p):
+            self.assertTrue(qtr.min.X < x < qtr.max.X and qtr.min.Y < y < qtr.max.Y)
+
     def test_calco_da_lingua_tem_meio_milimetro(self):
         self.assertAlmostEqual(sensor_bar.calco_lingua(self.p).bounding_box().size.Z, 0.5,
                                places=3)
