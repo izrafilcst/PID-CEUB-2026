@@ -107,9 +107,11 @@ Depois de qualquer troca, faça o teste de bancada indicado e rode uma volta cur
 1. Desligue a chave e tire as células.
 2. Procure a causa: fio esfolado encostando no chassi, solda em curto, célula invertida, roda
    travada.
-3. Meça a resistência entre +BAT e GND: tem que ser maior que 1 kΩ (manual de montagem,
-   seção 5).
-4. Troque por um fusível de lâmina mini **de 3 A** — nunca maior (`docs/WIRING.md`).
+3. Com as células fora, **ligue a chave** e meça a resistência entre +BAT depois da chave e o
+   GND: tem que ser maior que 1 kΩ (manual de montagem, seção 5). Com a chave desligada a
+   medição não pega o lado da carga, onde o curto costuma estar.
+4. Desligue a chave.
+5. Troque por um fusível de lâmina mini **de 3 A** — nunca maior (`docs/WIRING.md`).
 
 ## 3 Diagnóstico
 
