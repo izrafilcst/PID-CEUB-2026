@@ -131,6 +131,10 @@ Confira na faixa de sensores do dashboard: sobre a linha, valor alto; sobre o fu
 > não fazem nada (A-WP1-07 em `docs/avaliacao/2026-10-13-WP1.md`). O estado real é o campo
 > `st` da telemetria: olhe o ESTADO no dashboard.
 
+Comandos de estado (`src/strategy/RobotStateMachine.cpp`): `{"t":"start"}` arma o carro em
+PRONTO, como o toque curto; `{"t":"stop"}` para o carro armado ou correndo e o deixa em PRONTO,
+como o aperto do botão; `{"t":"reset"}` leva qualquer estado a IDLE.
+
 Sem o dashboard, qualquer app BLE serve: serviço `0xABCC`, comandos em JSON escritos na
 característica `0xABCE`, respostas e telemetria por notificação na `0xABCD` (README, "Protocolo
 BLE v4").
@@ -201,6 +205,8 @@ As de sintonia (`kp` a `startMs`) são de cada perfil.
 - **RECARREGAR** (`{"t":"load"}`) descarta o que não foi salvo e relê o perfil ativo.
 - **FÁBRICA** (`{"t":"defaults"}`) carrega os valores de fábrica do hardware e do perfil ativo,
   ao vivo, sem gravar. Só grava se você **SALVAR** depois.
+- SALVAR, RECARREGAR, FÁBRICA, a troca de perfil e o `cal` dos encoders só funcionam com o carro
+  parado: armado ou correndo, voltam `err:"running"` (`src/comm/CommandHandler.cpp`).
 
 > **ATENÇÃO — FÁBRICA apaga correções e a calibração dos encoders.** FÁBRICA volta todas as
 > chaves de hardware para a fábrica — inclusive `invL`, `invR`, `swap`, `sinv`, `pol`, `lock` e
@@ -351,6 +357,7 @@ vezes. O dashboard mostra o código e o nome em ERRO (aba SISTEMA). **Para sair:
 
 ## 12 Checklist de box (competição)
 
+A pista tem linha branca de 19 ± 1 mm sobre manta preta (README, "Regras de Competição").
 Regulamento RoboCore (seção "Regulamento" de `docs/REVISAO_FIRMWARE.md`): ajustes e troca de
 perfil só **entre** tentativas (regra 3.1.1). Durante a tentativa, nenhum comando remoto pode
 parar o robô nem mudar parâmetro, e o celular fica onde o juiz mandar (regra 5.9). Lembre que a
