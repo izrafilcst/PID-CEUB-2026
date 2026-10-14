@@ -19,7 +19,7 @@ from build123d import Compound, export_step, export_stl
 import assembly
 import printability as pr
 from params import CAD_DIR, Params, carregar
-from parts import fixadores, motor_clamp, tolerance_coupon, wheel
+from parts import chicote, components, fixadores, motor_clamp, tolerance_coupon, wheel
 from parts.common import na_mesa
 
 QUANTIDADE = {"base": 1, "abracadeira_E": 1, "abracadeira_D": 1, "barra_sensores": 1,
@@ -121,7 +121,20 @@ def _relatorio(p: Params, verifs: list[assembly.Verificacao],
         "",
         "| Qtd. | Item | Onde |",
         "|------|------|------|",
-    ] + [f"| {q} | {item} | {onde} |" for q, item, onde in fixadores.lista(p)]
+    ] + [f"| {q} | {item} | {onde} |" for q, item, onde in fixadores.lista(p)] + [
+        "",
+        "## Ligação do QTR-8A",
+        "",
+        "- Barra de pinos 8×2 ou 11×1 de 2,54 mm soldada **por cima** do QTR, que monta com "
+        "a borda dos pinos para trás. O conector fêmea sai pela janela da viga da barra "
+        f"(envelope de {components.CONECTOR_H:.1f} mm acima da placa, verificado contra "
+        "interferência).",
+        f"- Chicote de 11 fios AWG 30 (⌀ ≤ 0,6 mm, uma camada): volta por cima da língua, "
+        "desce pelo rasgo na ponta de trás da língua (e do calço da língua), corre no canal "
+        f"de {chicote.LARGURA:.0f} × {chicote.CANAL_PROF:.1f} mm no topo da base, por baixo "
+        "do suporte 2×18650 e das paredes do berço, e sobe entre os conectores dos N20 até o "
+        "perfboard.",
+    ]
     return "\n".join(linhas) + "\n"
 
 

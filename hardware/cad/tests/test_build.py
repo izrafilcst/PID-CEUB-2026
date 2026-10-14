@@ -109,6 +109,13 @@ class TestBuild(unittest.TestCase):
         self.assertIn("ISO 10642", texto)
         self.assertIn("escareado", texto)
 
+    # A-WP2-05
+    def test_relatorio_explica_a_ligacao_do_qtr(self):
+        texto = (self.dir / "relatorio_montagem.md").read_text()
+        self.assertIn("## Ligação do QTR-8A", texto)
+        self.assertIn("janela", texto)
+        self.assertIn("canal", texto)
+
     def test_verificacoes_cobrem_a_spec(self):
         nomes = " ".join(v.nome for v in self.verificacoes)
         for trecho in ("Interferência", "Folga mínima das rodas", "Carga nos patins",

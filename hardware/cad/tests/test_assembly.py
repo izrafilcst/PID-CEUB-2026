@@ -33,6 +33,17 @@ class TestMontagem(unittest.TestCase):
             self.assertIn(frozenset(par), folgas, par)
             self.assertAlmostEqual(folgas[frozenset(par)], d, delta=0.005, msg=par)
 
+    # A-WP2-05: caminho do QTR até o perfboard, dentro da verificação de interferência
+    def test_ligacao_do_qtr_ate_o_perfboard(self):
+        comps = assembly.componentes(self.p)
+        self.assertIn("conector do QTR-8A", comps)
+        self.assertIn("chicote do QTR-8A", comps)
+        chicote = comps["chicote do QTR-8A"].bounding_box()
+        self.assertGreaterEqual(chicote.max.Z, self.p.perf_z - 2.0)       # chega ao perfboard
+        self.assertGreaterEqual(chicote.min.Z, self.p.vao_minimo)
+        canal = comps["chicote do QTR-8A"] & assembly.componentes(self.p)["suporte 2×18650"]
+        self.assertAlmostEqual(canal.volume, 0.0, places=3)                # passa por baixo
+
     def test_folgas_por_par_so_abaixo_do_limite_e_ordenadas(self):
         folgas = assembly.folgas_por_par(self.p)
         self.assertTrue(all(d < 2.0 for _, _, d in folgas))

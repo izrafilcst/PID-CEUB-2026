@@ -57,6 +57,26 @@ class TestBarra(unittest.TestCase):
         for x, y in sensor_bar.furos_qtr(self.p):
             self.assertTrue(qtr.min.X < x < qtr.max.X and qtr.min.Y < y < qtr.max.Y)
 
+    # A-WP2-05: dá para ligar o QTR
+    def test_janela_deixa_passar_o_conector(self):
+        for n in (0, 1, 2):
+            barra = sensor_bar.fazer(self.p, n)
+            con = components.conector_qtr(self.p, n)
+            self.assertAlmostEqual((barra & con).volume, 0.0, places=3, msg=n)
+            self.assertGreater(con.bounding_box().max.Z, barra.bounding_box().max.Z)
+
+    def test_conector_cobre_o_campo_de_pinos(self):
+        p = self.p
+        bb = components.conector_qtr(p).bounding_box()
+        x_borda = p.lookahead - p.qtr_w / 2
+        self.assertAlmostEqual(bb.min.X, x_borda + p.qtr_pinos_borda - 1.27, places=3)
+        self.assertAlmostEqual(bb.max.X, x_borda + p.qtr_pinos_borda + 2.54 + 1.27, places=3)
+        self.assertAlmostEqual(bb.size.Y, p.qtr_pinos_fim - p.qtr_pinos_ini, places=3)
+        self.assertAlmostEqual(bb.min.Z, p.sensor_altura + p.qtr_t, places=3)
+
+    def test_viga_mantem_parede_atras_da_janela(self):
+        self.assertGreaterEqual(sensor_bar.paredes(self.p)["viga_atras_da_janela"], 1.2)
+
     def test_calco_da_lingua_tem_meio_milimetro(self):
         self.assertAlmostEqual(sensor_bar.calco_lingua(self.p).bounding_box().size.Z, 0.5,
                                places=3)

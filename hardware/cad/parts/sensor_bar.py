@@ -13,8 +13,9 @@ from __future__ import annotations
 from build123d import Part, Rot
 
 from params import Params
+from parts import chicote
 from parts.common import caixa_lim, cil_z
-from parts.components import CALCO_T
+from parts.components import CALCO_T, campo_pinos_qtr
 
 ROT_IMPRESSAO = Rot(180, 0, 0)
 VIGA_X = 17.5          # largura da viga em X
@@ -22,6 +23,7 @@ PATIM_Y = 6.0          # largura do patim em Y
 PATIM_X = 10.0
 POSTE_D = 5.0
 LINGUA_Y = 30.0
+FOLGA_JANELA = 0.5     # em volta do conector do QTR, por lado
 
 
 def barra_z0(p: Params, calcos: int = 0) -> float:
@@ -41,6 +43,13 @@ def furos_qtr(p: Params) -> list[tuple[float, float]]:
     """
     x = p.lookahead - p.qtr_w / 2 + p.qtr_furo_borda
     return [(x, -p.qtr_furos_dist / 2), (x, p.qtr_furos_dist / 2)]
+
+
+def janela_conector(p: Params) -> Part:
+    """Janela passante na viga sobre o campo de pinos do QTR (A-WP2-05)."""
+    x0, x1, y0, y1, _ = campo_pinos_qtr(p)
+    f = FOLGA_JANELA
+    return caixa_lim(x0 - f, x1 + f, y0 - f, y1 + f, -20.0, 100.0)
 
 
 def furos_base(p: Params) -> list[tuple[float, float]]:
@@ -67,12 +76,19 @@ def fazer(p: Params, calcos: int = 0) -> Part:
         barra -= cil_z(p.tol.furo_m2, p.barra_t + 2, xa, y, z0 - 1)
     for x, y in furos_base(p):
         barra -= cil_z(p.tol.inserto_m3_d, p.tol.inserto_m3_prof, x, y, max(z0, p.base_topo))
-    return barra
+    # Ligação do QTR: janela do conector na viga e rasgo do chicote na ponta da língua
+    return barra - janela_conector(p) - chicote.rasgo_lingua(p)
 
 
 def paredes(p: Params) -> dict[str, float]:
+    x0_janela = campo_pinos_qtr(p)[0] - FOLGA_JANELA
+    x_ins, y_ins = furos_base(p)[1]
+    dx = max(x_ins - (p.barra_lingua_x + chicote.RASGO_L), 0.0)
+    dy = max(abs(y_ins) - chicote.LARGURA / 2, 0.0)
     return {"barra": p.barra_t, "poste_ao_furo": (POSTE_D - p.tol.autoatarraxante_m2) / 2,
-            "lingua_sobre_inserto": p.barra_t - p.tol.inserto_m3_prof}
+            "lingua_sobre_inserto": p.barra_t - p.tol.inserto_m3_prof,
+            "viga_atras_da_janela": x0_janela - (p.lookahead - VIGA_X / 2),
+            "rasgo_ao_inserto": (dx * dx + dy * dy) ** 0.5 - p.tol.inserto_m3_d / 2}
 
 
 def calco_lingua(p: Params, n: int = 1) -> Part:
@@ -81,4 +97,4 @@ def calco_lingua(p: Params, n: int = 1) -> Part:
     c = caixa_lim(p.barra_lingua_x, x_fim, -LINGUA_Y / 2, LINGUA_Y / 2, 0.0, 0.5 * n)
     for x, y in furos_base(p):
         c -= cil_z(p.tol.furo_m3, 2, x, y, -1)
-    return c
+    return c - chicote.rasgo_lingua(p)

@@ -13,7 +13,7 @@ from functools import lru_cache
 from build123d import Part, Plane, Rot, mirror
 
 from params import Params, altura_eixo, carregar
-from parts import battery_cradle, electronics, fixadores, motor_clamp, sensor_bar
+from parts import battery_cradle, chicote, electronics, fixadores, motor_clamp, sensor_bar
 from parts.common import caixa_lim, cil_y, cil_z
 
 ROT_IMPRESSAO = Rot(0, 0, 0)
@@ -70,11 +70,13 @@ def fazer(p: Params | None = None) -> Part:
         # M3 cabeça chata por baixo: furo de passagem + escareado de 90° (A-WP2-04)
         b -= cil_z(p.tol.furo_m3, p.base_t + 2, x, y, p.base_z - 1)
         b -= fixadores.escareado_m3(p, x, y)
-    return b
+    # Canal do chicote do QTR no topo da placa, por baixo do suporte (A-WP2-05)
+    return b - chicote.canal_base(p)
 
 
 def paredes(p: Params) -> dict[str, float]:
     return {"placa": p.base_t, "batente": p.parede_batente, "berco": p.parede,
             "coluna_ao_inserto": (electronics.COLUNA_D - p.tol.inserto_m3_d) / 2,
             "placa_sob_escareado": p.base_t - fixadores.profundidade_escareado(p),
-            "placa_sob_rebaixo": p.base_t - electronics.REBAIXO_ABRACADEIRA}
+            "placa_sob_rebaixo": p.base_t - electronics.REBAIXO_ABRACADEIRA,
+            "placa_sob_canal": p.base_t - chicote.CANAL_PROF}

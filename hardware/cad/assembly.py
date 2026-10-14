@@ -10,7 +10,7 @@ from itertools import combinations
 from build123d import CenterOf, Part, Pos, Rot
 
 from params import Params, altura_eixo
-from parts import base, components, fixadores, motor_clamp, sensor_bar, skid, wheel
+from parts import base, chicote, components, fixadores, motor_clamp, sensor_bar, skid, wheel
 from parts.common import caixa
 
 TOL_VOLUME = 1e-3   # mm³ — abaixo disso é contato de face, não interferência
@@ -60,6 +60,8 @@ def componentes(p: Params, calcos: int = 0) -> dict[str, Part]:
         "QTR-8A": components.qtr(p, calcos),
         "perfboard": components.perfboard(p),
         **fixadores.envelopes_sob_a_base(p),
+        "conector do QTR-8A": components.conector_qtr(p, calcos),
+        "chicote do QTR-8A": chicote.envelope(p, sensor_bar.barra_z0(p, calcos) + p.barra_t),
     }
 
 
