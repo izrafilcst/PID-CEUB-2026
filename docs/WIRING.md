@@ -14,7 +14,7 @@ Suporte 2×18650 (2S, 6,0–8,4 V)
     │
     └── Chave liga/desliga
             │
-            ├── MP1584 buck ──► 5,0 V ──► ESP32 VIN ──► 3V3 ──► MCP3008 + QTR-8A + VCC do TB6612
+            ├── MP1584 buck ──► 5,0 V ──► ESP32 VIN ──► 3V3 ──► MCP3008 + QTR-8A + VCC do TB6612 + encoders
             │
             └── TB6612FNG VM (tensão do pack)
 ```
@@ -234,7 +234,8 @@ fábrica) e a classe `Calibration` aprende min/max por canal.
 ```
 Suporte 2×18650 ── Fusível 3 A ── P-MOSFET ── Chave ──┬── MP1584 buck ── 5V ──┬── ESP32 VIN ──► 3V3 pin ─┬─ MCP3008 VDD/VREF
                                                       │                       │                          ├─ QTR-8A VCC
-                                                      │                       │                          └─ TB6612FNG VCC (lógica)
+                                                      │                       │                          ├─ TB6612FNG VCC (lógica)
+                                                      │                       │                          └─ VCC dos 2 encoders
                                                       │                       └── Buzzer (por transistor)
                                                       │
                                                       ├── TB6612FNG VM (tensão do pack)

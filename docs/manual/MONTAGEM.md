@@ -296,7 +296,7 @@ Suporte 2×18650 (2S, 6,0–8,4 V)
     │
     └── Chave liga/desliga
             │
-            ├── MP1584 buck ──► 5,0 V ──► ESP32 VIN ──► 3V3 ──► MCP3008 + QTR-8A + VCC do TB6612
+            ├── MP1584 buck ──► 5,0 V ──► ESP32 VIN ──► 3V3 ──► MCP3008 + QTR-8A + VCC do TB6612 + encoders
             │
             └── TB6612FNG VM (tensão do pack)
 ```
@@ -327,8 +327,9 @@ No perfboard:
 10. Fixe o MP1584 com fita dupla-face: o módulo mini não tem furos (ficha 07). Solde a
     entrada e deixe o **fio de saída (+5 V) solto**, sem ligar ao trilho de 5 V do perfboard,
     até o ajuste da seção 5.
-11. Ligue os encoders aos GPIO 18/19 (esquerdo) e 36/39 (direito) pelo conector JST-SH de 6
-    vias (ficha 04).
+11. Ligue os encoders pelo conector JST-SH de 6 vias (ficha 04): **VCC dos encoders no 3V3**,
+    GND comum e os sinais nos GPIO 18/19 (esquerdo) e 36/39 (direito). A ficha 04 aceita
+    2,7–18 V, mas em 5 V uma saída push-pull poria 5 V nos GPIO (`docs/WIRING.md`, F-24).
 
 ## 5 Checagens antes de energizar
 
@@ -349,8 +350,8 @@ Faça na ordem, com o multímetro. Não avance com um item fora do esperado.
    arbitrária; ajustar antes de ligar a carga).
 8. **VM do TB6612** — esperado: a mesma tensão do pack medida no passo 5.
 9. Desligue a chave, ligue a saída do MP1584 ao trilho de 5 V, encaixe o ESP32 e ligue de novo.
-10. **VIN do ESP32** — esperado: 5,0 V. **3V3 no MCP3008 (VDD/VREF), no VCC do QTR-8A e no VCC
-    do TB6612** — esperado: 3,3 V.
+10. **VIN do ESP32** — esperado: 5,0 V. **3V3 no MCP3008 (VDD/VREF), no VCC do QTR-8A, no VCC
+    do TB6612 e no pino de VCC do JST-SH de cada encoder** — esperado: 3,3 V.
 11. **STBY do TB6612** com o ESP32 sem firmware ou em reset — esperado: nível baixo (0 V), rodas
     paradas.
 
@@ -446,7 +447,7 @@ Ao terminar, grave de novo o firmware principal (`pio run -e esp32dev -t upload`
 - [ ] Parafusos M3 da barra rentes à face de baixo da base
 - [ ] Chicote do QTR no canal, sem fio esmagado
 - [ ] Pull-down no GPIO 12, pull-ups nos GPIO 36/39, 100 nF no GPIO 34
-- [ ] MCP3008, QTR-8A e VCC do TB6612 no 3,3 V
+- [ ] MCP3008, QTR-8A, VCC do TB6612 e VCC dos dois encoders no 3,3 V
 - [ ] Fusível de 3 A instalado; P-MOSFET instalado (recomendado)
 - [ ] MP1584 ajustado em 5,0 V com a saída sem carga, antes de ligá-la ao trilho de 5 V
 - [ ] Os 6 testes de bancada passaram
