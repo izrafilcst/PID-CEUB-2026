@@ -2,7 +2,7 @@
 
 Firmware completo em C++17 para robô seguidor de linha baseado em ESP32, desenvolvido com TDD estrito (Red → Green → Refactor). Projetado para competições brasileiras (RoboCore, IronCup, Salão de Robótica).
 
-**226 testes nativos em 21 suítes • 0 warnings de `src/` • laço de controle a 500 Hz no core 1 •
+**271 testes nativos em 23 suítes • 0 warnings de `src/` • laço de controle a 500 Hz no core 1 •
 toda a configuração ajustável por BLE e persistida na NVS (firmware 4.0.0)**
 
 ---
@@ -44,7 +44,7 @@ pio run -e esp32dev --target upload
 pio test -e native
 ```
 
-Saída esperada: `226 test cases: 226 succeeded`
+Saída esperada: `271 test cases: 271 succeeded`
 
 ---
 
@@ -87,7 +87,7 @@ Saída esperada: `226 test cases: 226 succeeded`
 │   │   └── Logger                # (sem uso na v2)
 │   └── storage/                  # IPersistentStore: NvsStore (ESP32) e InMemoryStore (testes)
 │
-├── test/                         # 21 suítes Unity, ambiente native
+├── test/                         # 23 suítes Unity, ambiente native
 │
 ├── examples/                     # 6 testes de bancada, um ambiente bench_* cada
 │
@@ -550,26 +550,28 @@ pio test -e esp32dev
 |-------|--------|--------|
 | test_annunciator | 7 | Annunciator |
 | test_battery | 7 | BatteryMonitor |
-| test_ble_tuner | 3 | BLETuner (transporte) |
-| test_button | 6 | ButtonInput |
+| test_ble_tuner | 5 | BLETuner (transporte, inscrição nas notificações) |
+| test_button | 9 | ButtonInput |
 | test_calibration | 18 | Calibration |
 | test_cascade | 12 | CascadeController, Mixer |
-| test_command_handler | 18 | CommandHandler, Mailbox, modo competição |
-| test_command_protocol | 23 | CommandProtocol, CommandQueue |
+| test_command_handler | 27 | CommandHandler, Mailbox, modo competição, info, NVS, cal de encoder |
+| test_command_protocol | 25 | CommandProtocol, CommandQueue |
 | test_config_store | 14 | ConfigStore, InMemoryStore |
-| test_control_loop | 14 | ControlLoop (cenários F-01, F-03, F-05, F-06, F-08, F-14) |
+| test_control_loop | 17 | ControlLoop (cenários F-01, F-03, F-05, F-06, F-08, F-14; falha de encoder) |
 | test_encoder | 9 | Encoder |
 | test_lap_timer | 4 | LapTimer |
 | test_line_follower | 11 | LineFollower |
+| test_nvs_arbiter | 7 | NvsArbiter (NVS × carro armado) |
 | test_output_stage | 8 | OutputStage |
+| test_periodic_timer | 4 | PeriodicTimer (tel a 30 Hz) |
 | test_pid | 15 | PIDController |
 | test_robot_config | 14 | RobotConfig |
 | test_smoke | 1 | Framework |
 | test_speed_profile | 10 | SpeedProfile |
-| test_state_machine | 15 | RobotStateMachine |
-| test_velocity_estimator | 13 | VelocityEstimator |
+| test_state_machine | 25 | RobotStateMachine (botão no aperto, ERROR(ENC)) |
+| test_velocity_estimator | 18 | VelocityEstimator |
 | test_velocity_profile | 4 | VelocityProfile |
-| **Total** | **226** | |
+| **Total** | **271** | |
 
 ---
 
