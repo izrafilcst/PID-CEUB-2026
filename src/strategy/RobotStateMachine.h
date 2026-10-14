@@ -7,7 +7,8 @@ enum class ErrorCode : uint8_t { NONE = 0, OVR = 1, LINE = 2, BAT = 3, CAL = 4 }
 
 enum class SmEvent : uint8_t {
     BTN_SHORT, BTN_LONG, CMD_START, CMD_STOP, CMD_RESET, CMD_SENSOR_CAL,
-    CAL_DONE_OK, CAL_DONE_FAIL, LINE_LOST_TIMEOUT, BATTERY_LOW, LOOP_OVERRUN
+    CAL_DONE_OK, CAL_DONE_FAIL, LINE_LOST_TIMEOUT, BATTERY_LOW, LOOP_OVERRUN,
+    BTN_PRESS  ///< aperto já filtrado (E-3)
 };
 
 struct SmInputs {
@@ -21,7 +22,12 @@ inline bool isActiveState(uint8_t s) {
            s == static_cast<uint8_t>(RobotState::RUNNING);
 }
 
-/** Máquina de estados do robô (spec §4.6). Pura: o chamador fornece tempo e entradas. */
+/**
+ * Máquina de estados do robô (spec §4.6). Pura: o chamador fornece tempo e entradas.
+ * Botão (E-3): em ARMED/RUNNING, BTN_PRESS → READY e o gesto fica consumido (o BTN_SHORT ou
+ * BTN_LONG desse aperto é descartado); um BTN_PRESS novo começa outro gesto. Em ARMED/RUNNING
+ * o BTN_SHORT não tem efeito.
+ */
 class RobotStateMachine {
 public:
     static constexpr uint32_t CAL_DURATION_MS = 5000;
@@ -53,4 +59,5 @@ private:
     ErrorCode   _error = ErrorCode::NONE;
     uint32_t    _enteredAt;
     NvsArbiter* _nvs;
+    bool        _gestureConsumed = false;
 };

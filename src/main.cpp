@@ -180,6 +180,7 @@ static void taskControl(void*) {
         while (xQueueReceive(g_ctlQueue, &msg, 0) == pdTRUE) applyRequest(msg, sm, in, nowMs);
 
         const ButtonEvent be = button.update(digitalRead(PIN_BTN_START) == LOW, nowMs);
+        if (be == ButtonEvent::PRESS) sm.handle(SmEvent::BTN_PRESS, in, nowMs);
         if (be == ButtonEvent::SHORT) sm.handle(SmEvent::BTN_SHORT, in, nowMs);
         if (be == ButtonEvent::LONG) sm.handle(SmEvent::BTN_LONG, in, nowMs);
 

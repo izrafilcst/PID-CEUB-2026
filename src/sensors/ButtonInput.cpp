@@ -13,6 +13,7 @@ ButtonEvent ButtonInput::update(bool pressed, uint32_t nowMs) {
         if (_stable) {
             _pressedAt = nowMs;
             _longFired = false;
+            return ButtonEvent::PRESS;
         } else {
             const bool wasLong = _longFired;
             _longFired = false;

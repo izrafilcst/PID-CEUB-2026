@@ -1,6 +1,7 @@
 #include <unity.h>
 #include "strategy/RobotStateMachine.h"
 #include "storage/NvsArbiter.h"
+#include "sensors/ButtonInput.h"
 
 static const SmInputs OK_IN{true, true};
 static const SmInputs NO_CAL{false, true};
@@ -73,19 +74,72 @@ void test_state_machine_start_with_low_battery_errors() {
     TEST_ASSERT_EQUAL(ErrorCode::BAT, sm.error());
 }
 
-void test_state_machine_armed_can_be_cancelled() {
+// E-3: em ARMED/RUNNING o botão age no aperto (BTN_PRESS)
+void test_state_machine_press_cancels_armed() {
     RobotStateMachine sm(true, 0);
     sm.handle(SmEvent::BTN_SHORT, OK_IN, 100);
-    sm.handle(SmEvent::BTN_SHORT, OK_IN, 500);
+    TEST_ASSERT_EQUAL(RobotState::ARMED, sm.state());
+    TEST_ASSERT_TRUE(sm.handle(SmEvent::BTN_PRESS, OK_IN, 500));
     TEST_ASSERT_EQUAL(RobotState::READY, sm.state());
 }
 
-void test_state_machine_running_stops_on_short_press_or_stop() {
+void test_state_machine_press_stops_running() {
     RobotStateMachine a = running();
-    a.handle(SmEvent::BTN_SHORT, OK_IN, 2000);
+    TEST_ASSERT_TRUE(a.handle(SmEvent::BTN_PRESS, OK_IN, 2000));
     TEST_ASSERT_EQUAL(RobotState::READY, a.state());
+    TEST_ASSERT_FALSE(a.motorsEnabled());
     RobotStateMachine b = running();
     b.handle(SmEvent::CMD_STOP, OK_IN, 2000);
+    TEST_ASSERT_EQUAL(RobotState::READY, b.state());
+}
+
+void test_state_machine_short_has_no_effect_while_active() {
+    RobotStateMachine a = running();
+    TEST_ASSERT_FALSE(a.handle(SmEvent::BTN_SHORT, OK_IN, 2000));
+    TEST_ASSERT_EQUAL(RobotState::RUNNING, a.state());
+    RobotStateMachine b(true, 0);
+    b.handle(SmEvent::CMD_START, OK_IN, 10);
+    TEST_ASSERT_FALSE(b.handle(SmEvent::BTN_SHORT, OK_IN, 20));
+    TEST_ASSERT_EQUAL(RobotState::ARMED, b.state());
+}
+
+// E-3: o aperto que parou o carro consome o gesto (soltar não arma, segurar não calibra)
+void test_state_machine_press_gesture_is_consumed() {
+    RobotStateMachine sm = running();
+    sm.handle(SmEvent::BTN_PRESS, OK_IN, 2000);
+    TEST_ASSERT_EQUAL(RobotState::READY, sm.state());
+    TEST_ASSERT_FALSE(sm.handle(SmEvent::BTN_SHORT, OK_IN, 2200));
+    TEST_ASSERT_EQUAL(RobotState::READY, sm.state());
+    TEST_ASSERT_FALSE(sm.handle(SmEvent::BTN_LONG, OK_IN, 3500));
+    TEST_ASSERT_EQUAL(RobotState::READY, sm.state());
+}
+
+void test_state_machine_next_press_starts_new_gesture() {
+    RobotStateMachine sm = running();
+    sm.handle(SmEvent::BTN_PRESS, OK_IN, 2000);
+    sm.handle(SmEvent::BTN_SHORT, OK_IN, 2200);  // descartado
+    TEST_ASSERT_FALSE(sm.handle(SmEvent::BTN_PRESS, OK_IN, 4000));  // em READY não faz nada
+    TEST_ASSERT_TRUE(sm.handle(SmEvent::BTN_SHORT, OK_IN, 4200));
+    TEST_ASSERT_EQUAL(RobotState::ARMED, sm.state());
+}
+
+void test_state_machine_press_outside_active_has_no_effect() {
+    RobotStateMachine idle(false, 0);
+    TEST_ASSERT_FALSE(idle.handle(SmEvent::BTN_PRESS, NO_CAL, 10));
+    TEST_ASSERT_EQUAL(RobotState::IDLE, idle.state());
+    RobotStateMachine ready(true, 0);
+    TEST_ASSERT_FALSE(ready.handle(SmEvent::BTN_PRESS, OK_IN, 10));
+    TEST_ASSERT_TRUE(ready.handle(SmEvent::BTN_LONG, OK_IN, 1510));  // gesto não consumido
+    TEST_ASSERT_EQUAL(RobotState::CALIBRATING, ready.state());
+}
+
+void test_state_machine_stop_on_stop_command() {
+    RobotStateMachine a = running();
+    a.handle(SmEvent::CMD_STOP, OK_IN, 2000);
+    TEST_ASSERT_EQUAL(RobotState::READY, a.state());
+    RobotStateMachine b(true, 0);
+    b.handle(SmEvent::CMD_START, OK_IN, 10);
+    b.handle(SmEvent::CMD_STOP, OK_IN, 20);
     TEST_ASSERT_EQUAL(RobotState::READY, b.state());
 }
 
@@ -176,6 +230,29 @@ void test_state_machine_leaving_active_releases_nvs() {
     TEST_ASSERT_FALSE(nvs.armed());
 }
 
+// A-WP1-02 de ponta a ponta: ButtonInput + máquina, botão segurado por 300, 900 e 2000 ms
+static RobotState holdInRunning(uint32_t holdMs) {
+    RobotStateMachine sm = running();
+    ButtonInput b;
+    bool sawCalibrating = false;
+    for (uint32_t t = 2000; t < 2000 + holdMs + 200; t++) {
+        const bool pressed = t < 2000 + holdMs;
+        const ButtonEvent e = b.update(pressed, t);
+        if (e == ButtonEvent::PRESS) sm.handle(SmEvent::BTN_PRESS, OK_IN, t);
+        if (e == ButtonEvent::SHORT) sm.handle(SmEvent::BTN_SHORT, OK_IN, t);
+        if (e == ButtonEvent::LONG) sm.handle(SmEvent::BTN_LONG, OK_IN, t);
+        if (sm.state() == RobotState::CALIBRATING) sawCalibrating = true;
+    }
+    TEST_ASSERT_FALSE(sawCalibrating);
+    return sm.state();
+}
+
+void test_state_machine_button_held_in_running_always_stops() {
+    TEST_ASSERT_EQUAL(RobotState::READY, holdInRunning(300));
+    TEST_ASSERT_EQUAL(RobotState::READY, holdInRunning(900));
+    TEST_ASSERT_EQUAL(RobotState::READY, holdInRunning(2000));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_state_machine_boot_with_calibration_is_ready);
@@ -185,8 +262,14 @@ int main() {
     RUN_TEST(test_state_machine_calibration_result);
     RUN_TEST(test_state_machine_start_arms_then_runs_after_delay);
     RUN_TEST(test_state_machine_start_with_low_battery_errors);
-    RUN_TEST(test_state_machine_armed_can_be_cancelled);
-    RUN_TEST(test_state_machine_running_stops_on_short_press_or_stop);
+    RUN_TEST(test_state_machine_press_cancels_armed);
+    RUN_TEST(test_state_machine_press_stops_running);
+    RUN_TEST(test_state_machine_short_has_no_effect_while_active);
+    RUN_TEST(test_state_machine_press_gesture_is_consumed);
+    RUN_TEST(test_state_machine_next_press_starts_new_gesture);
+    RUN_TEST(test_state_machine_press_outside_active_has_no_effect);
+    RUN_TEST(test_state_machine_stop_on_stop_command);
+    RUN_TEST(test_state_machine_button_held_in_running_always_stops);
     RUN_TEST(test_state_machine_running_faults);
     RUN_TEST(test_state_machine_faults_ignored_outside_running);
     RUN_TEST(test_state_machine_error_short_press_recovers);

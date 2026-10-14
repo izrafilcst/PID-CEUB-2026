@@ -135,7 +135,7 @@ IDLE ──toque longo / scal──► CALIBRATING ──5 s, canais ok──►
 | READY | toque curto ou `start` | ARMED | V_bat ≥ `vcut`; senão ERROR(3) |
 | READY | toque longo ou `scal` | CALIBRATING | — |
 | ARMED | `startMs` | RUNNING | PIDs alinhados à medida atual; rampa parte de 0 |
-| ARMED / RUNNING | toque curto ou `stop` | READY | motores freiam |
+| ARMED / RUNNING | aperto do botão ou `stop` | READY | motores freiam; o aperto é consumido (E-3) |
 | RUNNING | linha perdida por `lostMs` | ERROR(2) | motores param |
 | RUNNING | V_bat < `vcut` por 1 s | ERROR(3) | motores param |
 | RUNNING | 5 ciclos seguidos acima de 2000 µs | ERROR(1) | motores param |
@@ -147,7 +147,9 @@ inválida.
 
 **Botão (GPIO 0)**: debounce de 30 ms. **Toque curto** = soltar antes de 800 ms. **Toque longo**
 = segurar 1,5 s (dispara ao completar o tempo, sem esperar soltar; ao soltar não gera toque
-curto). Entre 800 ms e 1,5 s, nada. Ligar o carro com o botão apertado entra no modo de gravação
+curto). Entre 800 ms e 1,5 s, nada. **Em ARMED e RUNNING o botão age no aperto** (E-3): o carro
+para assim que o aperto passa do debounce, sem esperar soltar — é a parada de emergência. Esse
+aperto é consumido: soltá-lo não arma de novo e segurá-lo não entra em CALIBRATING. Ligar o carro com o botão apertado entra no modo de gravação
 do ESP32 (GPIO 0 é pino de *strapping*), não é um toque longo.
 
 **Sinalização**: IDLE pisca 1 Hz · CALIBRATING pisca 5 Hz e bipa ao entrar e ao sair · READY

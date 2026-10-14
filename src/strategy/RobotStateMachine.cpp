@@ -23,6 +23,15 @@ bool RobotStateMachine::handle(SmEvent ev, const SmInputs& in, uint32_t nowMs) {
     using E = SmEvent;
     if (ev == E::CMD_RESET) return _enter(S::IDLE, ErrorCode::NONE, nowMs);
 
+    // Botão (E-3): o aperto para o carro e consome o gesto
+    if (ev == E::BTN_PRESS) {
+        _gestureConsumed = false;
+        if (!isActive()) return false;
+        _gestureConsumed = true;
+        return _enter(S::READY, ErrorCode::NONE, nowMs);
+    }
+    if ((ev == E::BTN_SHORT || ev == E::BTN_LONG) && _gestureConsumed) return false;
+
     switch (_state) {
         case S::IDLE:
             if (ev == E::BTN_LONG || ev == E::CMD_SENSOR_CAL) {
@@ -46,14 +55,10 @@ bool RobotStateMachine::handle(SmEvent ev, const SmInputs& in, uint32_t nowMs) {
             }
             break;
         case S::ARMED:
-            if (ev == E::BTN_SHORT || ev == E::CMD_STOP) {
-                return _enter(S::READY, ErrorCode::NONE, nowMs);
-            }
+            if (ev == E::CMD_STOP) return _enter(S::READY, ErrorCode::NONE, nowMs);
             break;
         case S::RUNNING:
-            if (ev == E::BTN_SHORT || ev == E::CMD_STOP) {
-                return _enter(S::READY, ErrorCode::NONE, nowMs);
-            }
+            if (ev == E::CMD_STOP) return _enter(S::READY, ErrorCode::NONE, nowMs);
             if (ev == E::LINE_LOST_TIMEOUT) return _enter(S::ERROR, ErrorCode::LINE, nowMs);
             if (ev == E::BATTERY_LOW) return _enter(S::ERROR, ErrorCode::BAT, nowMs);
             if (ev == E::LOOP_OVERRUN) return _enter(S::ERROR, ErrorCode::OVR, nowMs);
