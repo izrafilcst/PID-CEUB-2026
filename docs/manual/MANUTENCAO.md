@@ -81,9 +81,11 @@ Depois de qualquer troca, faça o teste de bancada indicado e rode uma volta cur
 1. Desligue a chave.
 2. Desconecte o conector do chicote pela janela da barra.
 3. Solte os 2 M2 × 8 cabeça baixa por baixo e tire a placa.
-4. Monte a placa nova com os sensores para baixo e a borda dos pinos para trás.
-5. Rode o `bench_sensor_raw`: os 8 canais têm que responder.
-6. **Recalibre os sensores** no firmware principal (manual do operador, seção 3).
+4. Una os dois pinos **3.3V BYPASS** da placa nova com um pedaço de fio (manual de montagem,
+   seção 3, passo 11). Sem isso, a 3,3 V os LEDs ficam fracos e a calibração pode dar ERRO(4).
+5. Monte a placa nova com os sensores para baixo e a borda dos pinos para trás.
+6. Rode o `bench_sensor_raw`: os 8 canais têm que responder.
+7. **Recalibre os sensores** no firmware principal (manual do operador, seção 3).
 
 ### 2.7 Suporte 2×18650
 
@@ -105,9 +107,11 @@ Depois de qualquer troca, faça o teste de bancada indicado e rode uma volta cur
 1. Desligue a chave e tire as células.
 2. Procure a causa: fio esfolado encostando no chassi, solda em curto, célula invertida, roda
    travada.
-3. Meça a resistência entre +BAT e GND: tem que ser maior que 1 kΩ (manual de montagem,
-   seção 5).
-4. Troque por um fusível de lâmina mini **de 3 A** — nunca maior (`docs/WIRING.md`).
+3. Com as células fora, **ligue a chave** e meça a resistência entre +BAT depois da chave e o
+   GND: tem que ser maior que 1 kΩ (manual de montagem, seção 5). Com a chave desligada a
+   medição não pega o lado da carga, onde o curto costuma estar.
+4. Desligue a chave.
+5. Troque por um fusível de lâmina mini **de 3 A** — nunca maior (`docs/WIRING.md`).
 
 ## 3 Diagnóstico
 
@@ -119,8 +123,8 @@ Para cada sintoma, faça os testes na ordem. O primeiro "sim" leva à ação.
 2. As células estão na polaridade certa e o pack tem 6,0–8,4 V entre os fios do suporte? **Não**
    → recolocar ou carregar as células.
 3. A chave passa corrente (mesma tensão antes e depois)? **Não** → trocar a chave.
-4. A saída do MP1584 está em 5,0 V? **Não** → reajustar com o ESP32 desconectado (manual de
-   montagem, seção 5).
+4. A saída do MP1584 está em 5,0 V? **Não** → soltar o fio de saída do trilho de 5 V, tirar o
+   ESP32 e reajustar sem carga (manual de montagem, seção 5).
 5. O botão BOOT estava apertado ao ligar? **Sim** → soltar e religar: com o GPIO 0 em nível
    baixo no boot a placa entra em modo de gravação (`docs/REVISAO_FIRMWARE.md`, item 1).
 6. O ESP32 liga pelo USB sozinho (sem o perfboard)? **Sim** → com o perfboard ele não liga:
@@ -161,9 +165,11 @@ códigos completa está no manual do operador, seção 11.
 
 #### ERRO(4) — calibração inválida
 
-1. O `calres` lista os mesmos canais toda vez? **Sim** → rodar o `bench_sensor_raw`: canal
+1. No `bench_sensor_raw`, todos os canais variam pouco entre a linha e o fundo? **Sim** →
+   conferir os pinos 3.3V BYPASS do QTR-8A unidos (manual de montagem, seção 3, passo 11).
+2. O `calres` lista os mesmos canais toda vez? **Sim** → rodar o `bench_sensor_raw`: canal
    parado indica solda no MCP3008 ou fio do chicote partido.
-2. **Não** → refazer a varredura passando os 8 sensores pela linha e pelo fundo, com a altura
+3. **Não** → refazer a varredura passando os 8 sensores pela linha e pelo fundo, com a altura
    certa (seção 2.2).
 
 #### ERRO(5) — encoder sem leitura (modo cascata)
@@ -250,7 +256,7 @@ códigos completa está no manual do operador, seção 11.
   antes de salvar se for usar o modo cascata (A-WP1-04). A calibração dos sensores não muda.
 - Os testes de bancada (seção 5) substituem o firmware principal: grave-o de novo ao terminar.
 - Pendências conhecidas da v2: sem parada automática depois da chegada (F-34); `ack` de
-  `start`/`stop`/`scal` só confirma o recebimento (A-WP1-07); `defaults` zera o PPR (A-WP1-04).
+  `start`/`stop`/`scal` só confirma o recebimento (A-WP1-07); `defaults` volta o PPR a 600 (A-WP1-04).
 
 ## 5 Testes de bancada
 
@@ -289,7 +295,9 @@ de 0,5 mm (seção 2.2) e recalibre os sensores.
 
 ## 7 Peças de reposição
 
-Quantidades a ter na caixa do box, iguais às do carro, salvo indicação.
+Quantidades a ter na caixa do box, iguais às do carro, salvo indicação. A `hardware/bom.csv` já
+traz só os O-rings e 1 inserto de reserva; as peças impressas saem do PETG da BOM; o resto é
+**compra extra**, além da BOM.
 
 | Item | Quantidade na caixa | Fonte |
 |------|---------------------|-------|
@@ -298,11 +306,11 @@ Quantidades a ter na caixa do box, iguais às do carro, salvo indicação.
 | Calço e calço de língua | 4 + 2 | `calco.stl`, `calco_lingua.stl` |
 | Roda | 2 | `roda.stl` |
 | Abraçadeira do N20 (E e D) | 1 + 1 | `abracadeira_E.stl`, `abracadeira_D.stl` |
-| Fusível de lâmina mini 3 A | 1 | `hardware/bom.csv` |
-| Células 18650 carregadas (mesmo modelo e lote) | 2 | `hardware/bom.csv`, ficha 11 |
+| Fusível de lâmina mini 3 A | 1 | Compra extra: o mesmo item da BOM, que traz só o fusível do carro |
+| Células 18650 carregadas (mesmo modelo e lote) | 2 | Compra extra: um segundo par igual ao da BOM (ficha 11) |
 | Inserto térmico M3 | 1 | `hardware/bom.csv` (1 de reserva) |
-| Parafusos de cada tipo da tabela "Fixadores" | 1 jogo | `hardware/cad/out/relatorio_montagem.md` |
-| Fio AWG 30 e conector do QTR-8A | 1 chicote | `hardware/bom.csv` |
+| Parafusos de cada tipo da tabela "Fixadores" | 1 jogo | Compra extra; tipos em `hardware/cad/out/relatorio_montagem.md` |
+| Fio AWG 30 e conector do QTR-8A | 1 chicote | Compra extra: os mesmos itens da BOM |
 
 ## 8 Registro de manutenção
 

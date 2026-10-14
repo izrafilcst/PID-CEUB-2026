@@ -102,7 +102,7 @@ Trabalhar no **perfil 0 "seguro"** (`vmax` 0,35) e no modo PWM direto (`mode` 0)
 | Perde a linha no cruzamento | perfil agressivo | Subir `thr`, baixar `vmax` |
 | Para em ERRO(2) ao sair da curva | linha perdida mais que `lostMs` | Baixar `vmax`/`vmin`; subir `lostMs` com cuidado |
 | ERRO(1) | laço passou de 2000 µs por 5 ciclos | Ver `ovr` no frame `sta`; relatar |
-| ERRO(3) | bateria abaixo de `vcut` por 1 s | Trocar as células; conferir `vbk` com multímetro |
+| ERRO(3) | bateria abaixo de `vcut` ao armar, ou por 1 s correndo | Trocar as células; conferir `vbk` com multímetro |
 | ERRO(5) | modo cascata com duty alto e RPM ≈ 0 por 200 ms | Encoder solto ou sem alimentação; conferir no `bench_encoder` e refazer `cal` |
 
 ---

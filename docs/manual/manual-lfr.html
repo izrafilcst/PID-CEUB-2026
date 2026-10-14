@@ -411,7 +411,7 @@ details.part > div { padding: 0 0.2rem 0.75rem; }
   <p class="lead">Do pacote de peças ao primeiro teste de bancada. Quando uma cota estiver marcada MEDIR, vale a medida da peça em mãos.</p>
 
   <dl class="summary">
-    <div><dt>Ordem segura</dt><dd>MP1584 em 5,0 V<small>medido com o ESP32 fora da barra fêmea</small></dd></div>
+    <div><dt>Ordem segura</dt><dd>MP1584 em 5,0 V<small>ajustado sem carga, antes do trilho de 5 V</small></dd></div>
     <div><dt>Polaridade</dt><dd>Chave desligada<small>ao pôr as células; 7–8,4 V nos fios</small></dd></div>
     <div><dt>Peças impressas</dt><dd>10 STL<small>já orientados; PETG sem suporte</small></dd></div>
     <div><dt>Sensor ao chão</dt><dd>3,0 mm<small>sem calço; +0,5 mm por passo</small></dd></div>
@@ -460,7 +460,7 @@ details.part > div { padding: 0 0.2rem 0.75rem; }
       <tr><td>O-ring de silicone 34 × 3 mm</td><td class="num">4</td><td>13</td><td>2 em uso + 2 de reserva</td></tr>
       <tr><td>Inserto térmico M3 (OD 4,0 × 5,7 mm)</td><td class="num">10</td><td>—</td><td>6 no carro + 3 no teste do cupom + 1 de reserva</td></tr>
       <tr><td>Fusível de lâmina mini 3 A + porta-fusível em linha</td><td class="num">1</td><td>—</td><td>Logo depois do suporte</td></tr>
-      <tr><td>P-MOSFET (ex.: AO3401) + zener 12 V + resistor 10 kΩ</td><td class="num">1</td><td>—</td><td>Proteção contra inversão (recomendado)</td></tr>
+      <tr><td>P-MOSFET (ex.: AO3401) + zener 9,1–10 V + resistor 10 kΩ</td><td class="num">1</td><td>—</td><td>Proteção contra inversão (recomendado). Confira o V_GS máximo do MOSFET comprado: o zener fica abaixo dele e acima de 8,4 V</td></tr>
       <tr><td>Chave SPDT mini (liga/desliga)</td><td class="num">1</td><td>—</td><td>Corpo de 8,5 × 3,6 mm no modelo (MEDIR); de preferência 3 A</td></tr>
       <tr><td>Conector da bateria (suporte → placa)</td><td class="num">1</td><td>—</td><td>—</td></tr>
       <tr><td>Perfboard 5 × 7 cm</td><td class="num">1</td><td>10</td><td>Furos de fixação feitos pelo montador</td></tr>
@@ -716,6 +716,7 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
     <li>Gire cada roda com a mão: ela não pode tocar a base nem o motor (folga mínima de 0,60 mm no relatório).</li>
     <li>Encaixe um <strong>O-ring</strong> no canal de cada roda, sem torcer o cordão.</li>
     <li>Solde a barra de pinos de 2,54 mm <strong>por cima</strong> do QTR-8A (lado oposto aos sensores).</li>
+    <li>Una os dois pinos marcados <strong>3.3V BYPASS</strong> do QTR-8A com um pedaço de fio. Os resistores dos LEDs IR são calibrados para 5 V em dois estágios, e o bypass de um estágio é o que permite operar em 3,3 V (Pololu: página do produto 960 e guia 0J12, seção "Vcc, GND, and 3.3V BYPASS"). <strong>Se esquecer este passo</strong>, a 3,3 V os LEDs ficam fracos ou apagam, o contraste cai e a calibração pode acabar em ERRO(4). <strong>Nunca</strong> una esses pinos com o QTR em 5 V: os LEDs passam da corrente nominal e podem queimar.</li>
     <li>Solde o <strong>chicote de 11 fios AWG 30</strong> (⌀ ≤ 0,6 mm) no conector fêmea. Fio mais grosso não cabe numa camada no canal da base.</li>
     <li>Prenda o <strong>QTR-8A</strong> sob os postes da barra com 2 M2 × 8 cabeça baixa, de baixo para cima, com os sensores para baixo e a borda dos pinos para trás. O conector sai pela janela da viga.</li>
     <li>Passe o chicote por cima da língua e desça pelo rasgo na ponta de trás da língua (e do calço de língua, se houver).</li>
@@ -731,9 +732,9 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
   <h3 id="mt-fiacao">Eletrônica e fiação</h3>
   <div class="two">
     <figure class="fig fig-narrow">
-      <svg viewBox="0 0 360 500" role="img" aria-labelledby="pwr-t pwr-d">
+      <svg viewBox="0 0 360 520" role="img" aria-labelledby="pwr-t pwr-d">
         <title id="pwr-t">Caminho de alimentação da v2</title>
-        <desc id="pwr-d">Suporte 2×18650 de 6,0 a 8,4 V, fusível de 3 A, P-MOSFET de proteção contra inversão (recomendado) e chave liga/desliga. Depois da chave, um ramo vai ao MP1584, que entrega 5,0 V ao VIN do ESP32; o 3V3 do ESP32 alimenta o MCP3008 e o QTR-8A. O outro ramo vai direto ao VM do TB6612FNG, com a tensão do pack.</desc>
+        <desc id="pwr-d">Suporte 2×18650 de 6,0 a 8,4 V, fusível de 3 A, P-MOSFET de proteção contra inversão (recomendado) e chave liga/desliga. Depois da chave, um ramo vai ao MP1584, que entrega 5,0 V só ao VIN do ESP32 e ao buzzer; o 3V3 do ESP32 alimenta o MCP3008, o QTR-8A, o VCC (lógica) do TB6612FNG e os encoders. O outro ramo vai direto ao VM do TB6612FNG, com a tensão do pack. O MP1584 é ajustado com a saída sem carga, antes de ser ligado ao trilho de 5 V.</desc>
         <defs>
           <marker id="seta-pwr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="sv-arrow" d="M0 0 L10 5 L0 10 z"/></marker>
         </defs>
@@ -761,31 +762,34 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
         <text class="sv-ts" x="265" y="343" text-anchor="middle">tensão do pack</text>
         <line class="sv-line" x1="95" y1="358" x2="95" y2="380" marker-end="url(#seta-pwr)"/>
         <rect class="sv-box" x="15" y="382" width="160" height="40" rx="3"/>
-        <text class="sv-tb" x="95" y="407" text-anchor="middle">ESP32 VIN</text>
+        <text class="sv-tb" x="95" y="400" text-anchor="middle">ESP32 VIN</text>
+        <text class="sv-ts" x="95" y="415" text-anchor="middle">e buzzer (trilho de 5 V)</text>
         <line class="sv-line" x1="95" y1="422" x2="95" y2="444" marker-end="url(#seta-pwr)"/>
-        <rect class="sv-box" x="15" y="446" width="160" height="48" rx="3"/>
-        <text class="sv-tb" x="95" y="467" text-anchor="middle">3V3</text>
-        <text class="sv-ts" x="95" y="484" text-anchor="middle">MCP3008 + QTR-8A</text>
-        <text class="sv-te" x="192" y="380">ajuste 5,0 V com o</text>
-        <text class="sv-te" x="192" y="395">ESP32 desconectado,</text>
-        <text class="sv-te" x="192" y="410">antes de encaixá-lo</text>
+        <rect class="sv-box" x="15" y="446" width="160" height="66" rx="3"/>
+        <text class="sv-tb" x="95" y="466" text-anchor="middle">3V3</text>
+        <text class="sv-ts" x="95" y="483" text-anchor="middle">MCP3008 + QTR-8A</text>
+        <text class="sv-ts" x="95" y="499" text-anchor="middle">VCC do TB6612 + encoders</text>
+        <text class="sv-te" x="192" y="380">ajuste 5,0 V com a saída</text>
+        <text class="sv-te" x="192" y="395">sem carga, antes de</text>
+        <text class="sv-te" x="192" y="410">ligá-la ao trilho de 5 V</text>
       </svg>
       <figcaption>Caixa tracejada: recomendado. Caixa vermelha: obrigatório (nunca troque o fusível por um maior). Fiação completa em <code>docs/WIRING.md</code>.</figcaption>
     </figure>
     <div>
-      <h4 style="margin-top:0">No perfboard</h4>
+      <p style="margin-top:0">O trilho de 5 V do MP1584 alimenta só o VIN do ESP32 e o buzzer. O VCC (lógica) do TB6612 vai no 3V3 do ESP32, não no 5 V: o MP1584 sai de fábrica com tensão arbitrária e o VCC do TB6612 aceita 2,7–5,5 V (D17).</p>
+      <h4>No perfboard</h4>
       <ol class="steps">
         <li>Meça a distância entre as fileiras do ESP32 na placa em mãos e só então fure e solde as barras fêmea.</li>
         <li>Solde o MCP3008 com as fileiras a 7,62 mm (3 colunas livres entre elas) e o capacitor de 100 nF entre VDD e AGND, junto ao CI.</li>
-        <li>Ligue VDD e VREF do MCP3008 e o VCC do QTR-8A no <strong>3V3</strong> do ESP32, nunca em 5 V. Assim o DOUT do MCP3008 não põe 5 V no GPIO 12.</li>
+        <li>Ligue VDD e VREF do MCP3008, o VCC do QTR-8A e o <strong>VCC (lógica) do TB6612</strong> no <strong>3V3</strong> do ESP32, nunca em 5 V. Assim o DOUT do MCP3008 não põe 5 V no GPIO 12 e o driver não recebe a tensão do MP1584 antes do ajuste.</li>
         <li>Solde o resistor de <strong>10 kΩ de pull-down no GPIO 12</strong> (MISO). O GPIO 12 é pino de strapping: em nível alto no boot a placa não liga.</li>
         <li>Solde os resistores de <strong>10 kΩ de pull-up</strong> do GPIO 36 e do GPIO 39 para o 3,3 V. Sem eles o encoder direito conta sozinho.</li>
         <li>Monte o divisor da bateria: 100 kΩ do +BAT (depois da chave) ao GPIO 34 e 47 kΩ do GPIO 34 ao GND, mais o <strong>capacitor de 100 nF</strong> do GPIO 34 ao GND.</li>
         <li>Ligue o <strong>buzzer passivo por um transistor</strong> (o GPIO 22 não aciona o buzzer direto).</li>
         <li>Solde o resistor de 10 kΩ de pull-down no STBY do TB6612 (motores parados até o firmware liberar).</li>
         <li>Ponha o capacitor de 100 µF no VM do TB6612, junto à placa.</li>
-        <li>Fixe o MP1584 com fita dupla-face: o módulo mini não tem furos.</li>
-        <li>Ligue os encoders aos GPIO 18/19 (esquerdo) e 36/39 (direito) pelo conector JST-SH de 6 vias.</li>
+        <li>Fixe o MP1584 com fita dupla-face: o módulo mini não tem furos. Solde a entrada e deixe o <strong>fio de saída (+5 V) solto</strong>, sem ligar ao trilho de 5 V do perfboard, até o ajuste das checagens.</li>
+        <li>Ligue os encoders pelo conector JST-SH de 6 vias: <strong>VCC dos encoders no 3V3</strong>, GND comum e os sinais nos GPIO 18/19 (esquerdo) e 36/39 (direito). Os encoders aceitam 2,7–18 V, mas em 5 V uma saída push-pull poria 5 V nos GPIO.</li>
       </ol>
     </div>
   </div>
@@ -793,16 +797,16 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
   <h3 id="mt-checagens">Checagens antes de energizar</h3>
   <p>Faça na ordem, com o multímetro. Não avance com um item fora do esperado.</p>
   <ol class="steps">
-    <li><strong>Continuidade do GND</strong> entre ESP32, MCP3008, TB6612, MP1584 e QTR-8A. <span class="expect">bipe em todos os pares</span></li>
+    <li><strong>Continuidade do GND</strong> entre o pino de GND da barra fêmea do ESP32 (o ESP32 ainda está fora), MCP3008, TB6612, MP1584 e QTR-8A. <span class="expect">bipe em todos os pares</span></li>
     <li><strong>Sem curto entre +BAT e GND</strong>, com a chave ligada e sem células. <span class="expect">&gt; 1 kΩ</span></li>
     <li><strong>Fusível de 3 A instalado</strong> no porta-fusível. <span class="expect">continuidade através dele</span></li>
-    <li><strong>ESP32 fora da barra fêmea</strong> (desconectado) antes do passo 7.</li>
+    <li><strong>Saída do MP1584 solta</strong> (fio de +5 V sem ligação ao trilho de 5 V) e <strong>ESP32 fora da barra fêmea</strong> antes do passo 7.</li>
     <li><strong>Polaridade das células.</strong> Ponha as duas células conforme a marcação do suporte, <strong>com a chave desligada</strong>. <span class="expect">7–8,4 V nos fios, + no vermelho</span></li>
     <li>Ligue a chave.</li>
-    <li><strong>Ajuste o MP1584 para 5,0 V com o ESP32 desconectado</strong>: gire o trimpot e meça a saída. O módulo sai de fábrica com tensão arbitrária. <span class="expect">5,0 V</span></li>
+    <li><strong>Ajuste o MP1584 para 5,0 V com a saída sem nenhuma carga</strong>: gire o trimpot e meça entre o fio de saída e o GND. O módulo sai de fábrica com tensão arbitrária e tem que ser ajustado antes de ligar a carga. <span class="expect">5,0 V</span></li>
     <li><strong>VM do TB6612.</strong> <span class="expect">a tensão do pack do passo 5</span></li>
-    <li>Desligue a chave, encaixe o ESP32 e ligue de novo.</li>
-    <li><strong>3V3 no MCP3008 (VDD/VREF) e no VCC do QTR-8A.</strong> <span class="expect">3,3 V</span></li>
+    <li>Desligue a chave, ligue a saída do MP1584 ao trilho de 5 V, encaixe o ESP32 e ligue de novo.</li>
+    <li><strong>VIN do ESP32</strong> <span class="expect">5,0 V</span> · <strong>3V3 no MCP3008 (VDD/VREF), no VCC do QTR-8A, no VCC do TB6612 e no pino de VCC do JST-SH de cada encoder.</strong> <span class="expect">3,3 V</span></li>
     <li><strong>STBY do TB6612</strong> com o ESP32 sem firmware ou em reset. <span class="expect">0 V, rodas paradas</span></li>
   </ol>
 
@@ -859,7 +863,7 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
   <h3 id="mt-lista">Lista final de conferência</h3>
   <div class="checklist" id="lista-montagem" data-store="lfr-manual:lista-montagem">
     <div class="check-head">
-      <span class="check-count" id="lista-montagem-cont" aria-live="polite">0 de 16 marcados</span>
+      <span class="check-count" id="lista-montagem-cont" aria-live="polite">0 de 17 marcados</span>
       <button type="button" class="btn btn-danger" id="lista-montagem-limpar">Limpar marcações</button>
     </div>
     <div class="confirm" id="lista-montagem-confirma" hidden>
@@ -874,13 +878,14 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
       <li><label><input type="checkbox" id="lm-04"><span>Peças impressas no perfil de PETG, sem suporte</span></label></li>
       <li><label><input type="checkbox" id="lm-05"><span>Insertos rentes; abraçadeiras apertadas até encostar; rodas girando livres</span></label></li>
       <li><label><input type="checkbox" id="lm-06"><span>O-rings no canal, sem torção</span></label></li>
+      <li><label><input type="checkbox" id="lm-17"><span>Pinos 3.3V BYPASS do QTR-8A unidos (o QTR está em 3,3 V)</span></label></li>
       <li><label><input type="checkbox" id="lm-07"><span>QTR-8A preso com os sensores para baixo; face dos sensores a 3,0 mm do chão</span></label></li>
       <li><label><input type="checkbox" id="lm-08"><span>Parafusos M3 da barra rentes à face de baixo da base</span></label></li>
       <li><label><input type="checkbox" id="lm-09"><span>Chicote do QTR no canal, sem fio esmagado</span></label></li>
       <li><label><input type="checkbox" id="lm-10"><span>Pull-down no GPIO 12, pull-ups nos GPIO 36/39, 100 nF no GPIO 34</span></label></li>
-      <li><label><input type="checkbox" id="lm-11"><span>MCP3008 e QTR-8A no 3,3 V</span></label></li>
+      <li><label><input type="checkbox" id="lm-11"><span>MCP3008, QTR-8A, VCC do TB6612 e VCC dos dois encoders no 3,3 V</span></label></li>
       <li><label><input type="checkbox" id="lm-12"><span>Fusível de 3 A instalado; P-MOSFET instalado (recomendado)</span></label></li>
-      <li><label><input type="checkbox" id="lm-13"><span>MP1584 em 5,0 V medido antes de ligar o ESP32</span></label></li>
+      <li><label><input type="checkbox" id="lm-13"><span>MP1584 ajustado em 5,0 V com a saída sem carga, antes de ligá-la ao trilho de 5 V</span></label></li>
       <li><label><input type="checkbox" id="lm-14"><span>Os 6 testes de bancada passaram</span></label></li>
       <li><label><input type="checkbox" id="lm-15"><span>Carro pronto pesado; <code>fios_parafusos_massa</code> ajustado e <code>build.py</code> rodado de novo: carga nos patins entre 10 e 20 % (com fios atrás do eixo ela pode cair, A-WP2-19; D7)</span></label></li>
       <li><label><input type="checkbox" id="lm-16"><span>Tempo de montagem anotado</span></label></li>
@@ -903,7 +908,7 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
     <div><dt>Toque longo</dt><dd>1,5 s<small>calibra (IDLE ou PRONTO)</small></dd></div>
     <div><dt>Parada</dt><dd>Aperto<small>em ARMADO ou CORRENDO, na hora</small></dd></div>
     <div><dt>Partida</dt><dd>1 s<small>depois de armar (<code>startMs</code>)</small></dd></div>
-    <div><dt>Corte da bateria</dt><dd>6,4 V<small>por 1 s (<code>vcut</code>)</small></dd></div>
+    <div><dt>Corte da bateria</dt><dd>6,4 V<small>não arma abaixo; correndo, para após 1 s (<code>vcut</code>)</small></dd></div>
     <div><dt>Linha perdida</dt><dd>300 ms<small>até parar (<code>lostMs</code>)</small></dd></div>
   </dl>
 
@@ -1141,7 +1146,7 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
     <thead><tr><th>Tensão do pack</th><th class="num">6,0 V</th><th class="num">6,8 V</th><th class="num">7,2 V</th><th class="num">7,6 V</th><th class="num">8,0 V</th><th class="num">8,4 V</th></tr></thead>
     <tbody><tr><td>Carga indicada</td><td class="num">0 %</td><td class="num">10 %</td><td class="num">40 %</td><td class="num">70 %</td><td class="num">90 %</td><td class="num">100 %</td></tr></tbody>
   </table></div>
-  <p><strong>Corte:</strong> com a tensão abaixo de <code>vcut</code> (6,4 V de fábrica) por 1 s, o carro não arma (vai para ERRO(3)) e, se estiver correndo, para em ERRO(3).</p>
+  <p><strong>Corte:</strong> com a tensão abaixo de <code>vcut</code> (6,4 V de fábrica), o carro não arma: o toque curto ou o <code>start</code> vão para ERRO(3) na hora, comparando a tensão filtrada com <code>vcut</code>. Correndo, ele para em ERRO(3) depois de 1 s seguido abaixo de <code>vcut</code>.</p>
   <h4 id="op-vbk">Aferir a leitura (<code>vbk</code>)</h4>
   <ol class="steps">
     <li>Carro ligado e parado, células no suporte.</li>
@@ -1179,13 +1184,13 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
     <article class="code-card" id="op-erro-3">
       <div class="code-head"><span class="code-num">3</span><span class="code-name">Bateria baixa</span><span class="pulses" aria-label="3 piscadas"><i></i><i></i><i></i></span></div>
       <dl><dt>Sintoma</dt><dd>Não arma, ou para correndo.</dd>
-      <dt>Causa provável</dt><dd>Tensão abaixo de <code>vcut</code> por 1 s.</dd>
+      <dt>Causa provável</dt><dd>Tensão abaixo de <code>vcut</code> ao armar, ou por 1 s com o carro correndo.</dd>
       <dt>Ação</dt><dd>Troque por células carregadas. Confira a leitura com o multímetro e afira <code>vbk</code>.</dd></dl>
     </article>
     <article class="code-card" id="op-erro-4">
       <div class="code-head"><span class="code-num">4</span><span class="code-name">Calibração inválida</span><span class="pulses" aria-label="4 piscadas"><i></i><i></i><i></i><i></i></span></div>
       <dl><dt>Sintoma</dt><dd>Fim da calibração com 4 piscadas.</dd>
-      <dt>Causa provável</dt><dd>Algum canal com faixa menor que 200 contagens; o <code>calres</code> lista os canais.</dd>
+      <dt>Causa provável</dt><dd>Algum canal com faixa menor que 200 contagens; o <code>calres</code> lista os canais. Com todos os canais fracos: QTR-8A sem os pinos 3.3V BYPASS unidos.</dd>
       <dt>Ação</dt><dd>Refaça a calibração passando todos os sensores pela linha. Confira a altura do sensor e o canal no <code>bench_sensor_raw</code>.</dd></dl>
     </article>
     <article class="code-card" id="op-erro-5">
@@ -1322,6 +1327,7 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
     <li>Desligue a chave.</li>
     <li>Desconecte o conector do chicote pela janela da barra.</li>
     <li>Solte os 2 M2 × 8 cabeça baixa por baixo e tire a placa.</li>
+    <li>Una os dois pinos <strong>3.3V BYPASS</strong> da placa nova com um pedaço de fio (montagem mecânica). Sem isso, a 3,3 V os LEDs ficam fracos e a calibração pode dar ERRO(4).</li>
     <li>Monte a placa nova com os sensores para baixo e a borda dos pinos para trás.</li>
     <li>Rode o <code>bench_sensor_raw</code>: os 8 canais têm que responder.</li>
     <li><strong>Recalibre os sensores</strong> no firmware principal.</li>
@@ -1339,7 +1345,8 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
     <ol class="steps">
     <li>Desligue a chave e tire as células.</li>
     <li>Procure a causa: fio esfolado encostando no chassi, solda em curto, célula invertida, roda travada.</li>
-    <li>Meça a resistência entre +BAT e GND: tem que ser maior que 1 kΩ.</li>
+    <li>Com as células fora, <strong>ligue a chave</strong> e meça a resistência entre +BAT depois da chave e o GND: tem que ser maior que 1 kΩ. Com a chave desligada a medição não pega o lado da carga, onde o curto costuma estar.</li>
+    <li>Desligue a chave.</li>
     <li>Troque por um fusível de lâmina mini <strong>de 3 A</strong> — nunca maior.</li>
   </ol></div></details>
 
@@ -1360,7 +1367,7 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
           <li data-resp="nao"><span class="q">O fusível está inteiro?</span> <span class="ans">Não →</span> <span class="a">Troque o fusível (Manutenção, troca de peças): ache a causa antes, nunca use um maior que 3 A.</span></li>
           <li data-resp="nao"><span class="q">As células estão na polaridade certa e o pack tem 6,0–8,4 V entre os fios do suporte?</span> <span class="ans">Não →</span> <span class="a">Recoloque ou carregue as células.</span></li>
           <li data-resp="nao"><span class="q">A chave passa corrente (mesma tensão antes e depois)?</span> <span class="ans">Não →</span> <span class="a">Troque a chave.</span></li>
-          <li data-resp="nao"><span class="q">A saída do MP1584 está em 5,0 V?</span> <span class="ans">Não →</span> <span class="a">Reajuste para 5,0 V com o ESP32 desconectado.</span></li>
+          <li data-resp="nao"><span class="q">A saída do MP1584 está em 5,0 V?</span> <span class="ans">Não →</span> <span class="a">Solte o fio de saída do trilho de 5 V, tire o ESP32 e reajuste para 5,0 V sem carga.</span></li>
           <li data-resp="sim"><span class="q">O botão BOOT estava apertado ao ligar?</span> <span class="ans">Sim →</span> <span class="a">Solte e religue: com o GPIO 0 em nível baixo no boot a placa entra em modo de gravação.</span></li>
           <li data-resp="sim"><span class="q">O ESP32 liga pelo USB sozinho (sem o perfboard)?</span> <span class="ans">Sim →</span> <span class="a">Com o perfboard ele não liga: confira o pull-down de 10 kΩ no GPIO 12 e o MCP3008 em 3,3 V. Com o GPIO 12 em nível alto no boot a placa não inicia.</span></li>
         </ol>
@@ -1397,6 +1404,7 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
       <article id="dg-erro-4" data-titulo="LED em ERRO(4) — calibração inválida">
         <h4>LED em ERRO(4) — calibração inválida</h4>
         <ol>
+          <li data-resp="sim"><span class="q">No <code>bench_sensor_raw</code>, todos os canais variam pouco entre a linha e o fundo?</span> <span class="ans">Sim →</span> <span class="a">Confira os pinos 3.3V BYPASS do QTR-8A unidos (montagem mecânica).</span></li>
           <li data-resp="sim" data-resp-outra="nao"><span class="q">O <code>calres</code> lista os mesmos canais toda vez?</span> <span class="ans">Sim →</span> <span class="a">Rode o <code>bench_sensor_raw</code>: canal parado indica solda no MCP3008 ou fio do chicote partido.</span> <span class="ans">Não →</span> <span class="a2">Refaça a varredura passando os 8 sensores pela linha e pelo fundo, com a altura certa.</span></li>
         </ol>
       </article>
@@ -1480,7 +1488,7 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
     <li>Configuração salva ausente ou corrompida → valores de fábrica daquele bloco, 3 bipes curtos e o aviso <code>cfgerr</code> = 1 no dashboard.</li>
     <li><strong>Voltar aos valores de fábrica:</strong> FÁBRICA (<code>{"t":"defaults"}</code>) e depois SALVAR (<code>{"t":"save"}</code>), com o carro parado. Isso também devolve <code>pprL</code>/<code>pprR</code> a 600: refaça o <code>cal</code> antes de salvar se for usar o modo cascata (A-WP1-04). A calibração dos sensores não muda.</li>
     <li>Os testes de bancada substituem o firmware principal: grave-o de novo ao terminar.</li>
-    <li>Pendências conhecidas da v2: sem parada automática depois da chegada (F-34); <code>ack</code> de <code>start</code>/<code>stop</code>/<code>scal</code> só confirma o recebimento (A-WP1-07); <code>defaults</code> zera o PPR (A-WP1-04).</li>
+    <li>Pendências conhecidas da v2: sem parada automática depois da chegada (F-34); <code>ack</code> de <code>start</code>/<code>stop</code>/<code>scal</code> só confirma o recebimento (A-WP1-07); <code>defaults</code> volta o PPR a 600 (A-WP1-04).</li>
   </ul>
 
   <h3 id="mn-bancada">Testes de bancada</h3>
@@ -1506,7 +1514,7 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
   <p>A face dos sensores fica a 3,0 mm do chão sem calço; a Pololu indica 3 mm como ótimo e 6 mm como máximo. Meça com o paquímetro de profundidade entre o chão e a face do QTR-8A, com o carro apoiado nas rodas e nos patins. Ajuste com calços de 0,5 mm e recalibre os sensores.</p>
 
   <h3 id="mn-reposicao">Peças de reposição</h3>
-  <p>Quantidades a ter na caixa do box, iguais às do carro, salvo indicação.</p>
+  <p>Quantidades a ter na caixa do box, iguais às do carro, salvo indicação. A BOM já traz só os O-rings e 1 inserto de reserva; as peças impressas saem do PETG da BOM; o resto é <strong>compra extra</strong>.</p>
   <div class="tbl"><table>
     <thead><tr><th>Item</th><th class="num">Na caixa</th><th>Fonte</th></tr></thead>
     <tbody>
@@ -1515,11 +1523,11 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
       <tr><td>Calço e calço de língua</td><td class="num">4 + 2</td><td><code>calco.stl</code>, <code>calco_lingua.stl</code></td></tr>
       <tr><td>Roda</td><td class="num">2</td><td><code>roda.stl</code></td></tr>
       <tr><td>Abraçadeira do N20 (E e D)</td><td class="num">1 + 1</td><td><code>abracadeira_E.stl</code>, <code>abracadeira_D.stl</code></td></tr>
-      <tr><td>Fusível de lâmina mini 3 A</td><td class="num">1</td><td>BOM</td></tr>
-      <tr><td>Células 18650 carregadas (mesmo modelo e lote)</td><td class="num">2</td><td>BOM, ficha 11</td></tr>
+      <tr><td>Fusível de lâmina mini 3 A</td><td class="num">1</td><td>Compra extra: o mesmo item da BOM, que traz só o fusível do carro</td></tr>
+      <tr><td>Células 18650 carregadas (mesmo modelo e lote)</td><td class="num">2</td><td>Compra extra: um segundo par igual ao da BOM (ficha 11)</td></tr>
       <tr><td>Inserto térmico M3</td><td class="num">1</td><td>BOM (1 de reserva)</td></tr>
-      <tr><td>Parafusos de cada tipo da tabela de fixadores</td><td class="num">1 jogo</td><td>Relatório de montagem</td></tr>
-      <tr><td>Fio AWG 30 e conector do QTR-8A</td><td class="num">1 chicote</td><td>BOM</td></tr>
+      <tr><td>Parafusos de cada tipo da tabela de fixadores</td><td class="num">1 jogo</td><td>Compra extra; tipos no relatório de montagem</td></tr>
+      <tr><td>Fio AWG 30 e conector do QTR-8A</td><td class="num">1 chicote</td><td>Compra extra: os mesmos itens da BOM</td></tr>
     </tbody>
   </table></div>
 
@@ -1546,7 +1554,7 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
   </ul>
 
   <h3 id="ref-parametros">Parâmetros</h3>
-  <p>Na ordem do <code>src/config/RobotConfig.cpp</code>. Valor fora da faixa volta com <code>err:"range"</code> e não muda nada. Chaves de 0/1 e de milissegundos aceitam só inteiros. "Com o carro andando" = ARMADO e CORRENDO; com o modo competição ligado (<code>lock</code> = 1), <strong>nenhuma</strong> chave muda nesses estados.</p>
+  <p>Na ordem do <code>src/config/RobotConfig.cpp</code>. Valor fora da faixa volta com <code>err:"range"</code> e não muda nada. Chaves de 0/1 e de milissegundos são arredondadas para o inteiro mais próximo — <code>{"t":"set","k":"invL","v":0.6}</code> aplica 1 — e o <code>ack</code> mostra o valor aplicado. "Com o carro andando" = ARMADO e CORRENDO; com o modo competição ligado (<code>lock</code> = 1), <strong>nenhuma</strong> chave muda nesses estados.</p>
   <div class="filter">
     <label for="filtro-param">Filtrar parâmetros
       <input type="search" id="filtro-param" placeholder="ex.: bateria, kp, encoder" autocomplete="off">
@@ -1565,7 +1573,7 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
       <tr><td><code>sinv</code></td><td>Inverte a ordem dos sensores (barra montada espelhada)</td><td>—</td><td class="num">0</td><td class="num">0 ou 1</td><td>não</td></tr>
       <tr><td><code>chem</code></td><td>Química da bateria (curva de %): 0 = LiPo, 1 = Li-ion</td><td>—</td><td class="num">1</td><td class="num">0 ou 1</td><td>não</td></tr>
       <tr><td><code>lock</code></td><td>Modo competição: 1 = recusa todo comando BLE com o carro andando</td><td>—</td><td class="num">0</td><td class="num">0 ou 1</td><td>não</td></tr>
-      <tr><td><code>vcut</code></td><td>Tensão de corte: abaixo dela por 1 s o carro não arma e, correndo, para</td><td>V</td><td class="num">6,4</td><td class="num">5,6–7,6</td><td>não</td></tr>
+      <tr><td><code>vcut</code></td><td>Tensão de corte: abaixo dela o carro não arma (ERRO(3)); correndo, para depois de 1 s abaixo dela</td><td>V</td><td class="num">6,4</td><td class="num">5,6–7,6</td><td>não</td></tr>
       <tr><td><code>vbk</code></td><td>Correção da leitura de tensão (aferida com multímetro)</td><td>—</td><td class="num">1,0</td><td class="num">0,8–1,2</td><td>não</td></tr>
       <tr><td><code>pprL</code></td><td>Contagens ×4 por volta do eixo de saída, encoder esquerdo (também pelo <code>cal</code>)</td><td>—</td><td class="num">600</td><td class="num">1–10000</td><td>não</td></tr>
       <tr><td><code>pprR</code></td><td>Idem, encoder direito</td><td>—</td><td class="num">600</td><td class="num">1–10000</td><td>não</td></tr>
@@ -1596,10 +1604,10 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
   <div class="tbl"><table>
     <thead><tr><th>Comando</th><th>Efeito</th><th>Carro andando</th></tr></thead>
     <tbody>
-      <tr><td><code>{"t":"set","k":"kp","v":1.2}</code></td><td>Aplica uma chave ao vivo (não grava); acende o NÃO SALVO</td><td>Só as chaves marcadas "sim"</td></tr>
+      <tr><td><code>{"t":"set","k":"kp","v":1.2}</code></td><td>Aplica uma chave ao vivo (não grava); acende o NÃO SALVO</td><td>Só as chaves marcadas "sim" na tabela de parâmetros; com <code>lock</code> = 1, nenhuma</td></tr>
       <tr><td><code>{"t":"save"}</code></td><td>Grava hardware, perfil ativo e qual perfil está ativo</td><td><code>err:"running"</code></td></tr>
       <tr><td><code>{"t":"load"}</code></td><td>Descarta o que não foi salvo e relê o perfil ativo</td><td><code>err:"running"</code></td></tr>
-      <tr><td><code>{"t":"defaults"}</code></td><td>Valores de fábrica do hardware e do perfil ativo, ao vivo; zera o PPR (A-WP1-04)</td><td><code>err:"running"</code></td></tr>
+      <tr><td><code>{"t":"defaults"}</code></td><td>Valores de fábrica do hardware e do perfil ativo, ao vivo; volta o PPR a 600 (A-WP1-04)</td><td><code>err:"running"</code></td></tr>
       <tr><td><code>{"t":"prof","n":2}</code></td><td>Troca de perfil; com mudança pendente, <code>err:"dirty"</code>, a menos que venha <code>"f":1</code></td><td><code>err:"running"</code></td></tr>
       <tr><td><code>{"t":"scal"}</code></td><td>Calibra os sensores (como o toque longo); ao fim, <code>calres</code></td><td>Responde ok sem efeito</td></tr>
       <tr><td><code>{"t":"start"}</code></td><td>Arma o carro em PRONTO; com calibração de encoder aberta, <code>err:"cal"</code></td><td>—</td></tr>
@@ -1640,7 +1648,7 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
 </main>
 
 <footer class="wrap foot">
-  <p>Fonte: docs/manual/*.md — commit 0775bd2. Este manual não traz informação que não esteja nos manuais em Markdown (MONTAGEM, OPERACAO e MANUTENCAO).</p>
+  <p>Fonte: docs/manual/*.md — commit f3c31ba. Este manual não traz informação que não esteja nos manuais em Markdown (MONTAGEM, OPERACAO e MANUTENCAO).</p>
   <p>LFR v2 · firmware 4.0.0 · abre sem rede; as marcações das listas ficam só neste navegador.</p>
 </footer>
 

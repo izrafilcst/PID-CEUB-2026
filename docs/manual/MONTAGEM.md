@@ -35,7 +35,7 @@ Compras, conforme `hardware/bom.csv`. A coluna "Ficha" aponta para
 | O-ring de silicone 34 × 3 mm | 4 | [13](../../hardware/components/fichas/13-oring.md) | 2 em uso + 2 de reserva |
 | Inserto térmico M3 (OD 4,0 × 5,7 mm) | 10 | — | 6 no carro + 3 no teste do cupom + 1 de reserva |
 | Fusível de lâmina mini 3 A + porta-fusível em linha | 1 | — | Logo depois do suporte |
-| P-MOSFET (ex.: AO3401) + zener 12 V + resistor 10 kΩ | 1 | — | Proteção contra inversão (recomendado) |
+| P-MOSFET (ex.: AO3401) + zener 9,1–10 V + resistor 10 kΩ | 1 | — | Proteção contra inversão (recomendado). Confira o V_GS máximo do MOSFET comprado: o zener fica abaixo dele e acima de 8,4 V |
 | Chave SPDT mini (liga/desliga) | 1 | — | Corpo de 8,5 × 3,6 mm no modelo (MEDIR); de preferência 3 A |
 | Conector da bateria (suporte → placa) | 1 | — | — |
 | Perfboard 5 × 7 cm | 1 | [10](../../hardware/components/fichas/10-perfboard.md) | Furos de fixação feitos pelo montador |
@@ -261,25 +261,32 @@ Monte nesta ordem. Um passo = uma ação. Frente do carro = lado da barra de sen
    relatório).
 9. Encaixe um **O-ring** no canal de cada roda, sem torcer o cordão.
 10. Solde a barra de pinos de 2,54 mm **por cima** do QTR-8A (lado oposto aos sensores).
-11. Solde o **chicote de 11 fios AWG 30** (⌀ ≤ 0,6 mm) no conector fêmea. Fio mais grosso não
+11. Una os dois pinos marcados **3.3V BYPASS** do QTR-8A com um pedaço de fio. Os resistores
+    dos LEDs IR são calibrados para 5 V em dois estágios, e o *bypass* de um estágio é o que
+    permite operar em 3,3 V (página do produto, https://www.pololu.com/product/960, e guia da
+    Pololu, https://www.pololu.com/docs/0J12, seção "Vcc, GND, and 3.3V BYPASS"). **Se esquecer
+    este passo**, a 3,3 V os LEDs ficam fracos ou apagam, o contraste entre linha e fundo cai e a
+    calibração pode acabar em ERRO(4). **Nunca** una esses pinos com o QTR em 5 V: os LEDs passam
+    da corrente nominal e podem queimar.
+12. Solde o **chicote de 11 fios AWG 30** (⌀ ≤ 0,6 mm) no conector fêmea. Fio mais grosso não
     cabe numa camada no canal da base (relatório, "Ligação do QTR-8A").
-12. Prenda o **QTR-8A** sob os postes da barra com 2 M2 × 8 cabeça baixa, de baixo para cima,
+13. Prenda o **QTR-8A** sob os postes da barra com 2 M2 × 8 cabeça baixa, de baixo para cima,
     com os sensores para baixo e a borda dos pinos para trás. O conector sai pela janela da
     viga.
-13. Passe o chicote por cima da língua e desça pelo rasgo na ponta de trás da língua (e do
+14. Passe o chicote por cima da língua e desça pelo rasgo na ponta de trás da língua (e do
     calço de língua, se houver).
-14. Ponha cada **patim** (com os calços, se houver) sob a ponta da barra e aperte o M2 × 12 de
+15. Ponha cada **patim** (com os calços, se houver) sob a ponta da barra e aperte o M2 × 12 de
     cima para baixo.
-15. Apoie a **língua** na base (com o calço de língua, se houver) e prenda com 2 M3 ISO 10642 ×
+16. Apoie a **língua** na base (com o calço de língua, se houver) e prenda com 2 M3 ISO 10642 ×
     8, por baixo, no escareado. A cabeça tem que ficar rente à face de baixo.
-16. Deite o chicote no **canal de 7 × 1,8 mm** do topo da base, por baixo do berço, até subir
+17. Deite o chicote no **canal de 7 × 1,8 mm** do topo da base, por baixo do berço, até subir
     entre os conectores dos N20.
-17. Encaixe o **suporte 2×18650** no berço, por baixo das quatro abas dos cantos, sem células.
+18. Encaixe o **suporte 2×18650** no berço, por baixo das quatro abas dos cantos, sem células.
     Ele desliza com folga; as células saem por cima sem soltar nada (ficha 12).
-18. Monte a **chave liga/desliga** no suporte da lateral esquerda da base.
-19. Prenda o **porta-fusível** sob a base com a abraçadeira de nylon, pelos rasgos e pelo
+19. Monte a **chave liga/desliga** no suporte da lateral esquerda da base.
+20. Prenda o **porta-fusível** sob a base com a abraçadeira de nylon, pelos rasgos e pelo
     rebaixo.
-20. Prenda o **perfboard** nas colunas com 4 M3 × 6, com a barra fêmea do ESP32 orientada
+21. Prenda o **perfboard** nas colunas com 4 M3 × 6, com a barra fêmea do ESP32 orientada
     para o USB ficar virado para trás (avaliação do WP2, atividade 12). Não encaixe o ESP32
     ainda: ele só entra depois do ajuste do MP1584 (seção 5).
 
@@ -296,10 +303,14 @@ Suporte 2×18650 (2S, 6,0–8,4 V)
     │
     └── Chave liga/desliga
             │
-            ├── MP1584 buck ──► 5,0 V ──► ESP32 VIN ──► 3V3 ──► MCP3008 + QTR-8A
+            ├── MP1584 buck ──► 5,0 V ──► ESP32 VIN ──► 3V3 ──► MCP3008 + QTR-8A + VCC do TB6612 + encoders
             │
             └── TB6612FNG VM (tensão do pack)
 ```
+
+O trilho de 5 V do MP1584 alimenta só o VIN do ESP32 e o buzzer. O VCC (lógica) do TB6612 vai
+no 3V3 do ESP32, não no 5 V: o MP1584 sai de fábrica com tensão arbitrária (ficha 07) e a
+ficha 05 limita esse VCC a 2,7–5,5 V (`docs/DIVERGENCIAS.md`, D17).
 
 No perfboard:
 
@@ -307,8 +318,9 @@ No perfboard:
    solde as barras fêmea.
 2. Solde o MCP3008 com as fileiras a 7,62 mm (3 colunas livres entre elas, ficha 02) e o
    capacitor de 100 nF entre VDD e AGND, junto ao CI.
-3. Ligue VDD e VREF do MCP3008 e o VCC do QTR-8A no **3V3** do ESP32, nunca em 5 V
-   (`docs/WIRING.md`). Assim o DOUT do MCP3008 não põe 5 V no GPIO 12.
+3. Ligue VDD e VREF do MCP3008, o VCC do QTR-8A e o **VCC (lógica) do TB6612** no **3V3** do
+   ESP32, nunca em 5 V (`docs/WIRING.md`). Assim o DOUT do MCP3008 não põe 5 V no GPIO 12 e o
+   driver não recebe a tensão do MP1584 antes do ajuste.
 4. Solde o resistor de **10 kΩ de pull-down no GPIO 12** (MISO). O GPIO 12 é pino de
    *strapping*: em nível alto no boot a placa não liga (`docs/REVISAO_FIRMWARE.md`, item 1).
 5. Solde os resistores de **10 kΩ de pull-up** do GPIO 36 e do GPIO 39 para o 3,3 V. Esses
@@ -319,28 +331,34 @@ No perfboard:
 8. Solde o resistor de 10 kΩ de pull-down no STBY do TB6612 (motores parados até o firmware
    liberar).
 9. Ponha o capacitor de 100 µF no VM do TB6612, junto à placa.
-10. Fixe o MP1584 com fita dupla-face: o módulo mini não tem furos (ficha 07).
-11. Ligue os encoders aos GPIO 18/19 (esquerdo) e 36/39 (direito) pelo conector JST-SH de 6
-    vias (ficha 04).
+10. Fixe o MP1584 com fita dupla-face: o módulo mini não tem furos (ficha 07). Solde a
+    entrada e deixe o **fio de saída (+5 V) solto**, sem ligar ao trilho de 5 V do perfboard,
+    até o ajuste da seção 5.
+11. Ligue os encoders pelo conector JST-SH de 6 vias (ficha 04): **VCC dos encoders no 3V3**,
+    GND comum e os sinais nos GPIO 18/19 (esquerdo) e 36/39 (direito). A ficha 04 aceita
+    2,7–18 V, mas em 5 V uma saída push-pull poria 5 V nos GPIO (`docs/WIRING.md`, F-24).
 
 ## 5 Checagens antes de energizar
 
 Faça na ordem, com o multímetro. Não avance com um item fora do esperado.
 
-1. **Continuidade do GND** entre ESP32, MCP3008, TB6612, MP1584 e QTR-8A — esperado: bipe de
-   continuidade em todos os pares.
+1. **Continuidade do GND** entre o pino de GND da barra fêmea do ESP32 (o ESP32 ainda está fora),
+   MCP3008, TB6612, MP1584 e QTR-8A — esperado: bipe de continuidade em todos os pares.
 2. **Sem curto entre +BAT e GND**, com a chave ligada e sem células — esperado: mais de 1 kΩ.
 3. **Fusível de 3 A instalado** no porta-fusível — esperado: continuidade através dele.
-4. **ESP32 fora da barra fêmea** (desconectado) antes do passo 7.
+4. **Saída do MP1584 solta** (fio de +5 V sem ligação ao trilho de 5 V) e **ESP32 fora da
+   barra fêmea** antes do passo 7.
 5. **Polaridade das células.** Ponha as duas células conforme a marcação do suporte, **com a
    chave desligada** — esperado entre os fios do suporte: 7–8,4 V, com o + no fio vermelho
    (ficha 12).
 6. Ligue a chave.
-7. **Ajuste o MP1584 para 5,0 V com o ESP32 desconectado** — gire o trimpot e meça a saída;
-   esperado: 5,0 V (ficha 07: o módulo sai de fábrica com tensão arbitrária).
+7. **Ajuste o MP1584 para 5,0 V com a saída sem nenhuma carga** — gire o trimpot e meça entre o
+   fio de saída e o GND; esperado: 5,0 V (ficha 07: o módulo sai de fábrica com tensão
+   arbitrária; ajustar antes de ligar a carga).
 8. **VM do TB6612** — esperado: a mesma tensão do pack medida no passo 5.
-9. Desligue a chave, encaixe o ESP32 e ligue de novo.
-10. **3V3 no MCP3008 (VDD/VREF) e no VCC do QTR-8A** — esperado: 3,3 V.
+9. Desligue a chave, ligue a saída do MP1584 ao trilho de 5 V, encaixe o ESP32 e ligue de novo.
+10. **VIN do ESP32** — esperado: 5,0 V. **3V3 no MCP3008 (VDD/VREF), no VCC do QTR-8A, no VCC
+    do TB6612 e no pino de VCC do JST-SH de cada encoder** — esperado: 3,3 V.
 11. **STBY do TB6612** com o ESP32 sem firmware ou em reset — esperado: nível baixo (0 V), rodas
     paradas.
 
@@ -432,13 +450,14 @@ Ao terminar, grave de novo o firmware principal (`pio run -e esp32dev -t upload`
 - [ ] Peças impressas no perfil de PETG, sem suporte
 - [ ] Insertos rentes; abraçadeiras apertadas até encostar; rodas girando livres
 - [ ] O-rings no canal, sem torção
+- [ ] Pinos 3.3V BYPASS do QTR-8A unidos (o QTR está em 3,3 V)
 - [ ] QTR-8A preso com os sensores para baixo; face dos sensores a 3,0 mm do chão
 - [ ] Parafusos M3 da barra rentes à face de baixo da base
 - [ ] Chicote do QTR no canal, sem fio esmagado
 - [ ] Pull-down no GPIO 12, pull-ups nos GPIO 36/39, 100 nF no GPIO 34
-- [ ] MCP3008 e QTR-8A no 3,3 V
+- [ ] MCP3008, QTR-8A, VCC do TB6612 e VCC dos dois encoders no 3,3 V
 - [ ] Fusível de 3 A instalado; P-MOSFET instalado (recomendado)
-- [ ] MP1584 em 5,0 V medido antes de ligar o ESP32
+- [ ] MP1584 ajustado em 5,0 V com a saída sem carga, antes de ligá-la ao trilho de 5 V
 - [ ] Os 6 testes de bancada passaram
 - [ ] Carro pronto pesado; `fios_parafusos_massa` ajustado e `build.py` rodado de novo: carga
       nos patins entre 10 e 20 % (com fios atrás do eixo ela pode cair, A-WP2-19; D7)

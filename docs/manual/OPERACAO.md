@@ -143,7 +143,9 @@ BLE v4").
 
 Tabela gerada do `src/config/RobotConfig.cpp`, na mesma ordem das chaves. Para mudar um valor:
 `{"t":"set","k":"<chave>","v":<valor>}` ou o campo da aba CONFIG. Valor fora da faixa volta com
-`err:"range"` e não muda nada. Chaves de 0/1 e de milissegundos aceitam só inteiros.
+`err:"range"` e não muda nada. Chaves de 0/1 e de milissegundos são arredondadas para o
+inteiro mais próximo — `{"t":"set","k":"invL","v":0.6}` aplica 1 — e o `ack` mostra o valor
+aplicado (`src/config/RobotConfig.cpp`).
 
 "Com o carro andando" = estados ARMADO e CORRENDO. Com o modo competição ligado (`lock` = 1),
 **nenhuma** chave muda nesses estados.
@@ -159,7 +161,7 @@ Tabela gerada do `src/config/RobotConfig.cpp`, na mesma ordem das chaves. Para m
 | `sinv` | Inverte a ordem dos sensores (barra montada espelhada) | — | 0 | 0 ou 1 | não |
 | `chem` | Química da bateria (curva de %): 0 = LiPo, 1 = Li-ion | — | 1 | 0 ou 1 | não |
 | `lock` | Modo competição: 1 = recusa todo comando BLE com o carro andando | — | 0 | 0 ou 1 | não |
-| `vcut` | Tensão de corte: abaixo dela por 1 s o carro não arma e, correndo, para | V | 6,4 | 5,6–7,6 | não |
+| `vcut` | Tensão de corte: abaixo dela o carro não arma (ERRO(3)); correndo, para depois de 1 s abaixo dela | V | 6,4 | 5,6–7,6 | não |
 | `vbk` | Correção da leitura de tensão (aferida com multímetro, seção 10) | — | 1,0 | 0,8–1,2 | não |
 | `pprL` | Contagens ×4 por volta do eixo de saída, encoder esquerdo (também pelo `cal`) | — | 600 | 1–10000 | não |
 | `pprR` | Idem, encoder direito | — | 600 | 1–10000 | não |
@@ -307,8 +309,9 @@ por segundo pelo frame `sta`. O % segue a curva de Li-ion de 2S (`chem` = 1) do
 |----------------|-------|-------|-------|-------|-------|-------|
 | Carga indicada | 0 % | 10 % | 40 % | 70 % | 90 % | 100 % |
 
-**Corte:** com a tensão abaixo de `vcut` (6,4 V de fábrica) por 1 s, o carro não arma (vai para
-ERRO(3)) e, se estiver correndo, para em ERRO(3).
+**Corte:** com a tensão abaixo de `vcut` (6,4 V de fábrica), o carro não arma: o toque curto ou
+o `start` vão para ERRO(3) na hora, comparando a tensão filtrada com `vcut`. Correndo, ele para em
+ERRO(3) depois de 1 s seguido abaixo de `vcut` (`src/sensors/BatteryMonitor.h`).
 
 **Aferir a leitura (`vbk`)** — faça uma vez e depois de trocar o divisor ou a placa:
 
@@ -338,8 +341,8 @@ vezes. O dashboard mostra o código e o nome em ERRO (aba SISTEMA). **Para sair:
 |--------|-------------------|---------|----------------|------|
 | 1 | LAÇO ATRASADO | Para no meio da corrida; 1 piscada | O laço de controle passou de 2000 µs em 5 ciclos seguidos (`src/main.cpp`) | Anote o LAÇO MÁX (`ovr`) da aba SISTEMA. Toque curto e tente de novo. Se repetir, regrave o firmware e relate ao desenvolvimento ([manutenção](MANUTENCAO.md), seção 3.3) |
 | 2 | LINHA PERDIDA | Para ao sair de uma curva ou cruzamento; 2 piscadas | A linha ficou fora dos sensores por mais de `lostMs` | Recoloque o carro na linha e dê toque curto. Baixe `vmax`/`vmin`; recalibre se a luz mudou; suba `lostMs` com cuidado |
-| 3 | BATERIA BAIXA | Não arma, ou para correndo; 3 piscadas | Tensão abaixo de `vcut` por 1 s | Troque por células carregadas. Confira a leitura com o multímetro e afira `vbk` (seção 10) |
-| 4 | CALIBRAÇÃO INVÁLIDA | Fim da calibração com 4 piscadas | Algum canal com faixa menor que 200 contagens; o `calres` lista os canais | Refaça a calibração passando todos os sensores pela linha. Confira a altura do sensor e o canal no `bench_sensor_raw` |
+| 3 | BATERIA BAIXA | Não arma, ou para correndo; 3 piscadas | Tensão abaixo de `vcut` ao armar, ou por 1 s com o carro correndo | Troque por células carregadas. Confira a leitura com o multímetro e afira `vbk` (seção 10) |
+| 4 | CALIBRAÇÃO INVÁLIDA | Fim da calibração com 4 piscadas | Algum canal com faixa menor que 200 contagens; o `calres` lista os canais. Com todos os canais fracos: QTR-8A sem os pinos 3.3V BYPASS unidos | Refaça a calibração passando todos os sensores pela linha. Confira a altura do sensor e o canal no `bench_sensor_raw` |
 | 5 | ENCODER SEM LEITURA | Para no modo cascata; 5 piscadas | `mode` = 1 e uma roda com duty alto e rotação ≈ 0 por 200 ms | Confira o conector do encoder e o `bench_encoder`; refaça o `cal` (seção 9). Até resolver, use `mode` = 0 |
 
 **Respostas de erro do BLE** (campo `err` do `ack`, `src/comm/CommandHandler.cpp`):
