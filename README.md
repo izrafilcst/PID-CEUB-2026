@@ -12,14 +12,19 @@ toda a configuração ajustável por BLE e persistida na NVS (firmware 4.0.0)**
 | Componente | Especificação |
 |-----------|--------------|
 | MCU | ESP32 DevKit V1 — dual-core 240 MHz |
-| Sensores | Pololu QTR-8A — 8 canais via MCP3008 SPI (10-bit) |
-| Motores | 2× N20 600 RPM com encoder Hall |
+| Sensores | Pololu QTR-8A — 8 canais via MCP3008 SPI (10-bit), face a 3,0 mm do chão |
+| Motores | 2× N20 600 RPM @ 6 V com encoder magnético 12 CPR |
 | Driver | TB6612FNG dual H-bridge |
-| Bateria | LiPo 2S 7.4V 800 mAh 30C |
-| Chassis | PETG impresso 3D, formato F1 |
+| Bateria | 2× 18650 *high-drain* em suporte plástico (2S: 8,4 V cheia, 7,2 V nominal), fusível de 3 A |
+| Rodas | Cubo PETG impresso + O-ring de silicone 34 × 3 mm (⌀ 40,9 mm montada) |
+| Apoio | 2 patins PETG sob a barra de sensores (sem ball caster) |
+| Chassi | PETG impresso 3D, modelo paramétrico em build123d (`hardware/cad/`), 178 × 104 × 56 mm |
 | Regulador | MP1584 buck → 5V |
 
-Custo estimado: **~R$ 383** mais o QTR-8A (US$ 12,95 na Pololu, importado). BOM completa em [`hardware/bom.csv`](hardware/bom.csv).
+Custo estimado: **~R$ 325** mais o QTR-8A (US$ 12,95 na Pololu, importado) e os itens ainda sem
+preço (carregador, insertos, fusível, P-MOSFET e outros listados na última linha da BOM). BOM
+completa em [`hardware/bom.csv`](hardware/bom.csv). Cotas e massas do modelo em
+[`hardware/cad/out/relatorio_montagem.md`](hardware/cad/out/relatorio_montagem.md).
 
 ---
 
@@ -91,12 +96,19 @@ Saída esperada: `271 test cases: 271 succeeded`
 │
 ├── examples/                     # 6 testes de bancada, um ambiente bench_* cada
 │
-├── hardware/chassis/             # OpenSCAD paramétrico
-│   ├── body_f1.scad              # Chassis 180×120mm formato F1
-│   ├── sensor_bar.scad           # Barra 8 sensores + suporte ajustável
-│   └── wheel_hub.scad            # Hub O-ring silicone 34mm, eixo D 3mm
+├── hardware/cad/                 # Modelo paramétrico build123d (Python)
+│   ├── params.py                 # Cotas e tolerâncias (fonte única do CAD)
+│   ├── medidas.toml              # Medidas das peças em mãos + resultado do cupom
+│   ├── build.py                  # Gera out/: STL, STEP e relatório com verificações
+│   ├── parts/                    # Base, barra, patins, rodas, abraçadeiras, cupom
+│   ├── tests/                    # unittest do modelo
+│   └── out/                      # STL (orientação de impressão), STEP, relatorio_montagem.md
 │
 ├── docs/
+│   ├── manual/
+│   │   ├── MONTAGEM.md             # Manual do montador
+│   │   ├── OPERACAO.md             # Manual do operador
+│   │   └── MANUTENCAO.md           # Manual da manutenção
 │   ├── dashboard/
 │   │   ├── lfr-cockpit-mock.html   # Dashboard (Web Bluetooth no robô ou WebSocket no simulador)
 │   │   ├── lfr_sim.py              # Simulador Python — protocolo BLE v4 do firmware
@@ -105,10 +117,13 @@ Saída esperada: `271 test cases: 271 succeeded`
 │   ├── WIRING.md                   # Diagrama completo de fiação
 │   ├── TUNING.md                   # Procedimento Ziegler-Nichols + checklist
 │   ├── tuning_log.csv              # Log de sessões de tuning
-│   └── RELATORIO_FINAL.md          # Relatório completo do projeto
+│   ├── DIVERGENCIAS.md             # Divergências entre fontes e o que fechar antes de imprimir
+│   ├── REVISAO_FIRMWARE.md         # Revisão do firmware da v2 (achados F-xx, regulamento)
+│   └── RELATORIO_FINAL.md          # Relatório completo do projeto (v1, histórico)
 │
 └── tools/
-    └── analyze_telemetry.py      # Análise pós-corrida: IAE/ISE/ITAE, plots
+    ├── analyze_telemetry.py      # Análise pós-corrida: IAE/ISE/ITAE, plots
+    └── check_manuais.py          # Confere arquivos, chaves BLE, ambientes e STLs citados nos manuais
 ```
 
 ---
@@ -437,17 +452,38 @@ python3 -m http.server 8765   # HTTP em http://localhost:8765
 
 ---
 
-## Chassi 3D
+## Modelo 3D (build123d)
 
-Exportar STLs com OpenSCAD instalado:
+O chassi da v2 é um modelo paramétrico em Python ([build123d](https://github.com/gumyr/build123d))
+em `hardware/cad/`. As cotas saem de `params.py`; o que o montador mede (suporte 2×18650,
+O-ring, N20, QTR-8A) e o resultado do cupom de tolerância vão para `medidas.toml`.
 
 ```bash
-openscad -o hardware/chassis/body_f1.stl    hardware/chassis/body_f1.scad
-openscad -o hardware/chassis/sensor_bar.stl hardware/chassis/sensor_bar.scad
-openscad -o hardware/chassis/wheel_hub.stl  hardware/chassis/wheel_hub.scad
+cd hardware/cad
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/python -m unittest discover -s tests
+.venv/bin/python build.py     # gera out/ e sai com 0 (imprimir), 1 (NÃO IMPRIMIR) ou 2 (TOML inválido)
 ```
 
-Imprimir em PETG. Configurações recomendadas em cada arquivo `.scad`.
+O `build.py` grava em `out/` um STL por peça (já na orientação de impressão), um STEP por peça,
+o `assembly.step` e o [relatório de montagem](hardware/cad/out/relatorio_montagem.md): verificações
+(interferência, folga das rodas, carga nos patins, vão livre, altura do sensor, envelope),
+folgas por par, massas, CG, peças e fixadores. Imprimir em PETG, bico 0,4 mm, mesa ≥ 200 × 200
+mm. Passo a passo no [manual de montagem](docs/manual/MONTAGEM.md).
+
+---
+
+## Manuais
+
+| Manual | Para quem | Conteúdo |
+|--------|-----------|----------|
+| [Montagem](docs/manual/MONTAGEM.md) | Montador | Peças, impressão, cupom, medidas, montagem, fiação, checagens antes de energizar, testes de bancada |
+| [Operação](docs/manual/OPERACAO.md) | Operador | Botão, estados, calibração, dashboard, parâmetros, perfis, primeira volta, sintonia, bateria, códigos de erro, box |
+| [Manutenção](docs/manual/MANUTENCAO.md) | Manutenção | Inspeções, troca de peças, diagnóstico, firmware, aferição, reposição |
+
+Os Markdown são a fonte. `python3 tools/check_manuais.py` confere se os manuais só citam
+arquivos, chaves BLE, comandos, ambientes `bench_*` e STLs que existem (sai com 1 se houver
+problema).
 
 ---
 
@@ -457,9 +493,9 @@ Tudo que é preciso para modelar o robô em CAD sem consultar mais nada.
 
 | Onde | O quê |
 |------|-------|
-| `hardware/components/fichas/` | 10 fichas dimensionais em Markdown, uma por componente comprado |
+| `hardware/components/fichas/` | 13 fichas dimensionais em Markdown, uma por componente comprado (11–13 sem prancha; 06 e 09 obsoletas na v2) |
 | `hardware/drawings/comp/` | 10 pranchas SVG cotadas (A4 paisagem, normas ABNT) |
-| `hardware/drawings/assy/` | A1 — layout funcional e balanço de CG · A2 — vista explodida |
+| `hardware/drawings/assy/` | A1 — layout funcional e balanço de CG · A2 — vista explodida (layout da v1, histórico: D13) |
 | `docs/DIVERGENCIAS.md` | Registro das inconsistências entre BOM, firmware e modelos 3D |
 
 **Toda cota carrega proveniência**: ● `OFICIAL` (datasheet do fabricante, com
@@ -471,7 +507,7 @@ As fichas e as pranchas são **artefatos gerados** — não edite os `.md` nem o
 
 ```bash
 cd tools
-python3 gen_fichas.py              # 10 fichas Markdown
+python3 gen_fichas.py              # 13 fichas Markdown
 python3 gen_component_drawings.py  # 10 pranchas de componente
 python3 gen_assembly_drawings.py   # pranchas A1 e A2
 python3 verify_drawings.py         # rasteriza em build/drawings/ para inspeção
@@ -591,7 +627,10 @@ Diagrama completo: [`docs/WIRING.md`](docs/WIRING.md)
 | GPIO 36/39 | Encoder direito A/B (input-only) |
 | GPIO 0 | Botão START/CAL |
 | GPIO 22 | Buzzer |
-| GPIO 34 | Divisor VBAT |
+| GPIO 34 | Divisor VBAT (100 kΩ / 47 kΩ, 100 nF) |
+
+Alimentação: suporte 2×18650 → fusível 3 A → P-MOSFET (recomendado) → chave → MP1584 (5,0 V) e
+VM do TB6612.
 
 ---
 
@@ -604,6 +643,10 @@ Diagrama completo: [`docs/WIRING.md`](docs/WIRING.md)
 | Pista | Retas + curvas + cruzamentos, ~5 × 2.8 m |
 | Tentativas | 3 de 3–5 min, menor tempo vence |
 | Autonomia | 100% autônomo |
+
+> A v2 **não para sozinha depois da chegada** e por isso não faz volta válida na RoboCore
+> (regra 5.7; achado F-34 em [`docs/REVISAO_FIRMWARE.md`](docs/REVISAO_FIRMWARE.md)). A
+> parada automática é a primeira atividade da próxima versão.
 
 ---
 

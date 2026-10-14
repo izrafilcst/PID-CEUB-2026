@@ -26,18 +26,22 @@ ainda precisa de trabalho.
 | D11 | `hardware/components/specs.py` (n20), ficha 04 | `altura_caixa = 13 mm` contra a seção de 10 × 12 mm que a Pololu anuncia para o micro metal gearmotor | Pololu, *micro metal gearmotors*: seção da caixa 10 × 12 mm | O CAD usa 10 mm (`medidas.toml: n20_altura`). MEDIR a caixa de redução e corrigir a ficha 04 | **Aberto** |
 | D12 | `src/config.h`, `hardware/cad/params.py` | Lookahead do firmware (`LOOKAHEAD_MM 70`) contra 85 mm do modelo | `hardware/cad/out/relatorio_montagem.md`; memória ruflo `lfr-2026/wp2/params` | O WP2 não edita o firmware; no merge da v2 (14 out. 2026) o coordenador passou o `config.h` para `LOOKAHEAD_MM 85` | **Resolvido** |
 | D13 | `hardware/drawings/assy/A1-layout-funcional.svg`, `A2-vista-explodida.svg` | Pranchas A1/A2 desenhadas para o layout com LiPo e ball caster | DEC-1 e DEC-2 (spec 2026-10-13) | Ficam como registro histórico; a referência é o modelo CAD em `hardware/cad/` | **Aceito** |
-| D14 | `hardware/cad/parts/sensor_bar.py`, ficha 03 | Os postes da barra estavam no eixo longitudinal do QTR-8A; no diagrama dimensional da Pololu os furos de fixação ficam junto da borda dos pinos | Diagrama `0J623` (docs/0J12/3): furos a 2.75" entre si, centro a ≈ 2,4 mm da borda dos pinos (estimado em escala, sem cota) | Postes movidos para os furos reais (`sensor_bar.furos_qtr`); o QTR monta com a borda dos pinos para trás. MEDIR `qtr_furo_borda` na placa em mãos | **Resolvido** (MEDIR) |
+| D14 | `hardware/cad/parts/sensor_bar.py`, ficha 03 | Os postes da barra estavam no eixo longitudinal do QTR-8A; no diagrama dimensional da Pololu os furos de fixação ficam junto da borda dos pinos | Diagrama `0J623` (docs/0J12/3): furos a 2.75" entre si, centro a ≈ 2,4 mm da borda dos pinos (estimado em escala, sem cota) | Postes movidos para os furos reais (`sensor_bar.furos_qtr`); o QTR monta com a borda dos pinos para trás. MEDIR `qtr_furo_borda` na placa em mãos. A avaliação do WP2 (A-WP2-21) mediu no mesmo diagrama 2,65–2,73 mm para `qtr_furo_borda` e 1,27–1,36 mm para `qtr_pinos_borda`: o manual de montagem (seção 2.3) manda medir as quatro cotas do QTR antes de imprimir a barra | **Resolvido** (MEDIR) |
 | D15 | `hardware/bom.csv`, `docs/WIRING.md` | A BOM mandava alimentar o MCP3008 em 5 V com divisor no MISO ("1 MHz @ 5V; usar divisor de tensão MISO → 3.3V"); o WIRING.md o alimenta em 3,3 V | `docs/REVISAO_FIRMWARE.md`, item 1 (pinos de *strapping*): a 5 V sem o divisor, o DOUT põe 5 V no GPIO 12, que não tolera 5 V e, em nível alto no boot, impede o WROOM-32 de iniciar | Prevalece o WIRING.md: MCP3008 (VDD e VREF) e QTR-8A em 3,3 V, sem divisor, com pull-down de 10 kΩ no GPIO 12. `bom.csv` corrigida no WP3 (14 out. 2026) | **Resolvido** |
+| D16 | `hardware/components/specs.py` → fichas 01, 03, 04, 05 e 07 | Notas de montagem geradas ainda descrevem a v1: ficha 01 "Core 0 roda sensor/PID/motor; core 1 roda BLE" (a v2 inverte, DEC-7); ficha 03 "Altura ao solo de projeto: 4 mm" (a v2 usa 3,0 mm, D8); fichas 04 e 05 dizem que a `bom.csv` cita o SKU 3081, "Hall 7 PPR" e ROB-14450 (corrigidos na BOM da v2, D6); ficha 07 "Entrada vem direto do LiPo 2S" (a v2 usa 2×18650) | `grep` nas fichas, 14 out. 2026 (WP3) | Corrigir as notas no `specs.py` e regenerar com `tools/gen_fichas.py`. O WP3 não edita o `specs.py`; os manuais citam só as cotas e as notas ainda válidas | **Aberto** |
 
 ---
 
 ## O que fechar antes de imprimir
 
+Passo a passo no manual de montagem, `docs/manual/MONTAGEM.md` (seção 2).
+
 1. **Imprimir o cupom de tolerância** (`hardware/cad/out/cupom.stl` e
    `cupom_chave.stl`) e preencher a seção `[tolerancias]` do
    `hardware/cad/medidas.toml`.
-2. **Medir** o suporte 2×18650, as células, o O-ring e a seção da caixa de
-   redução do N20 (D11) e preencher a seção `[medidas]` do `medidas.toml`.
+2. **Medir** o suporte 2×18650, as células, o O-ring, a seção da caixa de
+   redução do N20 (D11) e as quatro cotas do QTR-8A marcadas MEDIR (D14,
+   A-WP2-21) e preencher a seção `[medidas]` do `medidas.toml`.
 3. **Rodar o `build.py`** e conferir o relatório de montagem (carga nos patins
    entre 10 e 20 %, folga das rodas ≥ 0,5 mm):
 
