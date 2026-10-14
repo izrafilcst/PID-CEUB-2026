@@ -3,17 +3,19 @@
 #include "storage/NvsArbiter.h"
 
 enum class RobotState : uint8_t { IDLE, CALIBRATING, READY, ARMED, RUNNING, ERROR };
-enum class ErrorCode : uint8_t { NONE = 0, OVR = 1, LINE = 2, BAT = 3, CAL = 4 };
+enum class ErrorCode : uint8_t { NONE = 0, OVR = 1, LINE = 2, BAT = 3, CAL = 4, ENC = 5 };
 
 enum class SmEvent : uint8_t {
     BTN_SHORT, BTN_LONG, CMD_START, CMD_STOP, CMD_RESET, CMD_SENSOR_CAL,
     CAL_DONE_OK, CAL_DONE_FAIL, LINE_LOST_TIMEOUT, BATTERY_LOW, LOOP_OVERRUN,
-    BTN_PRESS  ///< aperto já filtrado (E-3)
+    BTN_PRESS,      ///< aperto já filtrado (E-3)
+    ENCODER_FAULT   ///< cascata sem leitura de RPM (E-4)
 };
 
 struct SmInputs {
     bool calibrationValid = false;
     bool batteryOk = true;
+    bool encoderCalOpen = false;  ///< calibração de encoder em andamento: não arma (E-4)
 };
 
 /** ARMED or RUNNING, for code that only sees the published state byte. */

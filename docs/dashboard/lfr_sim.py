@@ -20,8 +20,10 @@ Protocolo (cada mensagem ≤ 180 bytes)
     {"t":"cfg","g":"meta","prof":n,"dirty":0|1,"fw":"4.0.0-sim"}
     {"t":"ack","k":<chave ou comando>,"ok":1[,"v":valor]}
     {"t":"ack","k":<chave ou comando>,"ok":0,
-     "err":"range"|"key"|"running"|"dirty"|"parse"|"locked"}
+     "err":"range"|"key"|"running"|"dirty"|"parse"|"locked"|"cal"}
                                      "locked": lock = 1 e carro em ARMED/RUNNING (regra 5.9)
+                                     "cal": start com calibração de encoder aberta (E-4)
+    err do sta: 1 OVR, 2 LINE, 3 BAT, 4 CAL, 5 ENC (encoder sem leitura no modo cascata)
     {"t":"calres","ok":1}            fim da calibração dos sensores (scal)
     {"t":"ecal","side":"L"|"R","ok":1,"ppr":600.0}   fim da calibração de encoder
 
@@ -94,6 +96,8 @@ FACTORY_TUNE = {"mode": 0, "kp": 1.0, "ki": 0.0, "kd": 0.03, "dlp": 0.5, "kpv": 
                 "kiv": 0.005, "kdv": 0.0, "vmax": 0.35, "vmin": 0.25, "thr": 0.6, "acc": 2.0,
                 "rpmMax": 700.0, "vref": 7.4, "vcomp": 1, "lostMs": 300, "startMs": 1000}
 FACTORY_VMAX = [0.35, 0.50, 0.70]
+# Códigos de erro do frame sta (src/strategy/RobotStateMachine.h)
+ERROR_CODES = {0: "NONE", 1: "OVR", 2: "LINE", 3: "BAT", 4: "CAL", 5: "ENC"}
 
 
 def factory_profile(n):
@@ -116,6 +120,7 @@ class ConfigModel:
         self.dirty = False
         self.saved_hw = None
         self.saved = {}
+        self.enc_cal_open = set()  # lados com cal start sem finish/reset (E-4)
 
     @staticmethod
     def _ack(k, ok=True, err=None, v=None):
@@ -277,6 +282,16 @@ class ConfigModel:
             return [self._ack("prof")] + self.config_dump()
         if kind == "cal" and running:
             return [self._ack("cal", False, "running")]
+        if kind == "cal":
+            side = "R" if data.get("side") == "R" else "L"
+            if data.get("op") == "start":
+                self.enc_cal_open.add(side)
+            elif data.get("op") == "finish":
+                self.enc_cal_open.discard(side)
+        if kind == "start" and self.enc_cal_open:
+            return [self._ack("start", False, "cal")]
+        if kind == "reset":
+            self.enc_cal_open.clear()
         if kind in ("start", "stop", "reset", "scal", "cal"):
             return [self._ack(kind)]
         return [self._ack(kind or "?", False, "parse")]

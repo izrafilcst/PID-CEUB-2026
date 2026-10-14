@@ -1,5 +1,7 @@
 #include "strategy/ControlLoop.h"
 #include <cmath>
+#include <cstdlib>
+#include "config.h"
 #include "control/Mixer.h"
 
 ControlLoop::ControlLoop(Calibration& cal, int pwmMax)
@@ -10,7 +12,8 @@ ControlLoop::ControlLoop(Calibration& cal, int pwmMax)
       _line(cal, _outer),
       _cascade(_innerL, _innerR),
       _output(pwmMax),
-      _cfg(robotcfg::factoryConfig()) {
+      _cfg(robotcfg::factoryConfig()),
+      _pwmMax(pwmMax) {
     applyConfig(_cfg);
 }
 
@@ -29,6 +32,21 @@ void ControlLoop::start(const int* raw, float rpmL, float rpmR) {
     _speed.reset(0.0f);
     _cascade.reset(_signed(rpmL, _cfg.hw.einvL), _signed(rpmR, _cfg.hw.einvR));
     _lostUs = 0;
+    _encStallUs = 0;
+}
+
+bool ControlLoop::_encoderStalled(const ControlInputs& in, const MotorDuties& d) const {
+    if (_cfg.tune.mode != 1) return false;
+    // duties vêm por canal do TB6612: com swap, o canal A é a roda direita
+    const int a = std::abs(d.a);
+    const int b = std::abs(d.b);
+    const int dutyL = _cfg.hw.swap ? b : a;
+    const int dutyR = _cfg.hw.swap ? a : b;
+    const float dutyMin = ENC_FAULT_DUTY * static_cast<float>(_pwmMax);
+    const float rpmMin = ENC_FAULT_RPM_FRAC * _cfg.tune.rpmMax;
+    const bool left = static_cast<float>(dutyL) >= dutyMin && std::fabs(in.rpmL) < rpmMin;
+    const bool right = static_cast<float>(dutyR) >= dutyMin && std::fabs(in.rpmR) < rpmMin;
+    return left || right;
 }
 
 ControlOutputs ControlLoop::step(const ControlInputs& in) {
@@ -60,5 +78,10 @@ ControlOutputs ControlLoop::step(const ControlInputs& in) {
     }
 
     out.duties = _output.compute(out.uL, out.uR, in.vbat, _cfg.hw, _cfg.tune);
+
+    // E-4: sem interrupção por ENC_FAULT_MS; zera quando a condição cai e no start()
+    const uint32_t dtUs = static_cast<uint32_t>(std::lround(dt * 1e6f));
+    _encStallUs = _encoderStalled(in, out.duties) ? _encStallUs + dtUs : 0;
+    out.encoderFault = _encStallUs >= static_cast<uint32_t>(ENC_FAULT_MS) * 1000u;
     return out;
 }

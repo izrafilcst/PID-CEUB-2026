@@ -1001,11 +1001,13 @@ const CFG_KEYS=[
 ];
 const CFG_GROUPS={hw:'HARDWARE — SÓ COM O CARRO PARADO',pid:'MALHA DE POSIÇÃO',vel:'MALHA DE VELOCIDADE (CASCATA)',spd:'PERFIL DE VELOCIDADE',misc:'DIVERSOS'};
 const ST_NAMES=['IDLE','CALIBRANDO','PRONTO','ARMADO','CORRENDO','ERRO'];
-const ERR_NAMES={0:'—',1:'LAÇO ATRASADO',2:'LINHA PERDIDA',3:'BATERIA BAIXA',4:'CALIBRAÇÃO INVÁLIDA'};
+const ERR_NAMES={0:'—',1:'LAÇO ATRASADO',2:'LINHA PERDIDA',3:'BATERIA BAIXA',4:'CALIBRAÇÃO INVÁLIDA',
+  5:'ENCODER SEM LEITURA'};
 const PROF_NAMES=['SEGURO','TREINO','CORRIDA'];
 const ACK_ERR={range:'fora da faixa',key:'chave desconhecida',running:'não permitido com o carro andando',
   dirty:'salve ou descarte antes de trocar de perfil',store:'falha ao gravar',parse:'comando inválido',
-  locked:'modo competição: recusado com o carro armado ou correndo'};
+  locked:'modo competição: recusado com o carro armado ou correndo',
+  cal:'calibração de encoder aberta: termine com cal finish ou reset'};
 const R={cfg:{},st:null,err:0,prof:0,dirty:false,lost:false,pendingProf:null};
 
 function setText(id,txt){ const el=document.getElementById(id); if(el) el.textContent=txt; }

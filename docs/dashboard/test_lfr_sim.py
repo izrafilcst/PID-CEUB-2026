@@ -3,7 +3,7 @@ import json
 import math
 import unittest
 
-from lfr_sim import ConfigModel
+from lfr_sim import ERROR_CODES, ConfigModel
 
 
 class ConfigModelTest(unittest.TestCase):
@@ -66,6 +66,18 @@ class ConfigModelTest(unittest.TestCase):
         self.assertEqual(self.m.tune["kp"], 1.0)
         r = self.replies({"t": "start"})
         self.assertEqual(r[0]["ok"], 1)
+
+    # E-4
+    def test_error_code_5_is_enc(self):
+        self.assertEqual(ERROR_CODES[5], "ENC")
+        self.assertEqual(ERROR_CODES[4], "CAL")
+
+    def test_start_refused_while_encoder_cal_open(self):
+        self.replies({"t": "cal", "op": "start", "side": "L"})
+        r = self.replies({"t": "start"})
+        self.assertEqual(r, [{"t": "ack", "k": "start", "ok": 0, "err": "cal"}])
+        self.replies({"t": "cal", "op": "finish", "side": "L", "rot": 10})
+        self.assertEqual(self.replies({"t": "start"})[0]["ok"], 1)
 
 
 if __name__ == "__main__":

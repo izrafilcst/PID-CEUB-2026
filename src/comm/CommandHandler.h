@@ -39,6 +39,7 @@ struct ControlMsg {
  * - prof: recusa com "dirty" se houver mudança não salva, a menos que venha f:1.
  * - lock = 1 (modo competição): em ARMED/RUNNING todo comando é recusado com "locked".
  * - get: info + cfg. O info também sai quando o cliente ativa as notificações (A-WP1-01).
+ * - start com calibração de encoder aberta (cal start sem finish/reset): err "cal" (E-4).
  * Comandos de estado viram ControlMsg para a task control (core 1).
  */
 class CommandHandler {
@@ -63,6 +64,9 @@ public:
      */
     bool applyEncoderCalibration(bool left, float pprX4);
 
+    /** True while a cal start has no matching finish (or reset) on either side (E-4). */
+    bool encoderCalOpen() const { return _encCalOpenL || _encCalOpenR; }
+
     bool dirty() const { return _dirty; }
     bool consumeConfigChanged();
     const RobotConfig& live() const { return _live; }
@@ -80,4 +84,6 @@ private:
     NvsArbiter*  _nvs = nullptr;
     bool _dirty = false;
     bool _changed = false;
+    bool _encCalOpenL = false;
+    bool _encCalOpenR = false;
 };

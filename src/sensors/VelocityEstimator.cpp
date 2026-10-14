@@ -100,6 +100,13 @@ void VelocityEstimator::startCalibration() {
     _calibrating = true;
 }
 
+void VelocityEstimator::cancelCalibration() {
+    if (!_calibrating) return;
+    _calibrating = false;
+    _rpmFiltered = 0.0f;
+    _enc.getDelta();  // as voltas da calibração cancelada não entram no próximo RPM
+}
+
 bool VelocityEstimator::finishCalibration(int rotations) {
     if (rotations <= 0) {
         _calibrating = false;  // ainda libera o flag mesmo em falha

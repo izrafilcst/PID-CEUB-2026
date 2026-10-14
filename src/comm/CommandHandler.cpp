@@ -159,6 +159,8 @@ void CommandHandler::handle(const Command& cmd, bool running, ResponseSink& sink
             _ack(sink, "scal", true, nullptr);
             break;
         case CmdType::START:
+            // E-4: sem RPM válido a cascata iria a potência total
+            if (encoderCalOpen()) { _ack(sink, "start", false, "cal"); break; }
             msg.req = ControlRequest::START;
             _ack(sink, "start", true, nullptr);
             break;
@@ -167,6 +169,7 @@ void CommandHandler::handle(const Command& cmd, bool running, ResponseSink& sink
             _ack(sink, "stop", true, nullptr);
             break;
         case CmdType::RESET:
+            _encCalOpenL = _encCalOpenR = false;  // a control cancela as calibrações abertas
             msg.req = ControlRequest::RESET;
             _ack(sink, "reset", true, nullptr);
             break;
@@ -177,6 +180,7 @@ void CommandHandler::handle(const Command& cmd, bool running, ResponseSink& sink
                                                            : ControlRequest::ENC_CAL_FINISH;
             msg.leftSide = cmd.leftSide;
             msg.rotations = cmd.rotations;
+            (cmd.leftSide ? _encCalOpenL : _encCalOpenR) = (cmd.type == CmdType::ENC_CAL_START);
             _ack(sink, "cal", true, nullptr);
             break;
         case CmdType::NONE:

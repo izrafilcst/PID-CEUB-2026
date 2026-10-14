@@ -1,5 +1,6 @@
 #include <unity.h>
 #include <cmath>
+#include <cstdlib>
 #include "config/RobotConfig.h"
 #include "sensors/Calibration.h"
 #include "strategy/ControlLoop.h"
@@ -187,6 +188,56 @@ void test_control_loop_uses_real_dt() {
     TEST_ASSERT_FLOAT_WITHIN(1e-3f, 2.0f * uSlow, uFast);
 }
 
+// E-4: cascata com RPM ≈ 0 e duty alto por 200 ms contínuos → encoderFault
+static bool dutyHigh(const ControlOutputs& o) {
+    return std::abs(o.duties.a) >= 0.6f * PWM_MAX || std::abs(o.duties.b) >= 0.6f * PWM_MAX;
+}
+
+void test_control_loop_cascade_zero_rpm_raises_encoder_fault() {
+    cfg.tune.mode = 1;
+    loop->applyConfig(cfg);
+    loop->start(CENTER, 0.0f, 0.0f);
+    int first = -1;
+    bool fired = false;
+    for (int k = 0; k < 1000 && !fired; k++) {
+        const ControlOutputs o = loop->step(in(CENTER, 0.0f, 0.0f));
+        if (first < 0 && dutyHigh(o)) first = k;
+        if (first < 0 || k < first + 99) {
+            TEST_ASSERT_FALSE_MESSAGE(o.encoderFault, "disparou antes de 200 ms");
+        } else {
+            TEST_ASSERT_TRUE_MESSAGE(o.encoderFault, "não disparou em 200 ms");  // 100 × 2 ms
+            fired = true;
+        }
+    }
+    TEST_ASSERT_TRUE(first >= 0);
+    TEST_ASSERT_TRUE(fired);
+    loop->start(CENTER, 0.0f, 0.0f);  // o start zera o tempo
+    TEST_ASSERT_FALSE(loop->step(in(CENTER, 0.0f, 0.0f)).encoderFault);
+}
+
+void test_control_loop_encoder_fault_needs_continuous_condition() {
+    cfg.tune.mode = 1;
+    loop->applyConfig(cfg);
+    loop->start(CENTER, 0.0f, 0.0f);
+    for (int k = 0; k < 1000; k++) {
+        const float rpm = (k % 2 == 0) ? 0.0f : 300.0f;  // leitura volta a cada 2 ciclos
+        TEST_ASSERT_FALSE(loop->step(in(CENTER, rpm, rpm)).encoderFault);
+    }
+}
+
+void test_control_loop_pwm_mode_never_raises_encoder_fault() {
+    cfg.tune.vmax = 0.9f;
+    loop->applyConfig(cfg);
+    loop->start(CENTER, 0.0f, 0.0f);
+    bool high = false;
+    for (int k = 0; k < 1000; k++) {
+        const ControlOutputs o = loop->step(in(CENTER, 0.0f, 0.0f));
+        high = high || dutyHigh(o);
+        TEST_ASSERT_FALSE(o.encoderFault);
+    }
+    TEST_ASSERT_TRUE(high);  // o duty alto existiu: só o modo impede o disparo
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_control_loop_centered_line_drives_straight_at_vmax);
@@ -203,5 +254,8 @@ int main() {
     RUN_TEST(test_control_loop_sensor_invert_flips_turn);
     RUN_TEST(test_control_loop_black_line_polarity);
     RUN_TEST(test_control_loop_uses_real_dt);
+    RUN_TEST(test_control_loop_cascade_zero_rpm_raises_encoder_fault);
+    RUN_TEST(test_control_loop_encoder_fault_needs_continuous_condition);
+    RUN_TEST(test_control_loop_pwm_mode_never_raises_encoder_fault);
     return UNITY_END();
 }

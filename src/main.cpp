@@ -85,7 +85,11 @@ static void applyRequest(const ControlMsg& msg, RobotStateMachine& sm, const SmI
     switch (msg.req) {
         case ControlRequest::START:      sm.handle(SmEvent::CMD_START, in, nowMs); break;
         case ControlRequest::STOP:       sm.handle(SmEvent::CMD_STOP, in, nowMs); break;
-        case ControlRequest::RESET:      sm.handle(SmEvent::CMD_RESET, in, nowMs); break;
+        case ControlRequest::RESET:
+            velL.cancelCalibration();  // E-4: reset fecha a calibração de encoder aberta
+            velR.cancelCalibration();
+            sm.handle(SmEvent::CMD_RESET, in, nowMs);
+            break;
         case ControlRequest::SENSOR_CAL: sm.handle(SmEvent::CMD_SENSOR_CAL, in, nowMs); break;
         case ControlRequest::ENC_CAL_START:
             if (!sm.isActive()) {
@@ -175,6 +179,7 @@ static void taskControl(void*) {
         SmInputs in;
         in.calibrationValid = calibration.isValid();
         in.batteryOk = battery.hasReading() && battery.volts() >= cfg.hw.vcut;
+        in.encoderCalOpen = velL.isCalibrating() || velR.isCalibrating();
 
         ControlMsg msg;
         while (xQueueReceive(g_ctlQueue, &msg, 0) == pdTRUE) applyRequest(msg, sm, in, nowMs);
@@ -218,6 +223,7 @@ static void taskControl(void*) {
             motors.setSpeed(MotorId::A, out.duties.a);
             motors.setSpeed(MotorId::B, out.duties.b);
             if (out.lostTimeout) sm.handle(SmEvent::LINE_LOST_TIMEOUT, in, nowMs);
+            if (out.encoderFault) sm.handle(SmEvent::ENCODER_FAULT, in, nowMs);
             if (battery.isLow()) sm.handle(SmEvent::BATTERY_LOW, in, nowMs);
         } else {
             out = ControlOutputs{};

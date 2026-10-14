@@ -6,6 +6,7 @@
 static const SmInputs OK_IN{true, true};
 static const SmInputs NO_CAL{false, true};
 static const SmInputs LOW_BAT{true, false};
+static const SmInputs ENC_OPEN{true, true, true};
 
 void setUp() {}
 void tearDown() {}
@@ -253,6 +254,30 @@ void test_state_machine_button_held_in_running_always_stops() {
     TEST_ASSERT_EQUAL(RobotState::READY, holdInRunning(2000));
 }
 
+// E-4: START recusado (fica em READY, sem erro) com a calibração de encoder aberta
+void test_state_machine_start_refused_while_encoder_cal_open() {
+    RobotStateMachine sm(true, 0);
+    TEST_ASSERT_FALSE(sm.handle(SmEvent::BTN_SHORT, ENC_OPEN, 10));
+    TEST_ASSERT_FALSE(sm.handle(SmEvent::CMD_START, ENC_OPEN, 20));
+    TEST_ASSERT_EQUAL(RobotState::READY, sm.state());
+    TEST_ASSERT_EQUAL(ErrorCode::NONE, sm.error());
+    TEST_ASSERT_TRUE(sm.handle(SmEvent::CMD_START, OK_IN, 30));
+    TEST_ASSERT_EQUAL(RobotState::ARMED, sm.state());
+}
+
+// E-4: encoder sem leitura no modo cascata → ERROR(ENC) = 5, motores param
+void test_state_machine_encoder_fault_stops_with_code_5() {
+    TEST_ASSERT_EQUAL_UINT8(5, static_cast<uint8_t>(ErrorCode::ENC));
+    RobotStateMachine sm = running();
+    TEST_ASSERT_TRUE(sm.handle(SmEvent::ENCODER_FAULT, OK_IN, 2000));
+    TEST_ASSERT_EQUAL(RobotState::ERROR, sm.state());
+    TEST_ASSERT_EQUAL(ErrorCode::ENC, sm.error());
+    TEST_ASSERT_FALSE(sm.motorsEnabled());
+    RobotStateMachine ready(true, 0);
+    TEST_ASSERT_FALSE(ready.handle(SmEvent::ENCODER_FAULT, OK_IN, 10));
+    TEST_ASSERT_EQUAL(RobotState::READY, ready.state());
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_state_machine_boot_with_calibration_is_ready);
@@ -270,6 +295,8 @@ int main() {
     RUN_TEST(test_state_machine_press_outside_active_has_no_effect);
     RUN_TEST(test_state_machine_stop_on_stop_command);
     RUN_TEST(test_state_machine_button_held_in_running_always_stops);
+    RUN_TEST(test_state_machine_start_refused_while_encoder_cal_open);
+    RUN_TEST(test_state_machine_encoder_fault_stops_with_code_5);
     RUN_TEST(test_state_machine_running_faults);
     RUN_TEST(test_state_machine_faults_ignored_outside_running);
     RUN_TEST(test_state_machine_error_short_press_recovers);

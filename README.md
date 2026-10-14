@@ -132,18 +132,19 @@ IDLE ──toque longo / scal──► CALIBRATING ──5 s, canais ok──►
 | IDLE | toque curto | READY | só com calibração válida |
 | CALIBRATING | 5 s | READY | todos os canais com max − min ≥ 200 → salva na NVS |
 | CALIBRATING | 5 s | ERROR(4) | algum canal estreito; `calres` lista os canais |
-| READY | toque curto ou `start` | ARMED | V_bat ≥ `vcut`; senão ERROR(3) |
+| READY | toque curto ou `start` | ARMED | V_bat ≥ `vcut`; senão ERROR(3). Recusado com calibração de encoder aberta (E-4) |
 | READY | toque longo ou `scal` | CALIBRATING | — |
 | ARMED | `startMs` | RUNNING | PIDs alinhados à medida atual; rampa parte de 0 |
 | ARMED / RUNNING | aperto do botão ou `stop` | READY | motores freiam; o aperto é consumido (E-3) |
 | RUNNING | linha perdida por `lostMs` | ERROR(2) | motores param |
 | RUNNING | V_bat < `vcut` por 1 s | ERROR(3) | motores param |
 | RUNNING | 5 ciclos seguidos acima de 2000 µs | ERROR(1) | motores param |
+| RUNNING | `mode` = 1 e uma roda com duty ≥ 60 % e \|RPM\| < 5 % de `rpmMax` por 200 ms | ERROR(5) | motores param (E-4) |
 | ERROR | toque curto | READY ou IDLE | READY se a calibração for válida |
 | qualquer | `reset` | IDLE | motores param |
 
 Códigos de erro: 1 = laço atrasado, 2 = linha perdida, 3 = bateria baixa, 4 = calibração
-inválida.
+inválida, 5 = encoder sem leitura no modo cascata (E-4).
 
 **Botão (GPIO 0)**: debounce de 30 ms. **Toque curto** = soltar antes de 800 ms. **Toque longo**
 = segurar 1,5 s (dispara ao completar o tempo, sem esperar soltar; ao soltar não gera toque
@@ -258,7 +259,8 @@ e pelo UUID do serviço. MTU preferido 185; **toda notificação cabe em 180 byt
 Erros do `ack`: `range` (fora da faixa ou valor não finito), `key` (chave desconhecida),
 `running` (não permitido em ARMED/RUNNING), `dirty` (salve ou descarte antes de trocar de
 perfil), `store` (falha ao gravar), `parse` (JSON inválido; `k:"?"`), `locked` (modo
-competição).
+competição), `cal` (`start` com calibração de encoder aberta: termine com `cal finish` ou
+`reset`).
 
 Regras: chaves de `HardwareConfig` e `mode`, `save`/`load`/`defaults`/`prof` e `cal` são
 recusados em ARMED/RUNNING (`err:"running"`). Gravar na flash suspende o cache dos dois

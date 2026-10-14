@@ -292,6 +292,28 @@ void test_command_handler_nvs_released_after_save() {
     TEST_ASSERT_TRUE(nvs.tryArm());
 }
 
+// E-4: start com a calibração de encoder aberta é recusado na comm
+void test_command_handler_start_refused_while_encoder_cal_open() {
+    TEST_ASSERT_EQUAL(ControlRequest::ENC_CAL_START,
+                      sendForMsg("{\"t\":\"cal\",\"op\":\"start\",\"side\":\"L\"}").req);
+    sink.msgs.clear();
+    const ControlMsg m = sendForMsg("{\"t\":\"start\"}");
+    TEST_ASSERT_EQUAL(ControlRequest::NONE, m.req);
+    TEST_ASSERT_TRUE(sink.contains("\"k\":\"start\",\"ok\":0,\"err\":\"cal\""));
+}
+
+void test_command_handler_encoder_cal_closed_by_finish_and_reset() {
+    send("{\"t\":\"cal\",\"op\":\"start\",\"side\":\"L\"}");
+    send("{\"t\":\"cal\",\"op\":\"start\",\"side\":\"R\"}");
+    send("{\"t\":\"cal\",\"op\":\"finish\",\"side\":\"L\",\"rot\":10}");
+    TEST_ASSERT_EQUAL(ControlRequest::NONE, sendForMsg("{\"t\":\"start\"}").req);  // R aberto
+    send("{\"t\":\"cal\",\"op\":\"finish\",\"side\":\"R\",\"rot\":10}");
+    TEST_ASSERT_EQUAL(ControlRequest::START, sendForMsg("{\"t\":\"start\"}").req);
+    send("{\"t\":\"cal\",\"op\":\"start\",\"side\":\"R\"}");
+    TEST_ASSERT_EQUAL(ControlRequest::RESET, sendForMsg("{\"t\":\"reset\"}").req);
+    TEST_ASSERT_EQUAL(ControlRequest::START, sendForMsg("{\"t\":\"start\"}").req);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_command_handler_set_applies_and_marks_dirty);
@@ -319,5 +341,7 @@ int main() {
     RUN_TEST(test_command_handler_encoder_cal_result_out_of_range_is_ignored);
     RUN_TEST(test_command_handler_nvs_ops_refused_when_control_armed);
     RUN_TEST(test_command_handler_nvs_released_after_save);
+    RUN_TEST(test_command_handler_start_refused_while_encoder_cal_open);
+    RUN_TEST(test_command_handler_encoder_cal_closed_by_finish_and_reset);
     return UNITY_END();
 }

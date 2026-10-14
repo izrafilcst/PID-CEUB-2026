@@ -180,6 +180,21 @@ void test_velocity_set_ppr_uses_config_range() {
     TEST_ASSERT_TRUE(ve->setPprX4(1.0f));
 }
 
+// E-4: o reset fecha a calibração aberta (comm e control ficam de acordo)
+void test_velocity_cancel_calibration_closes_it() {
+    ve->setFilterAlpha(1.0f);
+    ve->startCalibration();
+    TEST_ASSERT_TRUE(ve->isCalibrating());
+    simulateRotations(*enc, 3);
+    ve->cancelCalibration();
+    TEST_ASSERT_FALSE(ve->isCalibrating());
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 600.0f, ve->getEffectivePPR());
+    TEST_ASSERT_FALSE(store->exists("left_ppr"));
+    simulateRotations(*enc, 1);
+    ve->update(100000);  // as voltas da calibração cancelada não entram no RPM
+    TEST_ASSERT_FLOAT_WITHIN(1.0f, 600.0f, ve->getRPM());
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_velocity_zero_when_no_pulses);
@@ -199,5 +214,6 @@ int main(int, char**) {
     RUN_TEST(test_velocity_finish_calibration_rejects_ppr_below_range);
     RUN_TEST(test_velocity_begin_rejects_persisted_ppr_out_of_range);
     RUN_TEST(test_velocity_set_ppr_uses_config_range);
+    RUN_TEST(test_velocity_cancel_calibration_closes_it);
     return UNITY_END();
 }

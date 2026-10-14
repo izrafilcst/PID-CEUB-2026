@@ -98,6 +98,7 @@ Trabalhar no **perfil 0 "seguro"** (`vmax` 0,35) e no modo PWM direto (`mode` 0)
 | Para em ERRO(2) ao sair da curva | linha perdida mais que `lostMs` | Baixar `vmax`/`vmin`; subir `lostMs` com cuidado |
 | ERRO(1) | laço passou de 2000 µs por 5 ciclos | Ver `ovr` no frame `sta`; relatar |
 | ERRO(3) | bateria abaixo de `vcut` por 1 s | Trocar as células; conferir `vbk` com multímetro |
+| ERRO(5) | modo cascata com duty alto e RPM ≈ 0 por 200 ms | Encoder solto ou sem alimentação; conferir no `bench_encoder` e refazer `cal` |
 
 ---
 
@@ -107,6 +108,9 @@ Só depois de calibrar **os dois** encoders: com o carro parado, `{"t":"cal","op
 "side":"L"}`, girar a roda esquerda 10 voltas à mão e `{"t":"cal","op":"finish","side":"L",
 "rot":10}`; repetir com `"side":"R"`. O PPR medido aparece no `ecal` e passa a valer (`pprL`,
 `pprR`). O padrão de fábrica (600) é provisório.
+
+O `start` é recusado (`err:"cal"`) enquanto uma calibração de encoder estiver aberta; `reset`
+também a fecha. Se um encoder parar de contar no modo cascata, o carro para em ERRO(5).
 
 1. `mode` = 1 (só com o carro parado).
 2. Começar com `kpv` 0,002 e `kiv` 0,005; `kdv` 0.

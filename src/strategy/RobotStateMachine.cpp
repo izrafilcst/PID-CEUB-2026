@@ -47,6 +47,7 @@ bool RobotStateMachine::handle(SmEvent ev, const SmInputs& in, uint32_t nowMs) {
             break;
         case S::READY:
             if (ev == E::BTN_SHORT || ev == E::CMD_START) {
+                if (in.encoderCalOpen) return false;  // E-4: fica em READY, sem erro
                 return in.batteryOk ? _enter(S::ARMED, ErrorCode::NONE, nowMs)
                                     : _enter(S::ERROR, ErrorCode::BAT, nowMs);
             }
@@ -62,6 +63,7 @@ bool RobotStateMachine::handle(SmEvent ev, const SmInputs& in, uint32_t nowMs) {
             if (ev == E::LINE_LOST_TIMEOUT) return _enter(S::ERROR, ErrorCode::LINE, nowMs);
             if (ev == E::BATTERY_LOW) return _enter(S::ERROR, ErrorCode::BAT, nowMs);
             if (ev == E::LOOP_OVERRUN) return _enter(S::ERROR, ErrorCode::OVR, nowMs);
+            if (ev == E::ENCODER_FAULT) return _enter(S::ERROR, ErrorCode::ENC, nowMs);
             break;
         case S::ERROR:
             if (ev == E::BTN_SHORT) {
