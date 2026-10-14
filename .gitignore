@@ -19,3 +19,4 @@ graphify-out/
 ruvector.db
 build/
 hardware/cad/.venv/
+!hardware/cad/out/*.stl
