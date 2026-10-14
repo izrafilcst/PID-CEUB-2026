@@ -295,7 +295,9 @@ de 0,5 mm (seção 2.2) e recalibre os sensores.
 
 ## 7 Peças de reposição
 
-Quantidades a ter na caixa do box, iguais às do carro, salvo indicação.
+Quantidades a ter na caixa do box, iguais às do carro, salvo indicação. A `hardware/bom.csv` já
+traz só os O-rings e 1 inserto de reserva; as peças impressas saem do PETG da BOM; o resto é
+**compra extra**, além da BOM.
 
 | Item | Quantidade na caixa | Fonte |
 |------|---------------------|-------|
@@ -304,11 +306,11 @@ Quantidades a ter na caixa do box, iguais às do carro, salvo indicação.
 | Calço e calço de língua | 4 + 2 | `calco.stl`, `calco_lingua.stl` |
 | Roda | 2 | `roda.stl` |
 | Abraçadeira do N20 (E e D) | 1 + 1 | `abracadeira_E.stl`, `abracadeira_D.stl` |
-| Fusível de lâmina mini 3 A | 1 | `hardware/bom.csv` |
-| Células 18650 carregadas (mesmo modelo e lote) | 2 | `hardware/bom.csv`, ficha 11 |
+| Fusível de lâmina mini 3 A | 1 | Compra extra: o mesmo item da BOM, que traz só o fusível do carro |
+| Células 18650 carregadas (mesmo modelo e lote) | 2 | Compra extra: um segundo par igual ao da BOM (ficha 11) |
 | Inserto térmico M3 | 1 | `hardware/bom.csv` (1 de reserva) |
-| Parafusos de cada tipo da tabela "Fixadores" | 1 jogo | `hardware/cad/out/relatorio_montagem.md` |
-| Fio AWG 30 e conector do QTR-8A | 1 chicote | `hardware/bom.csv` |
+| Parafusos de cada tipo da tabela "Fixadores" | 1 jogo | Compra extra; tipos em `hardware/cad/out/relatorio_montagem.md` |
+| Fio AWG 30 e conector do QTR-8A | 1 chicote | Compra extra: os mesmos itens da BOM |
 
 ## 8 Registro de manutenção
 
