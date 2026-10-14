@@ -1,7 +1,8 @@
 # Manual de montagem — LFR v2
 
 > Para quem: montador. Tempo estimado: não medido — anote o tempo de cada etapa na primeira
-> montagem (seção 8). Pré-requisito: nenhum.
+> montagem (seção 8). Pré-requisito: nenhum. Depois: [manual do operador](OPERACAO.md) e
+> [manual de manutenção](MANUTENCAO.md).
 
 Este manual diz **como montar**. Os números vêm de arquivos do repositório, citados na
 primeira vez em que aparecem. Quando uma cota estiver marcada **MEDIR**, vale a medida da peça
@@ -35,20 +36,21 @@ Compras, conforme `hardware/bom.csv`. A coluna "Ficha" aponta para
 | Inserto térmico M3 (OD 4,0 × 5,7 mm) | 10 | — | 6 no carro + 3 no teste do cupom + 1 de reserva |
 | Fusível de lâmina mini 3 A + porta-fusível em linha | 1 | — | Logo depois do suporte |
 | P-MOSFET (ex.: AO3401) + zener 12 V + resistor 10 kΩ | 1 | — | Proteção contra inversão (recomendado) |
-| Chave liga/desliga mini | 1 | — | Corpo de 8,5 × 3,6 mm no modelo (MEDIR) |
+| Chave SPDT mini (liga/desliga) | 1 | — | Corpo de 8,5 × 3,6 mm no modelo (MEDIR); de preferência 3 A |
 | Conector da bateria (suporte → placa) | 1 | — | — |
-| Perfboard 50 × 70 mm | 1 | [10](../../hardware/components/fichas/10-perfboard.md) | Furos de fixação feitos pelo montador |
+| Perfboard 5 × 7 cm | 1 | [10](../../hardware/components/fichas/10-perfboard.md) | Furos de fixação feitos pelo montador |
 | Capacitor eletrolítico 100 µF 16 V | 1 | — | No VM do TB6612 |
 | Capacitor cerâmico 100 nF | 5 | — | 1 por CI (4) + 1 no GPIO 34 |
 | Resistor 100 kΩ e resistor 47 kΩ | 1 + 1 | — | Divisor da bateria |
 | Resistor 10 kΩ | 4 | — | Pull-up nos GPIO 36 e 39, pull-down no GPIO 12 e no STBY |
 | Buzzer passivo 12 mm | 1 | — | Acionado por transistor |
 | Transistor NPN de sinal + resistor de base | 1 | — | Acionamento do buzzer; valores a definir |
-| LED 5 mm + resistor 330 Ω | opcional | — | O firmware usa só o LED da placa (GPIO 2) |
+| LED 5 mm (verde + vermelho) + 2 resistores 330 Ω | opcional | — | O firmware usa só o LED da placa (GPIO 2) |
 | Fio de silicone 26 AWG (sortido) | 1 | — | Alimentação e motores |
-| Fio AWG 30 (⌀ ≤ 0,6 mm) | 11 vias | — | Chicote do QTR-8A |
+| Fio AWG 30 (⌀ ≤ 0,6 mm) | 1 (11 vias) | — | Chicote do QTR-8A |
+| Barra de pinos 2,54 mm (8×2 ou 11×1) + conector fêmea | 1 | — | Ligação do QTR-8A ao chicote |
 | Fita dupla-face VHB | 1 | — | Fixa o MP1584 |
-| Filamento PETG 1,75 mm | 100 g | — | — |
+| Filamento PETG 1,75 mm | 100 g | — | Peças do carro ≈ 59 g (seção 2.4) |
 | Parafusos e abraçadeira de nylon | — | — | Tabela "Fixadores" abaixo |
 
 **Fixadores** (tabela do `hardware/cad/out/relatorio_montagem.md`; comprimentos conferidos
@@ -343,7 +345,7 @@ Faça na ordem, com o multímetro. Não avance com um item fora do esperado.
    - **3 bipes curtos** logo ao ligar: não há configuração salva e o carro usa os valores de
      fábrica. É normal na primeira vez; some depois do primeiro **Salvar** pelo dashboard.
    - **LED piscando a 1 Hz**: estado IDLE, sem calibração dos sensores. É o esperado até a
-     primeira calibração (manual do operador, seção 3).
+     primeira calibração ([manual do operador](OPERACAO.md), seção 3).
 5. Conecte o dashboard e anote o `stk` do `info` (folga de pilha das duas tasks). Nenhuma task
    deve ficar com menos de ~1 KB (avaliação do WP1, atividade 5).
 
@@ -365,7 +367,7 @@ Ao terminar, grave de novo o firmware principal (`pio run -e esp32dev -t upload`
   (`docs/WIRING.md`).
 - **Se falhar:** motor parado → conferir VM, STBY (GPIO 23) e a solda do motor. Lado ou sentido
   trocado → **não refaça a fiação**: corrija depois pelo BLE com `invL`, `invR` ou `swap`
-  (manual do operador, seção 7).
+  ([manual do operador](OPERACAO.md), seção 7).
 
 ### 7.2 Encoders — `pio run -e bench_encoder -t upload`
 
