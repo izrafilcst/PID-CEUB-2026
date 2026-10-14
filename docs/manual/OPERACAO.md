@@ -143,7 +143,9 @@ BLE v4").
 
 Tabela gerada do `src/config/RobotConfig.cpp`, na mesma ordem das chaves. Para mudar um valor:
 `{"t":"set","k":"<chave>","v":<valor>}` ou o campo da aba CONFIG. Valor fora da faixa volta com
-`err:"range"` e não muda nada. Chaves de 0/1 e de milissegundos aceitam só inteiros.
+`err:"range"` e não muda nada. Chaves de 0/1 e de milissegundos são arredondadas para o
+inteiro mais próximo — `{"t":"set","k":"invL","v":0.6}` aplica 1 — e o `ack` mostra o valor
+aplicado (`src/config/RobotConfig.cpp`).
 
 "Com o carro andando" = estados ARMADO e CORRENDO. Com o modo competição ligado (`lock` = 1),
 **nenhuma** chave muda nesses estados.
