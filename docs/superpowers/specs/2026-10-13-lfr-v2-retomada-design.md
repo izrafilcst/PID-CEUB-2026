@@ -245,22 +245,27 @@ Estados: `IDLE`, `CALIBRATING`, `READY`, `ARMED`, `RUNNING`, `ERROR(código)`.
 | IDLE | toque curto | READY | Só se houver calibração válida |
 | CALIBRATING | 5 s decorridos | READY | Todos os canais com max − min ≥ 200 contagens → salva na NVS |
 | CALIBRATING | 5 s decorridos | ERROR(CAL) | Algum canal com faixa < 200; informa os canais |
-| READY | toque curto ou `start` | ARMED | V_bat ≥ `vcut`; senão ERROR(BAT) |
+| READY | toque curto ou `start` | ARMED | V_bat ≥ `vcut`; senão ERROR(BAT). Recusado enquanto a calibração de encoder estiver aberta (E-4) |
 | READY | toque longo ou `scal` | CALIBRATING | — |
 | ARMED | `startMs` decorrido | RUNNING | Reseta PIDs com a medida atual, rampa parte de 0 |
-| ARMED | toque curto ou `stop` | READY | Cancela |
-| RUNNING | toque curto ou `stop` | READY | Motores param (freio) |
+| ARMED | aperto do botão (E-3) ou `stop` | READY | Cancela |
+| RUNNING | aperto do botão (E-3) ou `stop` | READY | Motores param (freio) |
 | RUNNING | linha perdida por mais de `lostMs` | ERROR(LINE) | Motores param |
 | RUNNING | V_bat < `vcut` por 1 s | ERROR(BAT) | Motores param |
 | RUNNING | 5 ciclos seguidos acima de 2000 µs | ERROR(OVR) | Motores param |
+| RUNNING | `mode` = 1 e uma roda com duty alto e RPM ≈ 0 por 200 ms (E-4) | ERROR(ENC) | Motores param |
 | ERROR | toque curto | READY ou IDLE | READY se a calibração for válida |
 | qualquer | `reset` | IDLE | Motores param |
 
 Códigos de erro: 1 = OVR (laço atrasado), 2 = LINE (linha perdida), 3 = BAT (bateria baixa),
-4 = CAL (calibração inválida).
+4 = CAL (calibração inválida), 5 = ENC (encoder sem leitura no modo cascata, E-4).
 
 Botão (GPIO 0): debounce de 30 ms; **toque curto** = soltar antes de 800 ms; **toque longo** =
 segurar 1500 ms (o evento dispara ao atingir o tempo, sem esperar soltar).
+**Em ARMED e RUNNING o botão age no aperto (E-3):** o carro para assim que o aperto passa do
+debounce, sem esperar soltar. Esse aperto consome o gesto: soltá-lo não gera toque curto e
+segurá-lo não gera toque longo (senão o carro, já em READY, voltaria a ARMED ou entraria em
+CALIBRATING).
 
 Sinalização (`Annunciator`, sem bloqueio):
 
@@ -597,12 +602,15 @@ estão fora do escopo (§9).
 
 ## 11. Emendas
 
-Decididas pelo usuário em 2026-10-13, depois do relatório de revisão (`docs/REVISAO_FIRMWARE.md`).
+Decididas pelo usuário em 2026-10-13 (E-1, E-2), depois do relatório de revisão
+(`docs/REVISAO_FIRMWARE.md`), e em 2026-10-14 (E-3, E-4), depois da avaliação do WP1.
 
 | # | Origem | Emenda | Onde |
 |---|--------|--------|------|
 | E-1 | F-33 (regra RoboCore 5.9) | Chave `lock` em `HardwareConfig` (fábrica 0). Com 1, todo comando BLE em ARMED/RUNNING é recusado com `err:"locked"` | §4.3, §4.5; plano WP1, Tarefa 22 |
 | E-2 | Revisão, item 3 (pilha das tasks) | `info` leva `stk` com a menor folga de pilha das tasks `control` e `comm` | §4.5; plano WP1, adendo à Tarefa 18 |
+| E-3 | Avaliação WP1, A-WP1-02 | Em ARMED/RUNNING o botão para o carro no aperto; o gesto é consumido | §4.6; plano WP1, Tarefa 23 |
+| E-4 | Avaliação WP1, A-WP1-03 | START recusado com a calibração de encoder aberta; ERROR(ENC) = 5 no modo cascata quando uma roda fica com duty alto e RPM ≈ 0 | §4.6; plano WP1, Tarefa 24 |
 
 Também acrescentados ao plano WP1, sem mudar esta spec: pull-up interno nos GPIO 18/19 do
 encoder esquerdo (F-24) e versões fixas da plataforma e do NimBLE-Arduino (F-30).

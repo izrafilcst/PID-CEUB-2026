@@ -7109,3 +7109,90 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 - [ ] **Step 6: Registrar o fim do WP1 no ruflo** — o Step 4 da Tarefa 21, feito aqui.
+
+---
+
+## Adendo da avaliação (2026-10-14)
+
+Decidido pelo usuário depois da avaliação do WP1 (`docs/avaliacao/2026-10-13-WP1.md`, achados
+A-WP1-02 e A-WP1-03; spec §11, emendas E-3 e E-4). Rodam depois da Tarefa 22, na mesma rodada
+de correção do A-WP1-01. Os nomes abaixo seguem o código entregue (`ButtonEvent`, `SmEvent`,
+`ErrorCode`, `ControlOutputs`); ajuste-os ao que estiver no código.
+
+### Task 23: Botão age no aperto em ARMED/RUNNING (E-3, A-WP1-02)
+
+Implementa a regra de botão da spec §4.6 (E-3).
+
+**Files:**
+- Modify: `src/sensors/ButtonInput.h/.cpp`, `src/strategy/RobotStateMachine.h/.cpp`,
+  `src/main.cpp` (só o mapeamento do evento novo), `README.md`/`docs/TUNING.md` se descrevem
+  o botão
+- Test: `test/test_button/…`, `test/test_state_machine/…` (as suítes existentes)
+
+**Interfaces:**
+- `ButtonEvent::PRESS`: emitido uma vez, quando o aperto passa do debounce (borda). `SHORT` e
+  `LONG` continuam como estão.
+- `SmEvent::BTN_PRESS`. Em ARMED e RUNNING, `BTN_PRESS` → READY, com motores freados como no
+  `stop`, e a máquina guarda que o gesto foi consumido. O `BTN_SHORT` ou `BTN_LONG` seguinte é
+  descartado. Qualquer `BTN_PRESS` novo começa um gesto novo e limpa a marca. Em ARMED/RUNNING,
+  `BTN_SHORT` deixa de ter efeito. Nos outros estados, `BTN_PRESS` não faz nada.
+- A regra fica toda na `RobotStateMachine` (pura e testada). O `main.cpp` só traduz
+  `ButtonEvent::PRESS` em `SmEvent::BTN_PRESS`.
+
+- [ ] **Step 1: Testes** (TDD: ver cada um falhar pelo motivo certo)
+  - `test_button_press_event_on_debounced_edge`: `PRESS` só depois de 30 ms estável, uma vez
+    por aperto.
+  - `test_button_press_then_short_on_quick_release`: `PRESS` no aperto e `SHORT` ao soltar
+    antes de 800 ms.
+  - `test_button_held_from_boot_fires_single_long` continua passando: um `LONG` e nenhum
+    `SHORT`; o `PRESS` do boot cai em IDLE/READY e não tem efeito.
+  - `test_state_machine_press_stops_running` e `test_state_machine_press_cancels_armed`.
+  - `test_state_machine_press_gesture_is_consumed`: RUNNING + `BTN_PRESS` → READY. Depois,
+    `BTN_SHORT` → continua READY (não ARMED), e `BTN_LONG` → continua READY (não CALIBRATING).
+  - `test_state_machine_next_press_starts_new_gesture`: depois de um gesto consumido,
+    `BTN_PRESS` em READY e `BTN_SHORT` → ARMED.
+- [ ] **Step 2: Implementar.** `pio test -e native` e `pio run -e esp32dev` verdes, sem warning
+  de `src/`.
+- [ ] **Step 3: Commit** `feat(button): stop on press while armed or running (E-3)`.
+
+### Task 24: START bloqueado com calibração de encoder aberta e ERROR(ENC) (E-4, A-WP1-03)
+
+Implementa as linhas E-4 da spec §4.6.
+
+**Files:**
+- Modify: `src/strategy/RobotStateMachine.h/.cpp`, `src/strategy/ControlLoop.h/.cpp`,
+  `src/comm/CommandHandler.h/.cpp`, `src/config.h` (constantes), `src/main.cpp` (só fiação do
+  evento e da entrada novos), `docs/dashboard/lfr-cockpit-mock.html` e
+  `docs/dashboard/lfr_sim.py` (rótulo do código 5), `README.md`/`docs/TUNING.md` (tabela de
+  códigos de erro)
+- Test: `test/test_state_machine/…`, `test/test_control_loop/…`,
+  `test/test_command_handler/…`, `docs/dashboard/test_lfr_sim.py`
+
+**Interfaces:**
+- `ErrorCode::ENC = 5`; `SmEvent::ENCODER_FAULT` (RUNNING → ERROR(ENC), motores param).
+- Entrada da máquina de estados `encoderCalOpen`. Com ela verdadeira, `BTN_SHORT`/`CMD_START`
+  em READY não armam (fica em READY, sem erro).
+- `CommandHandler`: guarda se a calibração de encoder está aberta (`cal start` abre;
+  `cal finish` e `reset` fecham). `start` com ela aberta responde
+  `{"t":"ack","k":"start","ok":0,"err":"cal"}` e não gera `ControlRequest::START`.
+- `ControlOutputs::encoderFault`: verdadeiro quando `mode` = 1 e, em alguma roda, o duty
+  aplicado fica ≥ `ENC_FAULT_DUTY` (0,6 do `PWM_MAX`) com |RPM| < `ENC_FAULT_RPM_FRAC`
+  (0,05) × `rpmMax`, sem interrupção, por ≥ `ENC_FAULT_MS` (200 ms). O tempo zera quando a
+  condição cai e no reset do laço (start). As constantes ficam no `config.h`, não viram chaves
+  de runtime.
+
+- [ ] **Step 1: Testes**
+  - `test_state_machine_start_refused_while_encoder_cal_open` (botão e `CMD_START`).
+  - `test_state_machine_encoder_fault_stops_with_code_5`.
+  - `test_command_handler_start_refused_while_encoder_cal_open` e
+    `test_command_handler_encoder_cal_closed_by_finish_and_reset`.
+  - `test_control_loop_cascade_zero_rpm_raises_encoder_fault`: RPM 0 e setpoint alto; falso
+    antes de 200 ms, verdadeiro depois.
+  - `test_control_loop_encoder_fault_needs_continuous_condition`: RPM alternando entre 0 e um
+    valor normal nunca dispara.
+  - `test_control_loop_pwm_mode_never_raises_encoder_fault`.
+  - Simulador: o código 5 aparece com o rótulo `ENC`.
+- [ ] **Step 2: Implementar.** `pio test -e native`, `pio run -e esp32dev`, os seis
+  `bench_*` e `test_lfr_sim` verdes, sem warning de `src/`.
+- [ ] **Step 3: Commit**
+  `feat(safety): refuse start during encoder calibration, ERROR(ENC) on stalled feedback (E-4)`.
