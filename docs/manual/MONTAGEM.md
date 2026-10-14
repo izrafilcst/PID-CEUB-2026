@@ -224,6 +224,21 @@ imprima 12 + 6 (A-WP2-17). Com calços, troque o comprimento dos parafusos confo
 
 ## 3 Montagem mecânica
 
+**Cotas principais do modelo** (`hardware/cad/out/relatorio_montagem.md`, salvo indicação):
+
+| Grandeza | Valor |
+|----------|-------|
+| Lookahead (sensores → eixo motriz) | 85 mm |
+| Envelope montado (comprimento × largura × altura) | 177,8 × 104,0 × 55,6 mm |
+| Bitola (entre os planos médios dos O-rings) | 95,8 mm (D10 em `docs/DIVERGENCIAS.md`; a avaliação do WP2 estima 97,2–98,6 mm no assento real do O-ring, A-WP2-10) |
+| Roda com O-ring | ⌀40,9 mm |
+| Face dos sensores ao chão | 3,0 mm |
+| Massa total estimada | 225 g (massas compradas ainda estimadas, D7) |
+| Carga nos patins | 16,2 % do peso (meta 10–20 %) |
+
+Disposição, de trás para a frente: perfboard atrás do eixo motriz, motores e rodas no eixo,
+berço da bateria à frente do eixo, barra de sensores com os patins na ponta.
+
 Monte nesta ordem. Um passo = uma ação. Frente do carro = lado da barra de sensores.
 
 1. Prense com o ferro os **4 insertos das colunas** do perfboard, de cima, até ficarem rentes ao

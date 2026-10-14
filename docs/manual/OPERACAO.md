@@ -34,7 +34,7 @@ carro está nos valores de fábrica (seção 6).
 
 | Gesto | Tempo | Uso |
 |-------|-------|-----|
-| Toque curto | soltar antes de 0,8 s | Arma o carro (PRONTO → ARMADO); sai do ERRO |
+| Toque curto | soltar antes de 0,8 s | Arma o carro (PRONTO → ARMADO); sai do ERRO; em IDLE com calibração salva (depois de um `reset`), volta a PRONTO |
 | Toque longo | segurar 1,5 s (age ao completar o tempo, sem esperar soltar) | Calibra os sensores (em IDLE ou PRONTO) |
 | Entre 0,8 s e 1,5 s | — | Nada acontece |
 | Aperto com o carro ARMADO ou CORRENDO | assim que o aperto é detectado (30 ms) | **Para o carro** na hora |
