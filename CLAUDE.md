@@ -18,10 +18,11 @@ Robô seguidor de linha competitivo, otimizado para **velocidade máxima com pre
 | Testes | Unity Test Framework (PlatformIO native) |
 | Build | PlatformIO CLI |
 | Sensores | Pololu QTR-8A — 8 canais IR refletivo analógico via MCP3008 (SPI) |
-| Motores | 2× N20 600RPM 6V com encoder Hall |
+| Motores | 2× N20 600RPM 6V com encoder magnético 12 CPR |
 | Driver | TB6612FNG dual H-bridge |
-| Bateria | LiPo 2S 7.4V 800mAh 30C |
-| Chassis | PETG impresso 3D, formato F1 |
+| Bateria | 2× 18650 high-drain em suporte plástico (2S: 8,4 V cheia, 7,2 V nominal), fusível 3 A |
+| Chassi | PETG impresso 3D, modelo paramétrico build123d em `hardware/cad/` (STL + STEP) |
+| Rodas e apoio | Cubo PETG + O-ring de silicone 34 × 3 mm; 2 patins PETG sob a barra de sensores |
 | Regulador | MP1584 buck → 5V |
 
 ---
@@ -30,59 +31,73 @@ Robô seguidor de linha competitivo, otimizado para **velocidade máxima com pre
 
 ```
 src/
-├── main.cpp                  # Entry point, setup/loop, orquestração
-├── config.h                  # Constantes, pinout, tuning params
+├── main.cpp                  # Só fiação: task control (core 1) e task comm (core 0)
+├── config.h                  # Pinagem e constantes de hardware (sem ganhos)
+│
+├── config/
+│   ├── RobotConfig.h/.cpp    # HardwareConfig + TuningProfile, faixas, 3 perfis de fábrica
+│   └── ConfigStore.h/.cpp    # Blobs na NVS com magic, versão e CRC32
 │
 ├── sensors/
-│   ├── SensorArray.h/.cpp        # Leitura MCP3008, calibração, posição
-│   ├── Calibration.h/.cpp        # Armazenamento min/max, normalização
-│   └── Encoder.h/.cpp            # Quadratura 4× (Fase A — ISR ESP32)
+│   ├── SensorArray.h/.cpp        # Leitura MCP3008 via SPI
+│   ├── Calibration.h/.cpp        # Min/max por canal, polaridade da linha, validação
+│   ├── Encoder.h/.cpp            # Quadratura 4× (ISR ESP32)
+│   ├── VelocityEstimator.h/.cpp  # RPM filtrado, dt em µs, PPR por auto-calibração
+│   ├── ButtonInput.h/.cpp        # Debounce, toque curto/longo, aperto (E-3)
+│   └── BatteryMonitor.h/.cpp     # Tensão filtrada, % por química, corte com retenção
 │
 ├── control/
-│   ├── PIDController.h/.cpp  # PID genérico (derivada no processo)
-│   └── SpeedProfile.h/.cpp   # Velocidade adaptativa baseada em erro
+│   ├── PIDController.h/.cpp      # dt real, filtro no D, reset(medida), anti-windup
+│   ├── CascadeController.h/.cpp  # Feedforward + PID por roda, em fração [-1, +1]
+│   ├── Mixer.h                   # base ± correção com prioridade de direção
+│   ├── SpeedProfile.h/.cpp       # vmax/vmin/thr em fração, rampa acc
+│   └── VelocityProfile.h/.cpp    # Não integrado na v2
 │
 ├── motors/
 │   ├── MotorDriver.h/.cpp    # Abstração TB6612FNG + PWM LEDC
-│   └── DifferentialDrive.h/.cpp # Conversão correção → velocidades L/R
+│   └── OutputStage.h/.cpp    # Inversão/troca de canais, compensação de tensão, duty
 │
 ├── strategy/
-│   ├── LineFollower.h/.cpp   # Orquestração: sensor→PID→motor
-│   └── LapTimer.h/.cpp       # Cronômetro de volta, melhor tempo
+│   ├── ControlLoop.h/.cpp        # Um passo de controle inteiro, testável em native
+│   ├── RobotStateMachine.h/.cpp  # IDLE/CALIBRATING/READY/ARMED/RUNNING/ERROR(1–5)
+│   ├── LineFollower.h/.cpp       # Erro normalizado + PID de posição, linha perdida
+│   └── LapTimer.h/.cpp           # Cronômetro de volta (sem detecção de marcação na v2)
 │
-└── comm/
-    ├── BLETuner.h/.cpp       # Ajuste Kp/Ki/Kd/vel via BLE
-    └── Logger.h/.cpp         # Telemetria via BLE (não Serial)
+├── comm/
+│   ├── BLETuner.h/.cpp           # Transporte NimBLE: fila de comandos e notificações
+│   ├── CommandProtocol.h/.cpp    # JSON → comandos tipados; frames ack/cfg/tel/sta/info
+│   ├── CommandHandler.h/.cpp     # Regras de set/save/load/defaults/prof, modo competição
+│   ├── CommandQueue.h/.cpp       # Fila callback NimBLE → task comm
+│   ├── Mailbox.h                 # Cópia versionada entre núcleos
+│   ├── Annunciator.h/.cpp        # LED e buzzer sem bloquear
+│   └── Logger.h/.cpp             # Sem uso na v2 (F-37)
+│
+└── storage/                  # IPersistentStore: NvsStore, InMemoryStore, NvsArbiter
 
-test/
-├── test_pid/
-│   └── test_pid.cpp          # Testes unitários do PID
-├── test_sensors/
-│   └── test_sensors.cpp      # Testes da leitura e calibração
-├── test_motors/
-│   └── test_motors.cpp       # Testes do driver e differential
-├── test_speed_profile/
-│   └── test_speed_profile.cpp # Testes da velocidade adaptativa
-├── test_line_follower/
-│   └── test_line_follower.cpp # Testes de integração
-└── test_calibration/
-    └── test_calibration.cpp  # Testes da calibração
+test/                         # 23 suítes Unity (native); test_sensors só tem .gitkeep
+├── test_annunciator/  test_battery/        test_ble_tuner/      test_button/
+├── test_calibration/  test_cascade/        test_command_handler/ test_command_protocol/
+├── test_config_store/ test_control_loop/   test_encoder/        test_lap_timer/
+├── test_line_follower/ test_nvs_arbiter/   test_output_stage/   test_periodic_timer/
+├── test_pid/          test_robot_config/   test_smoke/          test_speed_profile/
+└── test_state_machine/ test_velocity_estimator/ test_velocity_profile/
+
+examples/                     # 6 testes de bancada, um ambiente bench_* cada (platformio.ini)
 
 hardware/
-├── chassis/
-│   ├── body_f1.stl           # Chassis principal formato F1
-│   ├── sensor_bar.stl        # Barra de sensores (separada, ajustável)
-│   ├── wheel_hub.stl         # Hub de roda para O-ring silicone
-│   └── motor_bracket.stl     # Suporte dos motores N20
-├── pcb/
-│   └── shield_esp32.kicad    # PCB shield (opcional, pode ser perfboard)
+├── cad/                      # build123d: params.py, medidas.toml, build.py, parts/, tests/
+│   └── out/                  # STL, STEP e relatorio_montagem.md
+├── components/               # specs.py + 13 fichas geradas
+├── drawings/                 # Pranchas SVG (A1/A2 da v1, históricas)
 └── bom.csv                   # Bill of Materials com links e preços
 
 docs/
-├── REGRAS.md                 # Regras resumidas das competições-alvo
-├── TUNING.md                 # Log de ajustes PID (Kp, Kd, vel, resultado)
-├── CALIBRATION.md            # Procedimento de calibração de sensores
-└── WIRING.md                 # Diagrama de fiação completo
+├── manual/                   # MONTAGEM.md, OPERACAO.md, MANUTENCAO.md (+ manual-lfr.html)
+├── WIRING.md                 # Fiação completa
+├── TUNING.md                 # Sintonia e procedimento de competição
+├── DIVERGENCIAS.md           # Divergências entre fontes
+├── REVISAO_FIRMWARE.md       # Revisão do firmware v2 e regulamento
+└── dashboard/                # lfr-cockpit-mock.html (Web Bluetooth) + simulador
 ```
 
 ---
@@ -94,6 +109,8 @@ docs/
 - **Pista**: retas + curvas + cruzamentos, ~5 × 2.8 m
 - **Tentativas**: 3 de 3-5 min, menor tempo vence
 - **Autonomia**: 100% autônomo
+- **Volta válida (RoboCore 5.7)**: o robô para sozinho na área de partida-chegada por ≥ 2 s. A v2
+  não faz isso (F-34 em `docs/REVISAO_FIRMWARE.md`): é a primeira atividade da próxima versão
 
 ---
 
@@ -121,30 +138,23 @@ docs/
 - **Naming**: `test_<módulo>_<comportamento_esperado>`
 
 ### Hardware Constraints
-- **Loop PID**: < 2 ms (>500 Hz)
-- **Leitura sensores**: < 100 µs (MCP3008 SPI @ 1 MHz)
-- **PWM motores**: 20 kHz, 10 bits (LEDC)
-- **Core 0**: Sensor + PID + Motor (tempo real)
-- **Core 1**: BLE + Logger (não-crítico)
+- **Loop de controle**: período de 2000 µs (500 Hz, `vTaskDelayUntil`); 5 ciclos seguidos acima
+  disso → ERROR(1)
+- **Leitura sensores**: 8 canais × 24 bits a 1 MHz = 192 µs só de clock (F-36); medir na bancada
+- **PWM motores**: 20 kHz, 10 bits (LEDC canais 0 e 1); buzzer no canal 2 a 2,5 kHz
+- **Core 1**: task `control` — sensores, PID, motores, estados, botão, LED/buzzer (tempo real)
+- **Core 0**: task `comm` — BLE (junto da pilha NimBLE), comandos e telemetria
+- **NVS**: nenhuma escrita em ARMED/RUNNING
 
 ---
 
-## Parâmetros de Tuning (Defaults Iniciais)
+## Parâmetros de Tuning
 
-```cpp
-// config.h — valores iniciais, ajustáveis via BLE
-#define KP_DEFAULT          3.0f
-#define KI_DEFAULT          0.0f
-#define KD_DEFAULT          12.0f
-#define BASE_SPEED_DEFAULT  160     // 0-255
-#define MAX_SPEED           230     // 0-255
-#define MIN_SPEED           60      // velocidade em curva fechada
-#define ERROR_THRESHOLD     0.6f    // acima disso, reduz velocidade
-#define SENSOR_COUNT        8
-#define SENSOR_SPACING_MM   10      // espaçamento entre sensores
-#define SENSOR_HEIGHT_MM    4       // altura do solo
-#define LOOKAHEAD_MM        70      // distância sensores → eixo motriz
-```
+Não há mais ganhos no `config.h`. Os valores de fábrica são os inicializadores de
+`src/config/RobotConfig.h` (`HardwareConfig` e `TuningProfile`, 3 perfis que diferem em `vmax`),
+com faixas em `src/config/RobotConfig.cpp`. Tudo é ajustável por BLE (`{"t":"set",...}`) e só
+grava na NVS com `save`. Erro e saídas dos PIDs são normalizados em [−1, +1] (DEC-13). Tabela
+completa e uso: `docs/manual/OPERACAO.md`, seções 5 e 6.
 
 ---
 
@@ -163,7 +173,7 @@ Fase 1: Fundações (testes nativos, sem hardware)
   └─ PIDController → SpeedProfile → Calibration → SensorArray (mock)
 
 Fase 2: Hardware Drivers (testes no ESP32)
-  └─ MotorDriver → DifferentialDrive → SensorArray (real)
+  └─ MotorDriver → OutputStage → SensorArray (real)
 
 Fase 3: Integração (testes no ESP32 + hardware)
   └─ LineFollower → LapTimer → BLETuner
@@ -181,28 +191,30 @@ Fase 4: Tuning (na pista)
 
 ---
 
-## BOM Resumida (R$383 estimado + QTR-8A importado)
+## BOM Resumida (v2: ~R$325 estimado + QTR-8A importado + itens sem preço)
+
+Fonte: `hardware/bom.csv`.
 
 | Componente | Preço |
 |-----------|-------|
 | ESP32 DevKit V1 | R$45 |
-| MCP3008 ADC | R$25 |
+| MCP3008 ADC (a 3,3 V) | R$25 |
 | QTR-8A array 8ch (Pololu #960) | US$12.95 + importação |
-| 2× N20 600RPM encoder | R$80 |
+| 2× N20 600RPM encoder (par) | R$80 |
 | TB6612FNG módulo | R$18 |
-| LiPo 2S 800mAh | R$55 |
-| Carregador B3 | R$35 |
 | MP1584 buck | R$8 |
+| Suporte 2×18650 | R$5 (estimado) |
+| 2× célula 18650 high-drain | R$60 (estimado) |
+| 4× O-ring 34 × 3 | R$4 (estimado) |
 | PETG filamento | R$25 |
-| Rodas silicone 34mm | R$20 |
-| Ball caster metálico | R$8 |
-| Parafusos M2/M3 kit | R$15 |
-| Fios/conectores | R$20 |
-| Capacitores | R$5 |
-| Chave SPDT | R$3 |
+| Parafusos (lista do relatório de montagem) | R$10 (estimado) |
+| Fios | R$15 |
+| Capacitores, resistores, buzzer, LED | R$11 |
+| Chave SPDT + conector da bateria | R$5 |
 | Perfboard 5×7 | R$6 |
-| Diversos | R$15 |
-| **TOTAL** | **~R$383 + QTR-8A** |
+| Fita VHB | R$8 |
+| Carregador 18650, insertos M3, fusível 3 A, P-MOSFET, transistor, fio AWG 30, barra de pinos | a confirmar |
+| **TOTAL** | **~R$325 + QTR-8A + itens a confirmar** |
 
 ---
 

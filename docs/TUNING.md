@@ -12,6 +12,10 @@ ganhos são **normalizados** (spec §4.3, DEC-13):
 Por isso os ganhos não dependem da resolução do PWM, do número de sensores nem do modo de
 controle. Os valores de fábrica são **ponto de partida para a pista**, não valores sintonizados.
 
+Roteiro do operador no [manual do operador](manual/OPERACAO.md): primeira volta (seção 7),
+sintonia na pista (seção 8, resumo deste documento) e modo cascata (seção 9). Parâmetros,
+perfis e códigos de erro: seções 5, 6 e 11.
+
 Ajuste ao vivo **não** persiste: só o botão **Salvar** do dashboard (comando `save`) grava na
 NVS, e só com o carro parado. Há 3 perfis (0 "seguro", 1 "treino", 2 "corrida") que diferem,
 de fábrica, só em `vmax` (0,35 / 0,50 / 0,70).
@@ -42,7 +46,8 @@ de fábrica, só em `vmax` (0,35 / 0,50 / 0,70).
 | `dlp` | 0,5 | `lostMs` | 300 ms |
 | `kpv` | 0,002 | `kiv` | 0,005 |
 
-Tabela completa, com faixas e unidades: README, seção "Parâmetros em runtime".
+Tabela completa, com faixas e unidades: [manual do operador, seção 5](manual/OPERACAO.md) e
+README, seção "Parâmetros em runtime".
 
 ---
 
@@ -97,12 +102,14 @@ Trabalhar no **perfil 0 "seguro"** (`vmax` 0,35) e no modo PWM direto (`mode` 0)
 | Perde a linha no cruzamento | perfil agressivo | Subir `thr`, baixar `vmax` |
 | Para em ERRO(2) ao sair da curva | linha perdida mais que `lostMs` | Baixar `vmax`/`vmin`; subir `lostMs` com cuidado |
 | ERRO(1) | laço passou de 2000 µs por 5 ciclos | Ver `ovr` no frame `sta`; relatar |
-| ERRO(3) | bateria abaixo de `vcut` por 1 s | Trocar as células; conferir `vbk` com multímetro |
+| ERRO(3) | bateria abaixo de `vcut` ao armar, ou por 1 s correndo | Trocar as células; conferir `vbk` com multímetro |
 | ERRO(5) | modo cascata com duty alto e RPM ≈ 0 por 200 ms | Encoder solto ou sem alimentação; conferir no `bench_encoder` e refazer `cal` |
 
 ---
 
 ## 4. Modo Cascata (encoders)
+
+Passo a passo para o operador: [manual do operador, seção 9](manual/OPERACAO.md).
 
 Só depois de calibrar **os dois** encoders: com o carro parado, `{"t":"cal","op":"start",
 "side":"L"}`, girar a roda esquerda 10 voltas à mão e `{"t":"cal","op":"finish","side":"L",
@@ -156,6 +163,10 @@ nenhum comando remoto pode parar o robô nem mudar parâmetro (regra 5.9). Para 
    com `err:"locked"` e não têm efeito. O `start` em PRONTO continua aceito.
 3. O botão do robô continua parando o carro. Para voltar a ajustar entre tentativas, parar o
    carro (botão) — fora de ARMED/RUNNING os comandos voltam a valer, inclusive desligar `lock`.
+
+> A v2 **não para sozinha depois da chegada**: sem isso nenhuma volta vale na RoboCore (regra
+> 5.7, F-34). Durante a tomada de tempo, entregue o celular ao juiz (regra 5.9). Checklist de
+> box: [manual do operador, seção 12](manual/OPERACAO.md).
 
 ### Emergências
 - **Bateria caindo**: baixar `vmax` 0,1 (ou confiar na compensação `vcomp`)
