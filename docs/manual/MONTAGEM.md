@@ -296,10 +296,14 @@ Suporte 2×18650 (2S, 6,0–8,4 V)
     │
     └── Chave liga/desliga
             │
-            ├── MP1584 buck ──► 5,0 V ──► ESP32 VIN ──► 3V3 ──► MCP3008 + QTR-8A
+            ├── MP1584 buck ──► 5,0 V ──► ESP32 VIN ──► 3V3 ──► MCP3008 + QTR-8A + VCC do TB6612
             │
             └── TB6612FNG VM (tensão do pack)
 ```
+
+O trilho de 5 V do MP1584 alimenta só o VIN do ESP32 e o buzzer. O VCC (lógica) do TB6612 vai
+no 3V3 do ESP32, não no 5 V: o MP1584 sai de fábrica com tensão arbitrária (ficha 07) e a
+ficha 05 limita esse VCC a 2,7–5,5 V (`docs/DIVERGENCIAS.md`, D17).
 
 No perfboard:
 
@@ -307,8 +311,9 @@ No perfboard:
    solde as barras fêmea.
 2. Solde o MCP3008 com as fileiras a 7,62 mm (3 colunas livres entre elas, ficha 02) e o
    capacitor de 100 nF entre VDD e AGND, junto ao CI.
-3. Ligue VDD e VREF do MCP3008 e o VCC do QTR-8A no **3V3** do ESP32, nunca em 5 V
-   (`docs/WIRING.md`). Assim o DOUT do MCP3008 não põe 5 V no GPIO 12.
+3. Ligue VDD e VREF do MCP3008, o VCC do QTR-8A e o **VCC (lógica) do TB6612** no **3V3** do
+   ESP32, nunca em 5 V (`docs/WIRING.md`). Assim o DOUT do MCP3008 não põe 5 V no GPIO 12 e o
+   driver não recebe a tensão do MP1584 antes do ajuste.
 4. Solde o resistor de **10 kΩ de pull-down no GPIO 12** (MISO). O GPIO 12 é pino de
    *strapping*: em nível alto no boot a placa não liga (`docs/REVISAO_FIRMWARE.md`, item 1).
 5. Solde os resistores de **10 kΩ de pull-up** do GPIO 36 e do GPIO 39 para o 3,3 V. Esses
@@ -319,7 +324,9 @@ No perfboard:
 8. Solde o resistor de 10 kΩ de pull-down no STBY do TB6612 (motores parados até o firmware
    liberar).
 9. Ponha o capacitor de 100 µF no VM do TB6612, junto à placa.
-10. Fixe o MP1584 com fita dupla-face: o módulo mini não tem furos (ficha 07).
+10. Fixe o MP1584 com fita dupla-face: o módulo mini não tem furos (ficha 07). Solde a
+    entrada e deixe o **fio de saída (+5 V) solto**, sem ligar ao trilho de 5 V do perfboard,
+    até o ajuste da seção 5.
 11. Ligue os encoders aos GPIO 18/19 (esquerdo) e 36/39 (direito) pelo conector JST-SH de 6
     vias (ficha 04).
 
@@ -331,16 +338,19 @@ Faça na ordem, com o multímetro. Não avance com um item fora do esperado.
    continuidade em todos os pares.
 2. **Sem curto entre +BAT e GND**, com a chave ligada e sem células — esperado: mais de 1 kΩ.
 3. **Fusível de 3 A instalado** no porta-fusível — esperado: continuidade através dele.
-4. **ESP32 fora da barra fêmea** (desconectado) antes do passo 7.
+4. **Saída do MP1584 solta** (fio de +5 V sem ligação ao trilho de 5 V) e **ESP32 fora da
+   barra fêmea** antes do passo 7.
 5. **Polaridade das células.** Ponha as duas células conforme a marcação do suporte, **com a
    chave desligada** — esperado entre os fios do suporte: 7–8,4 V, com o + no fio vermelho
    (ficha 12).
 6. Ligue a chave.
-7. **Ajuste o MP1584 para 5,0 V com o ESP32 desconectado** — gire o trimpot e meça a saída;
-   esperado: 5,0 V (ficha 07: o módulo sai de fábrica com tensão arbitrária).
+7. **Ajuste o MP1584 para 5,0 V com a saída sem nenhuma carga** — gire o trimpot e meça entre o
+   fio de saída e o GND; esperado: 5,0 V (ficha 07: o módulo sai de fábrica com tensão
+   arbitrária; ajustar antes de ligar a carga).
 8. **VM do TB6612** — esperado: a mesma tensão do pack medida no passo 5.
-9. Desligue a chave, encaixe o ESP32 e ligue de novo.
-10. **3V3 no MCP3008 (VDD/VREF) e no VCC do QTR-8A** — esperado: 3,3 V.
+9. Desligue a chave, ligue a saída do MP1584 ao trilho de 5 V, encaixe o ESP32 e ligue de novo.
+10. **VIN do ESP32** — esperado: 5,0 V. **3V3 no MCP3008 (VDD/VREF), no VCC do QTR-8A e no VCC
+    do TB6612** — esperado: 3,3 V.
 11. **STBY do TB6612** com o ESP32 sem firmware ou em reset — esperado: nível baixo (0 V), rodas
     paradas.
 
@@ -436,9 +446,9 @@ Ao terminar, grave de novo o firmware principal (`pio run -e esp32dev -t upload`
 - [ ] Parafusos M3 da barra rentes à face de baixo da base
 - [ ] Chicote do QTR no canal, sem fio esmagado
 - [ ] Pull-down no GPIO 12, pull-ups nos GPIO 36/39, 100 nF no GPIO 34
-- [ ] MCP3008 e QTR-8A no 3,3 V
+- [ ] MCP3008, QTR-8A e VCC do TB6612 no 3,3 V
 - [ ] Fusível de 3 A instalado; P-MOSFET instalado (recomendado)
-- [ ] MP1584 em 5,0 V medido antes de ligar o ESP32
+- [ ] MP1584 ajustado em 5,0 V com a saída sem carga, antes de ligá-la ao trilho de 5 V
 - [ ] Os 6 testes de bancada passaram
 - [ ] Carro pronto pesado; `fios_parafusos_massa` ajustado e `build.py` rodado de novo: carga
       nos patins entre 10 e 20 % (com fios atrás do eixo ela pode cair, A-WP2-19; D7)

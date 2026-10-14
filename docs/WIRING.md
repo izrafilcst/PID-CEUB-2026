@@ -14,14 +14,16 @@ Suporte 2×18650 (2S, 6,0–8,4 V)
     │
     └── Chave liga/desliga
             │
-            ├── MP1584 buck ──► 5,0 V ──► ESP32 VIN ──► 3V3 ──► MCP3008 + QTR-8A
+            ├── MP1584 buck ──► 5,0 V ──► ESP32 VIN ──► 3V3 ──► MCP3008 + QTR-8A + VCC do TB6612
             │
             └── TB6612FNG VM (tensão do pack)
 ```
 
-> ⚠️ **Ajuste o MP1584 para 5,0 V antes de ligar o ESP32.** O módulo sai de fábrica com
-> tensão arbitrária (ficha `hardware/components/fichas/07-mp1584.md`). Meça a saída com o
-> ESP32 fora do perfboard.
+> ⚠️ **Ajuste o MP1584 para 5,0 V com a saída sem carga, antes de ligá-la ao trilho de 5 V.**
+> O módulo sai de fábrica com tensão arbitrária e a ficha manda ajustar antes de ligar a carga
+> (`hardware/components/fichas/07-mp1584.md`). Meça com o fio de saída solto e o ESP32 fora do
+> perfboard. O trilho de 5 V alimenta só o VIN do ESP32 e o buzzer: o VCC (lógica) do TB6612
+> fica no 3V3 (D17).
 
 ---
 
@@ -89,7 +91,7 @@ corrente do fusível (3 A). Fica no suporte da lateral esquerda da base.
 | GPIO 32 | BIN1 | Direção B bit 1 |
 | GPIO 4  | BIN2 | Direção B bit 2 |
 | GPIO 23 | STBY | Standby (HIGH = ativo) — pull-down de 10 kΩ: motores parados até o firmware liberar |
-| 5V | VCC | Lógica do driver |
+| 3V3 | VCC | Lógica do driver: 3,3 V do ESP32 (faixa 2,7–5,5 V, ficha 05). Não vai no 5 V do MP1584 (D17) |
 | +BAT (depois da chave) | VM | Tensão do pack (6,0–8,4 V) — capacitor de 100 µF junto à placa |
 | GND | GND | Terra |
 
@@ -231,8 +233,9 @@ fábrica) e a classe `Calibration` aprende min/max por canal.
 
 ```
 Suporte 2×18650 ── Fusível 3 A ── P-MOSFET ── Chave ──┬── MP1584 buck ── 5V ──┬── ESP32 VIN ──► 3V3 pin ─┬─ MCP3008 VDD/VREF
-                                                      │                       │                          └─ QTR-8A VCC
-                                                      │                       └── TB6612FNG VCC (lógica)
+                                                      │                       │                          ├─ QTR-8A VCC
+                                                      │                       │                          └─ TB6612FNG VCC (lógica)
+                                                      │                       └── Buzzer (por transistor)
                                                       │
                                                       ├── TB6612FNG VM (tensão do pack)
                                                       │
