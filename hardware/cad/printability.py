@@ -33,8 +33,10 @@ EXCECOES_PAREDE = {
 
 # Área máxima voltada para baixo (> 45°) acima da mesa, por peça, com a feição que justifica.
 LIMITE_BALANCO = {
-    "base": 100.0,       # abas do berço (4 × 6 × 1,5) + topo do furo ⌀11,4 nos batentes
+    "base": 125.0,       # abas do berço (4 × 6 × 1,5) + topo do furo ⌀11,4 nos batentes
                          # + teto da janela da chave (ponte de 8,8 mm)
+                         # + teto do rebaixo da abraçadeira sob a placa (ponte de 3,5 mm,
+                         #   18 × 3,5 menos os rasgos ≈ 52,5 mm²; A-WP2-04)
     "abraçadeira": 20.0,  # topo dos furos M2 das orelhas (horizontais nesta orientação)
     "barra de sensores": 10.0,
     "patim": 5.0,

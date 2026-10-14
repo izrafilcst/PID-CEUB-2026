@@ -19,7 +19,7 @@ from build123d import Compound, export_step, export_stl
 import assembly
 import printability as pr
 from params import CAD_DIR, Params, carregar
-from parts import motor_clamp, tolerance_coupon, wheel
+from parts import fixadores, motor_clamp, tolerance_coupon, wheel
 from parts.common import na_mesa
 
 QUANTIDADE = {"base": 1, "abracadeira_E": 1, "abracadeira_D": 1, "barra_sensores": 1,
@@ -112,7 +112,16 @@ def _relatorio(p: Params, verifs: list[assembly.Verificacao],
         "",
         "| Arquivo | Quantidade |",
         "|---------|------------|",
-    ] + [f"| `{n}.stl` | {q} |" for n, q in QUANTIDADE.items()]
+    ] + [f"| `{n}.stl` | {q} |" for n, q in QUANTIDADE.items()] + [
+        "",
+        "## Fixadores",
+        "",
+        "Comprimentos conferidos contra os furos do modelo (rosca útil ≥ "
+        f"{fixadores.ENGATE_MIN:.0f} mm, ponta a ≥ {fixadores.FOLGA_PONTA} mm do fundo).",
+        "",
+        "| Qtd. | Item | Onde |",
+        "|------|------|------|",
+    ] + [f"| {q} | {item} | {onde} |" for q, item, onde in fixadores.lista(p)]
     return "\n".join(linhas) + "\n"
 
 

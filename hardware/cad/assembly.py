@@ -10,7 +10,7 @@ from itertools import combinations
 from build123d import CenterOf, Part, Pos, Rot
 
 from params import Params, altura_eixo
-from parts import base, components, motor_clamp, sensor_bar, skid, wheel
+from parts import base, components, fixadores, motor_clamp, sensor_bar, skid, wheel
 from parts.common import caixa
 
 TOL_VOLUME = 1e-3   # mm³ — abaixo disso é contato de face, não interferência
@@ -59,6 +59,7 @@ def componentes(p: Params, calcos: int = 0) -> dict[str, Part]:
         "suporte 2×18650": components.suporte_bateria(p),
         "QTR-8A": components.qtr(p, calcos),
         "perfboard": components.perfboard(p),
+        **fixadores.envelopes_sob_a_base(p),
     }
 
 
@@ -149,11 +150,13 @@ def envelope(p: Params) -> tuple[float, float, float]:
 def vao_livre(p: Params, calcos: int = 0) -> tuple[float, str]:
     """(menor z, nome da peça) entre tudo que não pode chegar perto do chão.
 
-    Ficam de fora as rodas e os patins (são o apoio) e o QTR-8A, cuja face tem
-    verificação própria (sensor_altura).
+    Entram as peças impressas e os envelopes dos componentes, inclusive as cabeças de
+    parafuso e a abraçadeira que ficam sob a base. Ficam de fora as rodas e os patins (são
+    o apoio) e o QTR-8A, cuja face tem verificação própria (sensor_altura).
     """
-    pecas = {n: s for n, s in pecas_impressas(p, calcos).items()
-             if not n.startswith("patim") and not n.startswith("calços patim")}
+    pecas = {n: s for n, s in {**pecas_impressas(p, calcos), **componentes(p, calcos)}.items()
+             if not n.startswith("patim") and not n.startswith("calços patim")
+             and n != "QTR-8A"}
     return min(((s.bounding_box().min.Z, n) for n, s in pecas.items()), key=lambda t: t[0])
 
 
