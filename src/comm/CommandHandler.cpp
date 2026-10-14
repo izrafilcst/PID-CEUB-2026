@@ -26,6 +26,26 @@ void CommandHandler::sendConfig(ResponseSink& sink) const {
     if (formatCfgMeta(buf, sizeof buf, _live.profile, _dirty, _fw)) sink.send(buf);
 }
 
+void CommandHandler::sendInfo(ResponseSink& sink) const {
+    const DeviceInfo d = _infoFn ? _infoFn() : DeviceInfo{};
+    char buf[BUF];
+    if (formatInfo(buf, sizeof buf, d.name, _fw, d.cfgErr, d.stkControl, d.stkComm)) {
+        sink.send(buf);
+    }
+}
+
+void CommandHandler::sendInfoAndConfig(ResponseSink& sink) const {
+    sendInfo(sink);
+    sendConfig(sink);
+}
+
+bool CommandHandler::applyEncoderCalibration(bool left, float pprX4) {
+    // Mesma validação do set (faixa de pprL/pprR); hardware fica de fora do "dirty"
+    if (robotcfg::set(_live, left ? "pprL" : "pprR", pprX4, false) != SetResult::OK) return false;
+    _changed = true;
+    return true;
+}
+
 void CommandHandler::_reloadFromStore(uint8_t profile) {
     _store.loadHardware(_live.hw);
     _store.loadProfile(profile, _live.tune);
@@ -94,21 +114,26 @@ void CommandHandler::handle(const Command& cmd, bool running, ResponseSink& sink
             _handleSet(cmd, running, sink);
             break;
         case CmdType::GET:
-            sendConfig(sink);
+            sendInfoAndConfig(sink);
             break;
         case CmdType::SAVE: {
             if (running) { _ack(sink, "save", false, "running"); break; }
+            NvsWriteGuard nvs(_nvs);
+            if (!nvs.acquired()) { _ack(sink, "save", false, "running"); break; }
             const bool ok = _store.saveActive(_live);
             if (ok) _dirty = false;
             _ack(sink, "save", ok, ok ? nullptr : "store");
             break;
         }
-        case CmdType::LOAD:
+        case CmdType::LOAD: {
             if (running) { _ack(sink, "load", false, "running"); break; }
+            NvsWriteGuard nvs(_nvs);
+            if (!nvs.acquired()) { _ack(sink, "load", false, "running"); break; }
             _reloadFromStore(_live.profile);
             _ack(sink, "load", true, nullptr);
             sendConfig(sink);
             break;
+        }
         case CmdType::DEFAULTS:
             if (running) { _ack(sink, "defaults", false, "running"); break; }
             _live.hw = robotcfg::factoryHardware();
@@ -118,19 +143,24 @@ void CommandHandler::handle(const Command& cmd, bool running, ResponseSink& sink
             _ack(sink, "defaults", true, nullptr);
             sendConfig(sink);
             break;
-        case CmdType::PROFILE:
+        case CmdType::PROFILE: {
             if (cmd.profile >= PROFILE_COUNT) { _ack(sink, "prof", false, "range"); break; }
             if (running) { _ack(sink, "prof", false, "running"); break; }
             if (_dirty && !cmd.force) { _ack(sink, "prof", false, "dirty"); break; }
+            NvsWriteGuard nvs(_nvs);
+            if (!nvs.acquired()) { _ack(sink, "prof", false, "running"); break; }
             _reloadFromStore(cmd.profile);
             _ack(sink, "prof", true, nullptr);
             sendConfig(sink);
             break;
+        }
         case CmdType::SENSOR_CAL:
             msg.req = ControlRequest::SENSOR_CAL;
             _ack(sink, "scal", true, nullptr);
             break;
         case CmdType::START:
+            // E-4: sem RPM válido a cascata iria a potência total
+            if (encoderCalOpen()) { _ack(sink, "start", false, "cal"); break; }
             msg.req = ControlRequest::START;
             _ack(sink, "start", true, nullptr);
             break;
@@ -139,6 +169,7 @@ void CommandHandler::handle(const Command& cmd, bool running, ResponseSink& sink
             _ack(sink, "stop", true, nullptr);
             break;
         case CmdType::RESET:
+            _encCalOpenL = _encCalOpenR = false;  // a control cancela as calibrações abertas
             msg.req = ControlRequest::RESET;
             _ack(sink, "reset", true, nullptr);
             break;
@@ -149,6 +180,7 @@ void CommandHandler::handle(const Command& cmd, bool running, ResponseSink& sink
                                                            : ControlRequest::ENC_CAL_FINISH;
             msg.leftSide = cmd.leftSide;
             msg.rotations = cmd.rotations;
+            (cmd.leftSide ? _encCalOpenL : _encCalOpenR) = (cmd.type == CmdType::ENC_CAL_START);
             _ack(sink, "cal", true, nullptr);
             break;
         case CmdType::NONE:

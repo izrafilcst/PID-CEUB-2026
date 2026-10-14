@@ -166,8 +166,14 @@ bool parseCommand(const char* json, Command& out) {
         if (std::strcmp(op, "start") == 0) out.type = CmdType::ENC_CAL_START;
         else if (std::strcmp(op, "finish") == 0) out.type = CmdType::ENC_CAL_FINISH;
         else return fail(out);
+        // rot: inteiro finito em 1–1000; validar antes do cast (float → int fora da faixa é UB)
         float rot = 10.0f;
-        readNumber(json, "rot", rot);
+        if (findValue(json, "rot")) {
+            if (!readNumber(json, "rot", rot) || !std::isfinite(rot) || rot < 1.0f ||
+                rot > 1000.0f || rot != std::floor(rot)) {
+                return fail(out);
+            }
+        }
         out.rotations = static_cast<int>(rot);
         char side[4];
         out.leftSide = !(readString(json, "side", side, sizeof side) && side[0] == 'R');

@@ -1,12 +1,13 @@
 #pragma once
 #include <cstdint>
 
-enum class ButtonEvent : uint8_t { NONE, SHORT, LONG };
+enum class ButtonEvent : uint8_t { NONE, SHORT, LONG, PRESS };
 
 /**
  * Botão com debounce e toque curto/longo (spec §4.6, F-04).
- * SHORT: soltar antes de shortMaxMs. LONG: dispara ao completar longMs segurando, sem esperar
- * soltar. Entre os dois, nada. Depois de um LONG, soltar não gera SHORT.
+ * PRESS: uma vez por aperto, quando ele passa do debounce (E-3: em ARMED/RUNNING o carro para
+ * aí). SHORT: soltar antes de shortMaxMs. LONG: dispara ao completar longMs segurando, sem
+ * esperar soltar. Entre os dois, nada. Depois de um LONG, soltar não gera SHORT.
  */
 class ButtonInput {
 public:

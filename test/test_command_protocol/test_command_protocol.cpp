@@ -112,6 +112,31 @@ void test_command_protocol_encoder_calibration() {
     TEST_ASSERT_EQUAL(CmdType::NONE, parse("{\"t\":\"cal\",\"op\":\"x\"}").type);
 }
 
+// A-WP1-08: rot fora de 1–1000, não inteiro ou não finito é recusado antes do cast
+void test_command_protocol_encoder_calibration_rejects_bad_rotations() {
+    const char* bad[] = {
+        "{\"t\":\"cal\",\"op\":\"finish\",\"rot\":1e20}",
+        "{\"t\":\"cal\",\"op\":\"finish\",\"rot\":nan}",
+        "{\"t\":\"cal\",\"op\":\"finish\",\"rot\":inf}",
+        "{\"t\":\"cal\",\"op\":\"finish\",\"rot\":0}",
+        "{\"t\":\"cal\",\"op\":\"finish\",\"rot\":-3}",
+        "{\"t\":\"cal\",\"op\":\"finish\",\"rot\":1001}",
+        "{\"t\":\"cal\",\"op\":\"finish\",\"rot\":2.5}",
+        "{\"t\":\"cal\",\"op\":\"finish\",\"rot\":\"dez\"}"};
+    for (const char* json : bad) {
+        Command c;
+        TEST_ASSERT_FALSE_MESSAGE(parseCommand(json, c), json);
+        TEST_ASSERT_EQUAL_MESSAGE(CmdType::NONE, c.type, json);
+    }
+}
+
+void test_command_protocol_encoder_calibration_rotation_limits() {
+    TEST_ASSERT_EQUAL_INT(1, parse("{\"t\":\"cal\",\"op\":\"finish\",\"rot\":1}").rotations);
+    TEST_ASSERT_EQUAL_INT(1000,
+                          parse("{\"t\":\"cal\",\"op\":\"finish\",\"rot\":1000}").rotations);
+    TEST_ASSERT_EQUAL_INT(10, parse("{\"t\":\"cal\",\"op\":\"finish\"}").rotations);  // padrão
+}
+
 void test_command_protocol_format_ack() {
     char buf[96];
     TEST_ASSERT_TRUE(formatAck(buf, sizeof buf, "kp", SetResult::OK, 1.2f));
@@ -269,6 +294,8 @@ int main() {
     RUN_TEST(test_command_protocol_legacy_rpm_maps_max_only);
     RUN_TEST(test_command_protocol_legacy_pid_without_fields_fails);
     RUN_TEST(test_command_protocol_encoder_calibration);
+    RUN_TEST(test_command_protocol_encoder_calibration_rejects_bad_rotations);
+    RUN_TEST(test_command_protocol_encoder_calibration_rotation_limits);
     RUN_TEST(test_command_protocol_format_ack);
     RUN_TEST(test_command_protocol_format_ack_simple);
     RUN_TEST(test_command_protocol_format_cfg_group_pid);

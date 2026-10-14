@@ -27,6 +27,7 @@ struct ControlOutputs {
     float spR = 0.0f;
     bool  lost = false;
     bool  lostTimeout = false;
+    bool  encoderFault = false;  ///< mode 1: duty alto com RPM ≈ 0 por ENC_FAULT_MS (E-4)
 };
 
 /**
@@ -43,6 +44,7 @@ public:
 
 private:
     static float _signed(float rpm, uint8_t inverted) { return inverted ? -rpm : rpm; }
+    bool _encoderStalled(const ControlInputs& in, const MotorDuties& d) const;
 
     Calibration&      _cal;
     PIDController     _outer;
@@ -53,5 +55,7 @@ private:
     CascadeController _cascade;
     OutputStage       _output;
     RobotConfig       _cfg;
+    int               _pwmMax;
     uint32_t          _lostUs = 0;
+    uint32_t          _encStallUs = 0;
 };

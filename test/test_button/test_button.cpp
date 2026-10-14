@@ -7,6 +7,8 @@ void tearDown() {}
 struct Counts {
     int shortCount = 0;
     int longCount = 0;
+    int pressCount = 0;
+    int64_t firstPressAt = -1;
 };
 
 // Alimenta o botão com o mesmo nível de `from` até `to` (exclusivo), em passos de 1 ms
@@ -15,6 +17,10 @@ static void feed(ButtonInput& b, bool pressed, uint32_t from, uint32_t to, Count
         const ButtonEvent e = b.update(pressed, t);
         if (e == ButtonEvent::SHORT) c.shortCount++;
         if (e == ButtonEvent::LONG) c.longCount++;
+        if (e == ButtonEvent::PRESS) {
+            if (c.pressCount == 0) c.firstPressAt = t;
+            c.pressCount++;
+        }
     }
 }
 
@@ -79,6 +85,40 @@ void test_button_held_from_boot_fires_single_long() {
     feed(b, false, 5000, 5100, c);
     TEST_ASSERT_EQUAL_INT(1, c.longCount);
     TEST_ASSERT_EQUAL_INT(0, c.shortCount);
+    TEST_ASSERT_EQUAL_INT(1, c.pressCount);  // cai em IDLE/READY, onde não tem efeito
+}
+
+// E-3: PRESS na borda já filtrada do aperto, uma vez por aperto
+void test_button_press_event_on_debounced_edge() {
+    ButtonInput b;
+    Counts c;
+    feed(b, false, 0, 50, c);
+    feed(b, true, 50, 400, c);
+    TEST_ASSERT_EQUAL_INT(1, c.pressCount);
+    TEST_ASSERT_EQUAL_INT(80, static_cast<int>(c.firstPressAt));  // 50 + 30 ms de debounce
+    feed(b, false, 400, 500, c);
+    feed(b, true, 500, 600, c);
+    TEST_ASSERT_EQUAL_INT(2, c.pressCount);
+}
+
+void test_button_press_then_short_on_quick_release() {
+    ButtonInput b;
+    Counts c;
+    feed(b, false, 0, 10, c);
+    feed(b, true, 10, 200, c);
+    TEST_ASSERT_EQUAL_INT(1, c.pressCount);
+    TEST_ASSERT_EQUAL_INT(0, c.shortCount);
+    feed(b, false, 200, 300, c);
+    TEST_ASSERT_EQUAL_INT(1, c.shortCount);
+}
+
+void test_button_glitch_gives_no_press() {
+    ButtonInput b;
+    Counts c;
+    feed(b, false, 0, 50, c);
+    feed(b, true, 50, 60, c);
+    feed(b, false, 60, 200, c);
+    TEST_ASSERT_EQUAL_INT(0, c.pressCount);
 }
 
 int main() {
@@ -89,5 +129,8 @@ int main() {
     RUN_TEST(test_button_long_press_fires_while_held_and_not_short);
     RUN_TEST(test_button_medium_press_fires_nothing);
     RUN_TEST(test_button_held_from_boot_fires_single_long);
+    RUN_TEST(test_button_press_event_on_debounced_edge);
+    RUN_TEST(test_button_press_then_short_on_quick_release);
+    RUN_TEST(test_button_glitch_gives_no_press);
     return UNITY_END();
 }

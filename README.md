@@ -2,7 +2,7 @@
 
 Firmware completo em C++17 para robô seguidor de linha baseado em ESP32, desenvolvido com TDD estrito (Red → Green → Refactor). Projetado para competições brasileiras (RoboCore, IronCup, Salão de Robótica).
 
-**226 testes nativos em 21 suítes • 0 warnings de `src/` • laço de controle a 500 Hz no core 1 •
+**271 testes nativos em 23 suítes • 0 warnings de `src/` • laço de controle a 500 Hz no core 1 •
 toda a configuração ajustável por BLE e persistida na NVS (firmware 4.0.0)**
 
 ---
@@ -44,7 +44,7 @@ pio run -e esp32dev --target upload
 pio test -e native
 ```
 
-Saída esperada: `226 test cases: 226 succeeded`
+Saída esperada: `271 test cases: 271 succeeded`
 
 ---
 
@@ -87,7 +87,7 @@ Saída esperada: `226 test cases: 226 succeeded`
 │   │   └── Logger                # (sem uso na v2)
 │   └── storage/                  # IPersistentStore: NvsStore (ESP32) e InMemoryStore (testes)
 │
-├── test/                         # 21 suítes Unity, ambiente native
+├── test/                         # 23 suítes Unity, ambiente native
 │
 ├── examples/                     # 6 testes de bancada, um ambiente bench_* cada
 │
@@ -132,22 +132,25 @@ IDLE ──toque longo / scal──► CALIBRATING ──5 s, canais ok──►
 | IDLE | toque curto | READY | só com calibração válida |
 | CALIBRATING | 5 s | READY | todos os canais com max − min ≥ 200 → salva na NVS |
 | CALIBRATING | 5 s | ERROR(4) | algum canal estreito; `calres` lista os canais |
-| READY | toque curto ou `start` | ARMED | V_bat ≥ `vcut`; senão ERROR(3) |
+| READY | toque curto ou `start` | ARMED | V_bat ≥ `vcut`; senão ERROR(3). Recusado com calibração de encoder aberta (E-4) |
 | READY | toque longo ou `scal` | CALIBRATING | — |
 | ARMED | `startMs` | RUNNING | PIDs alinhados à medida atual; rampa parte de 0 |
-| ARMED / RUNNING | toque curto ou `stop` | READY | motores freiam |
+| ARMED / RUNNING | aperto do botão ou `stop` | READY | motores freiam; o aperto é consumido (E-3) |
 | RUNNING | linha perdida por `lostMs` | ERROR(2) | motores param |
 | RUNNING | V_bat < `vcut` por 1 s | ERROR(3) | motores param |
 | RUNNING | 5 ciclos seguidos acima de 2000 µs | ERROR(1) | motores param |
+| RUNNING | `mode` = 1 e uma roda com duty ≥ 60 % e \|RPM\| < 5 % de `rpmMax` por 200 ms | ERROR(5) | motores param (E-4) |
 | ERROR | toque curto | READY ou IDLE | READY se a calibração for válida |
 | qualquer | `reset` | IDLE | motores param |
 
 Códigos de erro: 1 = laço atrasado, 2 = linha perdida, 3 = bateria baixa, 4 = calibração
-inválida.
+inválida, 5 = encoder sem leitura no modo cascata (E-4).
 
 **Botão (GPIO 0)**: debounce de 30 ms. **Toque curto** = soltar antes de 800 ms. **Toque longo**
 = segurar 1,5 s (dispara ao completar o tempo, sem esperar soltar; ao soltar não gera toque
-curto). Entre 800 ms e 1,5 s, nada. Ligar o carro com o botão apertado entra no modo de gravação
+curto). Entre 800 ms e 1,5 s, nada. **Em ARMED e RUNNING o botão age no aperto** (E-3): o carro
+para assim que o aperto passa do debounce, sem esperar soltar — é a parada de emergência. Esse
+aperto é consumido: soltá-lo não arma de novo e segurá-lo não entra em CALIBRATING. Ligar o carro com o botão apertado entra no modo de gravação
 do ESP32 (GPIO 0 é pino de *strapping*), não é um toque longo.
 
 **Sinalização**: IDLE pisca 1 Hz · CALIBRATING pisca 5 Hz e bipa ao entrar e ao sair · READY
@@ -244,7 +247,7 @@ e pelo UUID do serviço. MTU preferido 185; **toda notificação cabe em 180 byt
 | Comando | Efeito | Resposta |
 |---------|--------|----------|
 | `{"t":"set","k":"kp","v":1.2}` | Valida e aplica ao vivo (não persiste) | `{"t":"ack","k":"kp","ok":1,"v":1.2}` ou `{"t":"ack","k":"kp","ok":0,"err":"range"}` |
-| `{"t":"get"}` | Pede a configuração inteira | `cfg` dos grupos `hw`, `pid`, `vel`, `spd`, `misc` e `meta` |
+| `{"t":"get"}` | Pede a identificação e a configuração inteira | `info`, depois `cfg` dos grupos `hw`, `pid`, `vel`, `spd`, `misc` e `meta` |
 | `{"t":"save"}` | Grava `HardwareConfig` + perfil ativo na NVS | `ack` com `k:"save"` |
 | `{"t":"load"}` | Descarta mudanças não salvas e relê o perfil ativo | `ack` + sequência `cfg` |
 | `{"t":"defaults"}` | Valores de fábrica ao vivo (não persiste) | `ack` + sequência `cfg` |
@@ -256,7 +259,8 @@ e pelo UUID do serviço. MTU preferido 185; **toda notificação cabe em 180 byt
 Erros do `ack`: `range` (fora da faixa ou valor não finito), `key` (chave desconhecida),
 `running` (não permitido em ARMED/RUNNING), `dirty` (salve ou descarte antes de trocar de
 perfil), `store` (falha ao gravar), `parse` (JSON inválido; `k:"?"`), `locked` (modo
-competição).
+competição), `cal` (`start` com calibração de encoder aberta: termine com `cal finish` ou
+`reset`).
 
 Regras: chaves de `HardwareConfig` e `mode`, `save`/`load`/`defaults`/`prof` e `cal` são
 recusados em ARMED/RUNNING (`err:"running"`). Gravar na flash suspende o cache dos dois
@@ -275,7 +279,8 @@ muda (`start` em READY continua aceito). O botão continua parando o carro.
 
 ### Frames enviados pelo robô
 
-`info` — ao conectar; `cfgerr` = 1 quando a configuração salva estava ausente ou inválida
+`info` — quando o cliente ativa as notificações da `0xABCD` (junto com a sequência `cfg`) e em
+resposta a cada `get`; `cfgerr` = 1 quando a configuração salva estava ausente ou inválida
 (o carro está nos valores de fábrica); `stk` = menor folga de pilha das tasks `control` e
 `comm` desde o boot, em bytes:
 ```json
@@ -545,26 +550,28 @@ pio test -e esp32dev
 |-------|--------|--------|
 | test_annunciator | 7 | Annunciator |
 | test_battery | 7 | BatteryMonitor |
-| test_ble_tuner | 3 | BLETuner (transporte) |
-| test_button | 6 | ButtonInput |
+| test_ble_tuner | 5 | BLETuner (transporte, inscrição nas notificações) |
+| test_button | 9 | ButtonInput |
 | test_calibration | 18 | Calibration |
 | test_cascade | 12 | CascadeController, Mixer |
-| test_command_handler | 18 | CommandHandler, Mailbox, modo competição |
-| test_command_protocol | 23 | CommandProtocol, CommandQueue |
+| test_command_handler | 27 | CommandHandler, Mailbox, modo competição, info, NVS, cal de encoder |
+| test_command_protocol | 25 | CommandProtocol, CommandQueue |
 | test_config_store | 14 | ConfigStore, InMemoryStore |
-| test_control_loop | 14 | ControlLoop (cenários F-01, F-03, F-05, F-06, F-08, F-14) |
+| test_control_loop | 17 | ControlLoop (cenários F-01, F-03, F-05, F-06, F-08, F-14; falha de encoder) |
 | test_encoder | 9 | Encoder |
 | test_lap_timer | 4 | LapTimer |
 | test_line_follower | 11 | LineFollower |
+| test_nvs_arbiter | 7 | NvsArbiter (NVS × carro armado) |
 | test_output_stage | 8 | OutputStage |
+| test_periodic_timer | 4 | PeriodicTimer (tel a 30 Hz) |
 | test_pid | 15 | PIDController |
 | test_robot_config | 14 | RobotConfig |
 | test_smoke | 1 | Framework |
 | test_speed_profile | 10 | SpeedProfile |
-| test_state_machine | 15 | RobotStateMachine |
-| test_velocity_estimator | 13 | VelocityEstimator |
+| test_state_machine | 25 | RobotStateMachine (botão no aperto, ERROR(ENC)) |
+| test_velocity_estimator | 18 | VelocityEstimator |
 | test_velocity_profile | 4 | VelocityProfile |
-| **Total** | **226** | |
+| **Total** | **271** | |
 
 ---
 

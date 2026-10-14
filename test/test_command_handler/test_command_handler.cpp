@@ -6,6 +6,7 @@
 #include "comm/CommandProtocol.h"
 #include "comm/Mailbox.h"
 #include "config/ConfigStore.h"
+#include "storage/NvsArbiter.h"
 #include "storage/InMemoryStore.h"
 
 class VectorSink : public ResponseSink {
@@ -142,7 +143,7 @@ void test_command_handler_profile_out_of_range() {
 
 void test_command_handler_get_sends_all_groups_within_limit() {
     send("{\"t\":\"get\"}");
-    TEST_ASSERT_EQUAL_UINT32(robotcfg::GROUP_COUNT + 1, sink.msgs.size());
+    TEST_ASSERT_EQUAL_UINT32(robotcfg::GROUP_COUNT + 2, sink.msgs.size());  // info + grupos + meta
     for (const std::string& m : sink.msgs) TEST_ASSERT_TRUE(m.size() <= BLE_MAX_MSG);
     TEST_ASSERT_TRUE(sink.contains("\"g\":\"meta\""));
 }
@@ -210,6 +211,109 @@ void test_command_handler_unlocked_stop_still_works_while_running() {
     TEST_ASSERT_EQUAL(ControlRequest::STOP, m.req);
 }
 
+// A-WP1-01: o info (fw, cfgerr, stk) também sai no get, antes dos cfg
+static DeviceInfo fakeInfo() {
+    DeviceInfo d;
+    d.name = "LFR-TEST";
+    d.cfgErr = true;
+    d.stkControl = 1234;
+    d.stkComm = 5678;
+    return d;
+}
+
+void test_command_handler_get_sends_info_before_config() {
+    h->setInfoSource(fakeInfo);
+    send("{\"t\":\"get\"}");
+    TEST_ASSERT_EQUAL_UINT32(robotcfg::GROUP_COUNT + 2, sink.msgs.size());
+    TEST_ASSERT_EQUAL_STRING(
+        "{\"t\":\"info\",\"name\":\"LFR-TEST\",\"fw\":\"4.0.0\",\"mode\":\"RUN\","
+        "\"cfgerr\":1,\"stk\":[1234,5678]}", sink.msgs[0].c_str());
+    TEST_ASSERT_NOT_NULL(std::strstr(sink.msgs[1].c_str(), "\"g\":\"hw\""));
+    TEST_ASSERT_NOT_NULL(std::strstr(sink.msgs.back().c_str(), "\"g\":\"meta\""));
+}
+
+// A-WP1-01: o mesmo par info + cfg que o comm manda quando o cliente se inscreve
+void test_command_handler_info_and_config_on_subscribe() {
+    h->setInfoSource(fakeInfo);
+    h->sendInfoAndConfig(sink);
+    TEST_ASSERT_EQUAL_UINT32(robotcfg::GROUP_COUNT + 2, sink.msgs.size());
+    TEST_ASSERT_NOT_NULL(std::strstr(sink.msgs[0].c_str(), "\"t\":\"info\""));
+    TEST_ASSERT_NOT_NULL(std::strstr(sink.msgs[0].c_str(), "\"cfgerr\":1"));
+}
+
+void test_command_handler_info_without_source_has_safe_defaults() {
+    send("{\"t\":\"get\"}");
+    TEST_ASSERT_NOT_NULL(std::strstr(sink.msgs[0].c_str(), "\"cfgerr\":0,\"stk\":[0,0]"));
+}
+
+// A-WP1-04 (b): o PPR do ecal entra na config viva (sem "dirty") e vai para a Mailbox
+void test_command_handler_encoder_cal_result_updates_live_ppr() {
+    TEST_ASSERT_TRUE(h->applyEncoderCalibration(true, 612.5f));
+    TEST_ASSERT_FLOAT_WITHIN(1e-3f, 612.5f, live.hw.pprL);
+    TEST_ASSERT_FLOAT_WITHIN(1e-3f, 600.0f, live.hw.pprR);
+    TEST_ASSERT_FALSE(h->dirty());
+    TEST_ASSERT_TRUE(h->consumeConfigChanged());  // a comm publica na Mailbox
+    TEST_ASSERT_TRUE(h->applyEncoderCalibration(false, 590.0f));
+    TEST_ASSERT_FLOAT_WITHIN(1e-3f, 590.0f, live.hw.pprR);
+}
+
+// A-WP1-04 (c): fora de 1–10000 não entra (senão todo save falharia)
+void test_command_handler_encoder_cal_result_out_of_range_is_ignored() {
+    TEST_ASSERT_FALSE(h->applyEncoderCalibration(true, 20000.0f));
+    TEST_ASSERT_FLOAT_WITHIN(1e-3f, 600.0f, live.hw.pprL);
+    TEST_ASSERT_FALSE(h->consumeConfigChanged());
+    send("{\"t\":\"save\"}");
+    TEST_ASSERT_TRUE(sink.contains("\"k\":\"save\",\"ok\":1"));
+}
+
+// A-WP1-05: o g_state lido pela comm ainda diz READY, mas a control já armou
+void test_command_handler_nvs_ops_refused_when_control_armed() {
+    NvsArbiter nvs;
+    h->setNvsArbiter(&nvs);
+    send("{\"t\":\"set\",\"k\":\"kp\",\"v\":2}");
+    TEST_ASSERT_TRUE(nvs.tryArm());
+    send("{\"t\":\"save\"}", false);
+    TEST_ASSERT_TRUE(sink.contains("\"k\":\"save\",\"ok\":0,\"err\":\"running\""));
+    TEST_ASSERT_FALSE(mem->exists("prof0"));
+    send("{\"t\":\"load\"}", false);
+    TEST_ASSERT_TRUE(sink.contains("\"k\":\"load\",\"ok\":0,\"err\":\"running\""));
+    send("{\"t\":\"prof\",\"n\":1,\"f\":1}", false);
+    TEST_ASSERT_TRUE(sink.contains("\"k\":\"prof\",\"ok\":0,\"err\":\"running\""));
+    TEST_ASSERT_EQUAL_UINT8(0, live.profile);
+    TEST_ASSERT_TRUE(h->dirty());
+}
+
+void test_command_handler_nvs_released_after_save() {
+    NvsArbiter nvs;
+    h->setNvsArbiter(&nvs);
+    send("{\"t\":\"save\"}");
+    TEST_ASSERT_TRUE(sink.contains("\"k\":\"save\",\"ok\":1"));
+    TEST_ASSERT_FALSE(nvs.writeInProgress());
+    TEST_ASSERT_TRUE(nvs.tryArm());
+}
+
+// E-4: start com a calibração de encoder aberta é recusado na comm
+void test_command_handler_start_refused_while_encoder_cal_open() {
+    TEST_ASSERT_EQUAL(ControlRequest::ENC_CAL_START,
+                      sendForMsg("{\"t\":\"cal\",\"op\":\"start\",\"side\":\"L\"}").req);
+    sink.msgs.clear();
+    const ControlMsg m = sendForMsg("{\"t\":\"start\"}");
+    TEST_ASSERT_EQUAL(ControlRequest::NONE, m.req);
+    TEST_ASSERT_TRUE(sink.contains("\"k\":\"start\",\"ok\":0,\"err\":\"cal\""));
+}
+
+void test_command_handler_encoder_cal_closed_by_finish_and_reset() {
+    send("{\"t\":\"cal\",\"op\":\"start\",\"side\":\"L\"}");
+    send("{\"t\":\"cal\",\"op\":\"start\",\"side\":\"R\"}");
+    send("{\"t\":\"cal\",\"op\":\"finish\",\"side\":\"L\",\"rot\":10}");
+    TEST_ASSERT_EQUAL(ControlRequest::NONE, sendForMsg("{\"t\":\"start\"}").req);  // R aberto
+    send("{\"t\":\"cal\",\"op\":\"finish\",\"side\":\"R\",\"rot\":10}");
+    TEST_ASSERT_EQUAL(ControlRequest::START, sendForMsg("{\"t\":\"start\"}").req);
+    send("{\"t\":\"cal\",\"op\":\"start\",\"side\":\"R\"}");
+    TEST_ASSERT_EQUAL(ControlRequest::RESET, sendForMsg("{\"t\":\"reset\"}").req);
+    TEST_ASSERT_EQUAL(ControlRequest::START, sendForMsg("{\"t\":\"start\"}").req);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_command_handler_set_applies_and_marks_dirty);
@@ -230,5 +334,14 @@ int main() {
     RUN_TEST(test_command_handler_lock_refuses_everything_while_running);
     RUN_TEST(test_command_handler_lock_keeps_commands_outside_run);
     RUN_TEST(test_command_handler_unlocked_stop_still_works_while_running);
+    RUN_TEST(test_command_handler_get_sends_info_before_config);
+    RUN_TEST(test_command_handler_info_and_config_on_subscribe);
+    RUN_TEST(test_command_handler_info_without_source_has_safe_defaults);
+    RUN_TEST(test_command_handler_encoder_cal_result_updates_live_ppr);
+    RUN_TEST(test_command_handler_encoder_cal_result_out_of_range_is_ignored);
+    RUN_TEST(test_command_handler_nvs_ops_refused_when_control_armed);
+    RUN_TEST(test_command_handler_nvs_released_after_save);
+    RUN_TEST(test_command_handler_start_refused_while_encoder_cal_open);
+    RUN_TEST(test_command_handler_encoder_cal_closed_by_finish_and_reset);
     return UNITY_END();
 }

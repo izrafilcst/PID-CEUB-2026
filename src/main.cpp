@@ -17,6 +17,7 @@
 #include "comm/CommandHandler.h"
 #include "comm/CommandProtocol.h"
 #include "comm/Mailbox.h"
+#include "comm/PeriodicTimer.h"
 #include "comm/Telemetry.h"
 #include "config/ConfigStore.h"
 #include "config/RobotConfig.h"
@@ -27,6 +28,7 @@
 #include "sensors/Encoder.h"
 #include "sensors/SensorArray.h"
 #include "sensors/VelocityEstimator.h"
+#include "storage/NvsArbiter.h"
 #include "storage/NvsStore.h"
 #include "strategy/ControlLoop.h"
 #include "strategy/RobotStateMachine.h"
@@ -70,6 +72,7 @@ static Mailbox<StatusFrame>    g_staBox;  // control → comm
 static Mailbox<CalReport>      g_calBox;  // control → comm
 static QueueHandle_t           g_ctlQueue = nullptr;  // comm → control (ControlMsg)
 static std::atomic<uint8_t>    g_state{0};
+static NvsArbiter              g_nvs;     // NVS (comm) × carro armado (control), A-WP1-05
 static bool g_cfgErr = false;
 static bool g_calValidAtBoot = false;
 // Handles para medir a folga de pilha (info "stk", E-2). Gravados por xTaskCreatePinnedToCore
@@ -82,7 +85,11 @@ static void applyRequest(const ControlMsg& msg, RobotStateMachine& sm, const SmI
     switch (msg.req) {
         case ControlRequest::START:      sm.handle(SmEvent::CMD_START, in, nowMs); break;
         case ControlRequest::STOP:       sm.handle(SmEvent::CMD_STOP, in, nowMs); break;
-        case ControlRequest::RESET:      sm.handle(SmEvent::CMD_RESET, in, nowMs); break;
+        case ControlRequest::RESET:
+            velL.cancelCalibration();  // E-4: reset fecha a calibração de encoder aberta
+            velR.cancelCalibration();
+            sm.handle(SmEvent::CMD_RESET, in, nowMs);
+            break;
         case ControlRequest::SENSOR_CAL: sm.handle(SmEvent::CMD_SENSOR_CAL, in, nowMs); break;
         case ControlRequest::ENC_CAL_START:
             if (!sm.isActive()) {
@@ -136,7 +143,7 @@ static void taskControl(void*) {
     velL.setPprX4(cfg.hw.pprL);
     velR.setPprX4(cfg.hw.pprR);
 
-    RobotStateMachine sm(g_calValidAtBoot, millis());
+    RobotStateMachine sm(g_calValidAtBoot, millis(), &g_nvs);
     annunciator.onState(sm.state(), sm.error(), millis());
     if (g_cfgErr) annunciator.beep(3, 60, 60, millis());
 
@@ -172,11 +179,13 @@ static void taskControl(void*) {
         SmInputs in;
         in.calibrationValid = calibration.isValid();
         in.batteryOk = battery.hasReading() && battery.volts() >= cfg.hw.vcut;
+        in.encoderCalOpen = velL.isCalibrating() || velR.isCalibrating();
 
         ControlMsg msg;
         while (xQueueReceive(g_ctlQueue, &msg, 0) == pdTRUE) applyRequest(msg, sm, in, nowMs);
 
         const ButtonEvent be = button.update(digitalRead(PIN_BTN_START) == LOW, nowMs);
+        if (be == ButtonEvent::PRESS) sm.handle(SmEvent::BTN_PRESS, in, nowMs);
         if (be == ButtonEvent::SHORT) sm.handle(SmEvent::BTN_SHORT, in, nowMs);
         if (be == ButtonEvent::LONG) sm.handle(SmEvent::BTN_LONG, in, nowMs);
 
@@ -214,6 +223,7 @@ static void taskControl(void*) {
             motors.setSpeed(MotorId::A, out.duties.a);
             motors.setSpeed(MotorId::B, out.duties.b);
             if (out.lostTimeout) sm.handle(SmEvent::LINE_LOST_TIMEOUT, in, nowMs);
+            if (out.encoderFault) sm.handle(SmEvent::ENCODER_FAULT, in, nowMs);
             if (battery.isLow()) sm.handle(SmEvent::BATTERY_LOW, in, nowMs);
         } else {
             out = ControlOutputs{};
@@ -254,6 +264,16 @@ static void taskControl(void*) {
 }
 
 // ═══ Task comm — core 0, 100 Hz ════════════════════════════════════════════
+static DeviceInfo currentInfo() {
+    DeviceInfo d;
+    d.name = DEVICE_NAME;
+    d.cfgErr = g_cfgErr;
+    // No ESP-IDF a folga de pilha já sai em bytes
+    d.stkControl = g_controlTask ? uxTaskGetStackHighWaterMark(g_controlTask) : 0;
+    d.stkComm = uxTaskGetStackHighWaterMark(g_commTask);
+    return d;
+}
+
 class BleSink : public ResponseSink {
 public:
     void send(const char* json) override { ble.notify(json); }
@@ -263,27 +283,22 @@ static void taskComm(void*) {
     ble.begin(DEVICE_NAME);
     BleSink sink;
     CommandHandler handler(g_liveCfg, configStore, FW_VERSION);
+    handler.setInfoSource(currentInfo);
+    handler.setNvsArbiter(&g_nvs);
     char in[CommandQueue::MAX_LEN];
     char outBuf[192];
     uint32_t telSeen = 0;
     uint32_t staSeen = 0;
     uint32_t calSeen = 0;
-    uint32_t lastTel = 0;
+    PeriodicTimer telTimer(TELEMETRY_MS);  // ~30 Hz sem deriva (A-WP1-06)
 
     for (;;) {
         const uint32_t nowMs = millis();
 
-        if (ble.consumeNewConnection()) {
-            // No ESP-IDF a folga de pilha já sai em bytes
-            const uint32_t stkControl =
-                g_controlTask ? uxTaskGetStackHighWaterMark(g_controlTask) : 0;
-            const uint32_t stkComm = uxTaskGetStackHighWaterMark(g_commTask);
-            if (formatInfo(outBuf, sizeof outBuf, DEVICE_NAME, FW_VERSION, g_cfgErr,
-                           stkControl, stkComm)) {
-                ble.notify(outBuf);
-            }
-            handler.sendConfig(sink);
-        }
+        // No onConnect o cliente ainda não se inscreveu: info + cfg saem na inscrição
+        // (A-WP1-01) e de novo a cada get
+        ble.consumeNewConnection();
+        if (ble.consumeNewSubscription()) handler.sendInfoAndConfig(sink);
 
         while (ble.popCommand(in, sizeof in)) {
             Command cmd;
@@ -306,14 +321,13 @@ static void taskComm(void*) {
                 : formatEncCal(outBuf, sizeof outBuf, cr);
             if (ok) ble.notify(outBuf);
             if (cr.kind == CalReport::Kind::ENCODER && cr.ok) {
-                // PPR já persistido pelo VelocityEstimator; espelha na config viva sem "dirty"
-                RobotConfig& live = g_liveCfg;
-                (cr.left ? live.hw.pprL : live.hw.pprR) = cr.ppr;
+                // PPR já persistido pelo VelocityEstimator; espelha na config viva e publica
+                handler.applyEncoderCalibration(cr.left, cr.ppr);
             }
+            if (handler.consumeConfigChanged()) g_cfgBox.post(handler.live());
         }
 
-        if (nowMs - lastTel >= TELEMETRY_MS) {
-            lastTel = nowMs;
+        if (telTimer.due(nowMs)) {
             TelemetryFrame tf;
             if (g_telBox.fetch(tf, telSeen) && formatTelemetry(outBuf, sizeof outBuf, tf)) {
                 ble.notify(outBuf);

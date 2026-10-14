@@ -49,6 +49,9 @@ public:
     // 3. finishCalibration(N) — calcula PPR = count/N e grava no store.
     void startCalibration();
     bool finishCalibration(int rotations);
+    /** Abandons an open calibration (reset): keeps the PPR, writes nothing (E-4). */
+    void cancelCalibration();
+    bool isCalibrating() const { return _calibrating; }
 
 private:
     Encoder&          _enc;
