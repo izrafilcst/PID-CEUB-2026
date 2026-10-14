@@ -256,7 +256,7 @@ códigos completa está no manual do operador, seção 11.
   antes de salvar se for usar o modo cascata (A-WP1-04). A calibração dos sensores não muda.
 - Os testes de bancada (seção 5) substituem o firmware principal: grave-o de novo ao terminar.
 - Pendências conhecidas da v2: sem parada automática depois da chegada (F-34); `ack` de
-  `start`/`stop`/`scal` só confirma o recebimento (A-WP1-07); `defaults` zera o PPR (A-WP1-04).
+  `start`/`stop`/`scal` só confirma o recebimento (A-WP1-07); `defaults` volta o PPR a 600 (A-WP1-04).
 
 ## 5 Testes de bancada
 

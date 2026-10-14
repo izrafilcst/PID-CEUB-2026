@@ -1480,7 +1480,7 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
     <li>Configuração salva ausente ou corrompida → valores de fábrica daquele bloco, 3 bipes curtos e o aviso <code>cfgerr</code> = 1 no dashboard.</li>
     <li><strong>Voltar aos valores de fábrica:</strong> FÁBRICA (<code>{"t":"defaults"}</code>) e depois SALVAR (<code>{"t":"save"}</code>), com o carro parado. Isso também devolve <code>pprL</code>/<code>pprR</code> a 600: refaça o <code>cal</code> antes de salvar se for usar o modo cascata (A-WP1-04). A calibração dos sensores não muda.</li>
     <li>Os testes de bancada substituem o firmware principal: grave-o de novo ao terminar.</li>
-    <li>Pendências conhecidas da v2: sem parada automática depois da chegada (F-34); <code>ack</code> de <code>start</code>/<code>stop</code>/<code>scal</code> só confirma o recebimento (A-WP1-07); <code>defaults</code> zera o PPR (A-WP1-04).</li>
+    <li>Pendências conhecidas da v2: sem parada automática depois da chegada (F-34); <code>ack</code> de <code>start</code>/<code>stop</code>/<code>scal</code> só confirma o recebimento (A-WP1-07); <code>defaults</code> volta o PPR a 600 (A-WP1-04).</li>
   </ul>
 
   <h3 id="mn-bancada">Testes de bancada</h3>
@@ -1599,7 +1599,7 @@ python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt   # s
       <tr><td><code>{"t":"set","k":"kp","v":1.2}</code></td><td>Aplica uma chave ao vivo (não grava); acende o NÃO SALVO</td><td>Só as chaves marcadas "sim"</td></tr>
       <tr><td><code>{"t":"save"}</code></td><td>Grava hardware, perfil ativo e qual perfil está ativo</td><td><code>err:"running"</code></td></tr>
       <tr><td><code>{"t":"load"}</code></td><td>Descarta o que não foi salvo e relê o perfil ativo</td><td><code>err:"running"</code></td></tr>
-      <tr><td><code>{"t":"defaults"}</code></td><td>Valores de fábrica do hardware e do perfil ativo, ao vivo; zera o PPR (A-WP1-04)</td><td><code>err:"running"</code></td></tr>
+      <tr><td><code>{"t":"defaults"}</code></td><td>Valores de fábrica do hardware e do perfil ativo, ao vivo; volta o PPR a 600 (A-WP1-04)</td><td><code>err:"running"</code></td></tr>
       <tr><td><code>{"t":"prof","n":2}</code></td><td>Troca de perfil; com mudança pendente, <code>err:"dirty"</code>, a menos que venha <code>"f":1</code></td><td><code>err:"running"</code></td></tr>
       <tr><td><code>{"t":"scal"}</code></td><td>Calibra os sensores (como o toque longo); ao fim, <code>calres</code></td><td>Responde ok sem efeito</td></tr>
       <tr><td><code>{"t":"start"}</code></td><td>Arma o carro em PRONTO; com calibração de encoder aberta, <code>err:"cal"</code></td><td>—</td></tr>
