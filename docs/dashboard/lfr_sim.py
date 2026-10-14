@@ -9,7 +9,8 @@ Fala o mesmo JSON que o ESP32 troca por BLE (spec §4.5):
 Protocolo (cada mensagem ≤ 180 bytes)
 ──────────────────────────────────────
   Servidor → cliente
-    {"t":"info","name":"LFR-RACER-01","fw":"4.0.0-sim","mode":"SIM","cfgerr":0}
+    {"t":"info","name":"LFR-RACER-01","fw":"4.0.0-sim","mode":"SIM","cfgerr":0,"stk":[0,0]}
+                                     ao conectar e em resposta a get, antes dos cfg
     {"t":"tel", "pos":erro [-1,1], "corr":saída do PID externo [-1,1],
                 "vL":duty, "vR":duty (±1023), "dt":µs, "rpmL","rpmR","spL","spR":int,
                 "s":[8 × 0–100], "st":estado (0 IDLE … 5 ERROR), "lost":0|1}      30 Hz
@@ -26,7 +27,7 @@ Protocolo (cada mensagem ≤ 180 bytes)
 
   Cliente → servidor
     {"t":"set","k":"kp","v":1.2}     valida e aplica ao vivo (não persiste)
-    {"t":"get"}                      configuração inteira (5 grupos + meta)
+    {"t":"get"}                      info + configuração inteira (5 grupos + meta)
     {"t":"save"} {"t":"load"} {"t":"defaults"}
     {"t":"prof","n":2[,"f":1]}       troca de perfil (recusa com "dirty" sem f:1)
     {"t":"scal"}                     calibração dos sensores
@@ -131,6 +132,11 @@ class ConfigModel:
             if grp == g:
                 msg[k] = self.hw[k] if k in self.hw else self.tune[k]
         return _compact(msg)
+
+    @staticmethod
+    def info():
+        return _compact({"t": "info", "name": "LFR-RACER-01", "fw": FW, "mode": "SIM",
+                         "cfgerr": 0, "stk": [0, 0]})
 
     def config_dump(self):
         out = [self._group(g) for g in GROUPS]
@@ -245,7 +251,7 @@ class ConfigModel:
                 return [self._ack("?", False, "parse")]
             return self._set_many([("rpmMax", data["max"])], running)
         if kind == "get":
-            return self.config_dump()
+            return [self.info()] + self.config_dump()
         if kind in ("save", "load", "defaults", "prof") and running:
             return [self._ack(kind, False, "running")]
         if kind == "save":
@@ -418,9 +424,8 @@ async def handler(ws: websockets.ServerConnection):
     addr = ws.remote_address
     print(f"[LFR] Cliente conectado: {addr[0]}:{addr[1]}")
 
-    # Frame de identificação + configuração inteira, como o firmware faz ao conectar
-    await ws.send(_compact({"t": "info", "name": "LFR-RACER-01", "fw": FW,
-                            "mode": "SIM", "cfgerr": 0}))
+    # info + configuração inteira, como o firmware faz quando o cliente se inscreve
+    await ws.send(config.info())
     for r in config.config_dump():
         await ws.send(r)
 

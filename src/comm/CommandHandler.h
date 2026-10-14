@@ -14,6 +14,15 @@ enum class ControlRequest : uint8_t {
     NONE, START, STOP, RESET, SENSOR_CAL, ENC_CAL_START, ENC_CAL_FINISH
 };
 
+/** Dados do frame info (spec §4.5, E-2), lidos na hora de enviar. */
+struct DeviceInfo {
+    const char* name = "LFR";
+    bool        cfgErr = false;
+    uint32_t    stkControl = 0;  ///< menor folga de pilha da task control, bytes
+    uint32_t    stkComm = 0;     ///< idem, task comm
+};
+using DeviceInfoFn = DeviceInfo (*)();
+
 struct ControlMsg {
     ControlRequest req = ControlRequest::NONE;
     bool leftSide = true;
@@ -26,6 +35,7 @@ struct ControlMsg {
  * - save/load/defaults/prof: recusados em ARMED/RUNNING (escrita na flash para o cache).
  * - prof: recusa com "dirty" se houver mudança não salva, a menos que venha f:1.
  * - lock = 1 (modo competição): em ARMED/RUNNING todo comando é recusado com "locked".
+ * - get: info + cfg. O info também sai quando o cliente ativa as notificações (A-WP1-01).
  * Comandos de estado viram ControlMsg para a task control (core 1).
  */
 class CommandHandler {
@@ -34,6 +44,12 @@ public:
 
     void handle(const Command& cmd, bool running, ResponseSink& sink, ControlMsg& msg);
     void sendConfig(ResponseSink& sink) const;
+    /** Sends the info frame (fw, cfgerr, stk). */
+    void sendInfo(ResponseSink& sink) const;
+    /** info followed by the cfg sequence: answer to get and to a new subscription. */
+    void sendInfoAndConfig(ResponseSink& sink) const;
+    /** Where the info values come from (name, cfgerr, stack headroom). Null → defaults. */
+    void setInfoSource(DeviceInfoFn fn) { _infoFn = fn; }
 
     bool dirty() const { return _dirty; }
     bool consumeConfigChanged();
@@ -48,6 +64,7 @@ private:
     RobotConfig& _live;
     ConfigStore& _store;
     const char*  _fw;
+    DeviceInfoFn _infoFn = nullptr;
     bool _dirty = false;
     bool _changed = false;
 };

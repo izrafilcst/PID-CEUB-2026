@@ -30,9 +30,12 @@ class ConfigModelTest(unittest.TestCase):
         r = self.replies({"t": "set", "k": "invL", "v": 1}, running=True)
         self.assertEqual(r[0]["err"], "running")
 
-    def test_get_sends_groups_and_meta(self):
+    def test_get_sends_info_groups_and_meta(self):
+        # como o firmware (A-WP1-01): info antes da sequência cfg
         r = self.replies({"t": "get"})
-        self.assertEqual([x["g"] for x in r], ["hw", "pid", "vel", "spd", "misc", "meta"])
+        self.assertEqual(r[0]["t"], "info")
+        self.assertEqual(r[0]["cfgerr"], 0)
+        self.assertEqual([x["g"] for x in r[1:]], ["hw", "pid", "vel", "spd", "misc", "meta"])
         for x in r:
             self.assertLessEqual(len(json.dumps(x, separators=(",", ":"))), 180)
 

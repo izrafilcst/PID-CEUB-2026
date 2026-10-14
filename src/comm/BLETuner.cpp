@@ -8,6 +8,19 @@ bool BLETuner::consumeNewConnection() {
     return n;
 }
 
+bool BLETuner::consumeNewSubscription() {
+    SpinGuard guard(_lock);
+    const bool n = _newSub;
+    _newSub = false;
+    return n;
+}
+
+void BLETuner::_onSubscribe(uint16_t subValue) {
+    if ((subValue & 0x01) == 0) return;  // só notificações interessam (o dashboard usa notify)
+    SpinGuard guard(_lock);
+    _newSub = true;
+}
+
 bool BLETuner::isConnected() const {
     SpinGuard guard(_lock);
     return _connected;
@@ -21,6 +34,11 @@ void BLETuner::WriteCallback::onWrite(NimBLECharacteristic* pChar, NimBLEConnInf
     if (!_instance) return;
     const std::string v = pChar->getValue();
     _instance->_queue.push(v.c_str(), v.size());
+}
+
+void BLETuner::TelCallback::onSubscribe(NimBLECharacteristic*, NimBLEConnInfo&,
+                                        uint16_t subValue) {
+    if (_instance) _instance->_onSubscribe(subValue);
 }
 
 void BLETuner::ServerCallback::onConnect(NimBLEServer*, NimBLEConnInfo&) {
@@ -49,6 +67,7 @@ void BLETuner::begin(const char* deviceName) {
                                              NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
     _charCmd = service->createCharacteristic(CHAR_CMD_UUID,
                                              NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR);
+    _charTel->setCallbacks(&_telCallback);
     _charCmd->setCallbacks(&_writeCallback);
     // NimBLE-Arduino 2.x: o serviço sobe junto com o servidor, que adv->start() inicia
     NimBLEAdvertising* adv = NimBLEDevice::getAdvertising();

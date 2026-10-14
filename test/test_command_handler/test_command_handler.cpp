@@ -142,7 +142,7 @@ void test_command_handler_profile_out_of_range() {
 
 void test_command_handler_get_sends_all_groups_within_limit() {
     send("{\"t\":\"get\"}");
-    TEST_ASSERT_EQUAL_UINT32(robotcfg::GROUP_COUNT + 1, sink.msgs.size());
+    TEST_ASSERT_EQUAL_UINT32(robotcfg::GROUP_COUNT + 2, sink.msgs.size());  // info + grupos + meta
     for (const std::string& m : sink.msgs) TEST_ASSERT_TRUE(m.size() <= BLE_MAX_MSG);
     TEST_ASSERT_TRUE(sink.contains("\"g\":\"meta\""));
 }
@@ -210,6 +210,41 @@ void test_command_handler_unlocked_stop_still_works_while_running() {
     TEST_ASSERT_EQUAL(ControlRequest::STOP, m.req);
 }
 
+// A-WP1-01: o info (fw, cfgerr, stk) também sai no get, antes dos cfg
+static DeviceInfo fakeInfo() {
+    DeviceInfo d;
+    d.name = "LFR-TEST";
+    d.cfgErr = true;
+    d.stkControl = 1234;
+    d.stkComm = 5678;
+    return d;
+}
+
+void test_command_handler_get_sends_info_before_config() {
+    h->setInfoSource(fakeInfo);
+    send("{\"t\":\"get\"}");
+    TEST_ASSERT_EQUAL_UINT32(robotcfg::GROUP_COUNT + 2, sink.msgs.size());
+    TEST_ASSERT_EQUAL_STRING(
+        "{\"t\":\"info\",\"name\":\"LFR-TEST\",\"fw\":\"4.0.0\",\"mode\":\"RUN\","
+        "\"cfgerr\":1,\"stk\":[1234,5678]}", sink.msgs[0].c_str());
+    TEST_ASSERT_NOT_NULL(std::strstr(sink.msgs[1].c_str(), "\"g\":\"hw\""));
+    TEST_ASSERT_NOT_NULL(std::strstr(sink.msgs.back().c_str(), "\"g\":\"meta\""));
+}
+
+// A-WP1-01: o mesmo par info + cfg que o comm manda quando o cliente se inscreve
+void test_command_handler_info_and_config_on_subscribe() {
+    h->setInfoSource(fakeInfo);
+    h->sendInfoAndConfig(sink);
+    TEST_ASSERT_EQUAL_UINT32(robotcfg::GROUP_COUNT + 2, sink.msgs.size());
+    TEST_ASSERT_NOT_NULL(std::strstr(sink.msgs[0].c_str(), "\"t\":\"info\""));
+    TEST_ASSERT_NOT_NULL(std::strstr(sink.msgs[0].c_str(), "\"cfgerr\":1"));
+}
+
+void test_command_handler_info_without_source_has_safe_defaults() {
+    send("{\"t\":\"get\"}");
+    TEST_ASSERT_NOT_NULL(std::strstr(sink.msgs[0].c_str(), "\"cfgerr\":0,\"stk\":[0,0]"));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_command_handler_set_applies_and_marks_dirty);
@@ -230,5 +265,8 @@ int main() {
     RUN_TEST(test_command_handler_lock_refuses_everything_while_running);
     RUN_TEST(test_command_handler_lock_keeps_commands_outside_run);
     RUN_TEST(test_command_handler_unlocked_stop_still_works_while_running);
+    RUN_TEST(test_command_handler_get_sends_info_before_config);
+    RUN_TEST(test_command_handler_info_and_config_on_subscribe);
+    RUN_TEST(test_command_handler_info_without_source_has_safe_defaults);
     return UNITY_END();
 }

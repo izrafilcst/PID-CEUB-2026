@@ -28,7 +28,8 @@ de fábrica, só em `vmax` (0,35 / 0,50 / 0,70).
 - [ ] Sentido dos motores conferido no `bench_differential`; se um lado girar ao contrário,
       ajustar `invL`/`invR` (ou `swap`) pela aba CONFIG — não mexer na fiação
 - [ ] `info` sem aviso `cfgerr` (senão a configuração salva foi descartada e o carro está nos
-      valores de fábrica)
+      valores de fábrica). O `info` chega quando o dashboard se inscreve nas notificações e a
+      cada `get`; a aba SISTEMA mostra também a folga de pilha (`stk`)
 
 ### Parâmetros de partida (fábrica, perfil 0)
 

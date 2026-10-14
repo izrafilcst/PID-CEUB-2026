@@ -26,6 +26,19 @@ void CommandHandler::sendConfig(ResponseSink& sink) const {
     if (formatCfgMeta(buf, sizeof buf, _live.profile, _dirty, _fw)) sink.send(buf);
 }
 
+void CommandHandler::sendInfo(ResponseSink& sink) const {
+    const DeviceInfo d = _infoFn ? _infoFn() : DeviceInfo{};
+    char buf[BUF];
+    if (formatInfo(buf, sizeof buf, d.name, _fw, d.cfgErr, d.stkControl, d.stkComm)) {
+        sink.send(buf);
+    }
+}
+
+void CommandHandler::sendInfoAndConfig(ResponseSink& sink) const {
+    sendInfo(sink);
+    sendConfig(sink);
+}
+
 void CommandHandler::_reloadFromStore(uint8_t profile) {
     _store.loadHardware(_live.hw);
     _store.loadProfile(profile, _live.tune);
@@ -94,7 +107,7 @@ void CommandHandler::handle(const Command& cmd, bool running, ResponseSink& sink
             _handleSet(cmd, running, sink);
             break;
         case CmdType::GET:
-            sendConfig(sink);
+            sendInfoAndConfig(sink);
             break;
         case CmdType::SAVE: {
             if (running) { _ack(sink, "save", false, "running"); break; }

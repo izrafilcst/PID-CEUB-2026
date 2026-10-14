@@ -254,6 +254,16 @@ static void taskControl(void*) {
 }
 
 // ═══ Task comm — core 0, 100 Hz ════════════════════════════════════════════
+static DeviceInfo currentInfo() {
+    DeviceInfo d;
+    d.name = DEVICE_NAME;
+    d.cfgErr = g_cfgErr;
+    // No ESP-IDF a folga de pilha já sai em bytes
+    d.stkControl = g_controlTask ? uxTaskGetStackHighWaterMark(g_controlTask) : 0;
+    d.stkComm = uxTaskGetStackHighWaterMark(g_commTask);
+    return d;
+}
+
 class BleSink : public ResponseSink {
 public:
     void send(const char* json) override { ble.notify(json); }
@@ -263,6 +273,7 @@ static void taskComm(void*) {
     ble.begin(DEVICE_NAME);
     BleSink sink;
     CommandHandler handler(g_liveCfg, configStore, FW_VERSION);
+    handler.setInfoSource(currentInfo);
     char in[CommandQueue::MAX_LEN];
     char outBuf[192];
     uint32_t telSeen = 0;
@@ -273,17 +284,10 @@ static void taskComm(void*) {
     for (;;) {
         const uint32_t nowMs = millis();
 
-        if (ble.consumeNewConnection()) {
-            // No ESP-IDF a folga de pilha já sai em bytes
-            const uint32_t stkControl =
-                g_controlTask ? uxTaskGetStackHighWaterMark(g_controlTask) : 0;
-            const uint32_t stkComm = uxTaskGetStackHighWaterMark(g_commTask);
-            if (formatInfo(outBuf, sizeof outBuf, DEVICE_NAME, FW_VERSION, g_cfgErr,
-                           stkControl, stkComm)) {
-                ble.notify(outBuf);
-            }
-            handler.sendConfig(sink);
-        }
+        // No onConnect o cliente ainda não se inscreveu: info + cfg saem na inscrição
+        // (A-WP1-01) e de novo a cada get
+        ble.consumeNewConnection();
+        if (ble.consumeNewSubscription()) handler.sendInfoAndConfig(sink);
 
         while (ble.popCommand(in, sizeof in)) {
             Command cmd;

@@ -244,7 +244,7 @@ e pelo UUID do serviço. MTU preferido 185; **toda notificação cabe em 180 byt
 | Comando | Efeito | Resposta |
 |---------|--------|----------|
 | `{"t":"set","k":"kp","v":1.2}` | Valida e aplica ao vivo (não persiste) | `{"t":"ack","k":"kp","ok":1,"v":1.2}` ou `{"t":"ack","k":"kp","ok":0,"err":"range"}` |
-| `{"t":"get"}` | Pede a configuração inteira | `cfg` dos grupos `hw`, `pid`, `vel`, `spd`, `misc` e `meta` |
+| `{"t":"get"}` | Pede a identificação e a configuração inteira | `info`, depois `cfg` dos grupos `hw`, `pid`, `vel`, `spd`, `misc` e `meta` |
 | `{"t":"save"}` | Grava `HardwareConfig` + perfil ativo na NVS | `ack` com `k:"save"` |
 | `{"t":"load"}` | Descarta mudanças não salvas e relê o perfil ativo | `ack` + sequência `cfg` |
 | `{"t":"defaults"}` | Valores de fábrica ao vivo (não persiste) | `ack` + sequência `cfg` |
@@ -275,7 +275,8 @@ muda (`start` em READY continua aceito). O botão continua parando o carro.
 
 ### Frames enviados pelo robô
 
-`info` — ao conectar; `cfgerr` = 1 quando a configuração salva estava ausente ou inválida
+`info` — quando o cliente ativa as notificações da `0xABCD` (junto com a sequência `cfg`) e em
+resposta a cada `get`; `cfgerr` = 1 quando a configuração salva estava ausente ou inválida
 (o carro está nos valores de fábrica); `stk` = menor folga de pilha das tasks `control` e
 `comm` desde o boot, em bytes:
 ```json
