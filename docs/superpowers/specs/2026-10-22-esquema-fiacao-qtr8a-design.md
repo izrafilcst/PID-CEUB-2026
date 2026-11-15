@@ -34,6 +34,11 @@ perfboard, mais um **guia de solda do QTR-8A** que usa o mesmo desenho.
 - Visualizador interativo (destaque de rede ao passar o mouse). A prancha é SVG estático.
 - Migrar as 12 pranchas NBR existentes (`hardware/drawings/comp`, `assy`) para ISO.
 - Alterar firmware ou o CAD.
+- **Republicar a página privada do manual** (`claude.ai/artifact/9DdBtHQb1D2rkHPKL3ijsV`).
+  O README manda republicar ao mudar os manuais, mas é efeito externo: ao fim do trabalho eu
+  **pergunto antes** (decisão minha).
+- **Acrescentar mitigação de hardware** (capacitores por canal etc.) nas pranchas pela
+  hipótese da impedância de fonte (§7, item 4): as pranchas mostram o projeto como está.
 
 **Anti-objetivos** (falha mesmo que "funcione")
 - Um desenho que diverge de `src/config.h` sem ninguém perceber.
@@ -49,7 +54,13 @@ perfboard, mais um **guia de solda do QTR-8A** que usa o mesmo desenho.
 | U-2 | Mostrar os **GPIO de cada peça**. |
 | U-3 | Guia de **configuração do QTR-8A com pontos de solda** e **ligação ao MCP3008**. |
 | U-4 | Consulta **na tela**, não impressa (sem limite de papel). |
-| U-5 | Execução **sem ruflo** (servidores `claude-flow`/`ruv-swarm` não conectam nesta sessão), com TDD e **agente avaliador independente** no fim, que reexecuta as verificações. |
+| U-5 | Execução com **agentes especializados e um avaliador independente** no fim, que reexecuta as verificações (preferência permanente do usuário para trabalho em várias partes), com TDD. |
+
+**Chamada minha sobre o ruflo.** Quando o documento nasceu, `claude-flow` e `ruv-swarm`
+não conectavam. O `claude-flow` voltou durante a sessão (o `ruv-swarm` e o `flow-nexus`
+seguem fora). Seguindo a preferência permanente, o trabalho é registrado no ruflo
+(`claude-flow`), o executor roda em worktree isolado (com `git merge --ff-only` até a base
+antes da guarda) e o avaliador é de **outro tipo** que o executor.
 
 ## 4. Fatos verificados do QTR-8A (Pololu #960)
 
@@ -134,11 +145,19 @@ firmware.
 2. Quantas variantes de rotulagem de GPIO por bloco (só número ou número + macro).
 3. Ordem dos pinos do DevKit V1 de 30 pinos: tomar de fonte rastreável (a ficha 01 cita o
    pinout da Mischianti), marcar `TIPICO` e pôr no guia o aviso de conferir na placa.
-4. **Verificar no datasheet do MCP3008** (DS21295D, ficha 02) se a saída de 47 kΩ do QTR
-   com SPI a 1 MHz (amostragem de 1,5 ciclo de clock) causa erro por impedância de fonte
-   entre canais vizinhos. Hipótese minha, não verificada. Se confirmar, registrar em
-   `docs/REVISAO_FIRMWARE.md` como achado e **não** alterar firmware neste trabalho.
+4. **Impedância de fonte do QTR-8A no MCP3008.** A saída de 47 kΩ com SPI a 1 MHz
+   (amostragem de 1,5 ciclo de clock) pode causar arrasto entre canais vizinhos. O achado
+   **já existe**: F-36 em `docs/REVISAO_FIRMWARE.md`, com plano de medição na bancada (um
+   canal sobre a linha; se houver arrasto, baixar o clock ou descartar a 1ª conversão).
+   Conferir no datasheet (DS21295D, ficha 02) os valores de CSAMPLE e RSS e **acrescentar a
+   conta ao F-36** em vez de criar achado novo. Decisão minha: só registro, sem mitigação nas
+   pranchas e sem alterar firmware neste trabalho.
 5. Nome dos arquivos, estrutura dos testes e divisão em tarefas.
+6. **Conector JST-SH de 6 vias do N20** (E1 desenha o encoder): o repositório só diz "6
+   vias, passo 1,0 mm" e não traz a ordem dos pinos. Se o usuário não responder a tempo:
+   motor da Pololu = `OFICIAL` (ler a ordem na página do produto), motor genérico = `TIPICO`
+   com aviso de conferir com o multímetro antes de energizar; os terminais AO1/AO2/BO1/BO2
+   do TB6612 entram só por nome.
 
 ## 8. Verificação (TDD)
 
